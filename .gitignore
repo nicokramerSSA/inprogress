@@ -1,0 +1,9 @@
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+node_modules/
+*.log
+.DS_Store
+.vscode/
+*.zip
