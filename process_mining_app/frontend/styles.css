@@ -1,0 +1,705 @@
+:root {
+  /* Design tokens. The app intentionally stays in a light theme so dense SVG
+     diagrams and table values remain legible. */
+  color-scheme: light;
+  --black: #000000;
+  --white: #ffffff;
+  --blue: #003399;
+  --ink: #000000;
+  --muted: rgba(0, 0, 0, 0.64);
+  --line: rgba(0, 0, 0, 0.12);
+  --paper: #ffffff;
+  --panel: rgba(255, 255, 255, 0.9);
+  --brand: #003399;
+  --brand-deep: #003399;
+  --accent: #003399;
+  --ok: #000000;
+  --shadow: rgba(0, 0, 0, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Base page shell                                                            */
+/* -------------------------------------------------------------------------- */
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  /* Layered blue glows create depth without competing with the diagrams. */
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(0, 51, 153, 0.14) 0%, rgba(0, 51, 153, 0) 42%),
+    radial-gradient(circle at 88% 14%, rgba(0, 51, 153, 0.12) 0%, rgba(0, 51, 153, 0) 38%),
+    linear-gradient(165deg, #ffffff 0%, rgba(0, 51, 153, 0.04) 52%, #ffffff 100%);
+}
+
+.background-glow {
+  /* Subtle pattern overlay used only as atmosphere; pointer-events keeps it
+     from blocking controls. */
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      150deg,
+      rgba(0, 51, 153, 0.03),
+      rgba(0, 51, 153, 0.03) 2px,
+      transparent 2px,
+      transparent 14px
+    );
+  opacity: 0.52;
+}
+
+.app-shell {
+  /* The shell can grow wide enough for complex process maps while still
+     preserving comfortable margins on laptop screens. */
+  position: relative;
+  z-index: 1;
+  width: min(1600px, 100% - 32px);
+  margin: 20px auto 28px;
+  display: grid;
+  gap: 18px;
+}
+
+.hero {
+  padding: 24px clamp(16px, 4vw, 40px);
+  background: linear-gradient(120deg, rgba(0, 51, 153, 0.94), rgba(0, 51, 153, 0.78));
+  border-radius: 22px;
+  color: #ffffff;
+  box-shadow: 0 18px 36px rgba(0, 51, 153, 0.16);
+  animation: enter 420ms ease;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cards, forms, and buttons                                                  */
+/* -------------------------------------------------------------------------- */
+
+.eyebrow {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.14em;
+  font-size: 0.74rem;
+  opacity: 0.9;
+}
+
+.hero h1 {
+  margin: 10px 0 6px;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 960px;
+  opacity: 0.93;
+}
+
+.card {
+  /* Slight translucency and blur keep the page light while separating panels. */
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 0 14px 38px var(--shadow);
+  padding: 16px;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.upload-form {
+  display: grid;
+  gap: 12px;
+}
+
+.csv-hints {
+  /* Core CSV mapping fields: case, activity, timestamps, and actor. */
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.csv-extras {
+  /* Auxiliary column selectors. These are not process semantics, but they
+     power informational profiles and dynamic attribute filters. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mapping-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mapping-status {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.64);
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 9px 10px;
+  color: #000000;
+}
+
+select[multiple] {
+  min-height: 120px;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.btn-primary {
+  background: linear-gradient(110deg, var(--brand), var(--brand-deep));
+  color: #ffffff;
+  font-weight: 600;
+  border: 1px solid rgba(0, 51, 153, 0.18);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.92);
+  color: #000000;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dashboard metrics and filters                                              */
+/* -------------------------------------------------------------------------- */
+
+.status-text {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none;
+}
+
+.dashboard {
+  display: grid;
+  gap: 16px;
+  animation: enter 380ms ease;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(0, 51, 153, 0.08));
+}
+
+.metric .label {
+  font-size: 0.74rem;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.metric .value {
+  margin-top: 6px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #000000;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.filter-workspace {
+  /* Filters and the human-readable filter stack sit side by side on desktop
+     and collapse into one column on narrower screens. */
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.filter-stack-panel {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(0, 51, 153, 0.04));
+  display: grid;
+  gap: 12px;
+}
+
+.stack-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: start;
+}
+
+.stack-head h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.stack-summary {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.filter-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-stack:empty::before {
+  /* Empty-state text is generated in CSS so the JavaScript only manages real
+     active filter chips. */
+  content: "No active filters";
+  border: 1px dashed rgba(0, 51, 153, 0.18);
+  border-radius: 14px;
+  padding: 16px 14px;
+  color: rgba(0, 0, 0, 0.52);
+  background: rgba(255, 255, 255, 0.72);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.filter-chip {
+  border: 1px solid rgba(0, 51, 153, 0.16);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  display: grid;
+  gap: 6px;
+}
+
+.filter-chip-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filter-chip-kind {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: "IBM Plex Mono", monospace;
+  color: rgba(0, 0, 0, 0.48);
+}
+
+.filter-chip-value {
+  font-size: 0.84rem;
+  color: #000000;
+}
+
+.filter-chip button {
+  padding: 6px 10px;
+  font-size: 0.76rem;
+}
+
+.dynamic-filters {
+  margin-top: 8px;
+}
+
+.dynamic-filters:empty {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Visualization workspace                                                    */
+/* -------------------------------------------------------------------------- */
+
+.note {
+  margin: 10px 0 2px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.conformance {
+  margin-top: 10px;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 51, 153, 0.08);
+  border: 1px solid rgba(0, 51, 153, 0.14);
+  color: #000000;
+  font-size: 0.88rem;
+  min-height: 42px;
+}
+
+.workspace-grid {
+  /* The visualization owns the full row. Supporting tables are moved below so
+     the map has enough horizontal room for dense processes. */
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.map-card {
+  overflow: hidden;
+}
+
+.animation-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.diagram-detail-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.diagram-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.inline-control {
+  display: grid;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.inline-control.grow {
+  min-width: 220px;
+  flex: 1;
+}
+
+.inline-control select,
+.inline-control input[type="range"] {
+  min-height: 38px;
+}
+
+.time-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  border-radius: 999px;
+  background: rgba(0, 51, 153, 0.08);
+  border: 1px solid rgba(0, 51, 153, 0.14);
+  color: #000000;
+  padding: 0 12px;
+  font-size: 0.79rem;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.process-map-viewport {
+  /* The SVG scales and scrolls inside this viewport. Re-layout happens inside
+     frontend/app.js by changing each rendered SVG viewBox. */
+  overflow: auto;
+  height: clamp(480px, 66vw, 920px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 255, 0.96), rgba(255, 255, 255, 0.98)),
+    linear-gradient(90deg, rgba(0, 51, 153, 0.03), rgba(0, 51, 153, 0));
+}
+
+#process-map {
+  /* Width is also adjusted by zoom controls. min-width matches width so zooming
+     out/in behaves predictably in the scroll container. */
+  display: block;
+  flex: 0 0 auto;
+  margin: 0 auto;
+  width: 100%;
+  min-width: 100%;
+  height: auto;
+}
+
+.process-map-summary {
+  margin-top: 4px;
+  margin-bottom: 10px;
+  min-height: 18px;
+}
+
+.map-selection {
+  /* Contextual action panel shown after clicking selectable activities/paths. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(0, 51, 153, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(0, 51, 153, 0.05));
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.map-selection-copy h3 {
+  margin: 2px 0 2px;
+  font-size: 0.95rem;
+}
+
+.selection-eyebrow {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.selection-actions button {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(0, 51, 153, 0.06);
+  border: 1px solid var(--line);
+  padding: 4px;
+  gap: 4px;
+}
+
+.view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mode-btn {
+  background: transparent;
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: rgba(0, 0, 0, 0.72);
+  font-size: 0.82rem;
+  border: 1px solid transparent;
+}
+
+.mode-btn.active {
+  background: rgba(0, 51, 153, 0.9);
+  box-shadow: 0 6px 16px rgba(0, 51, 153, 0.16);
+  color: #ffffff;
+  border-color: rgba(0, 51, 153, 0.18);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Supporting analytics tables                                                */
+/* -------------------------------------------------------------------------- */
+
+.table-wrap {
+  overflow: auto;
+  max-height: 460px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  vertical-align: top;
+  color: #000000;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: rgba(248, 250, 255, 0.98);
+  z-index: 1;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.table-grid {
+  /* Six lower cards: Top Paths, Variants, Bottlenecks, Activity Statistics,
+     Rework Insights, and Informational Columns. */
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.edge-card .table-wrap {
+  max-height: 460px;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Responsive behavior                                                        */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 1280px) {
+  .filters-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .filter-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-grid,
+  .table-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .animation-controls {
+    align-items: stretch;
+  }
+
+  .diagram-detail-controls {
+    align-items: stretch;
+  }
+
+  .diagram-zoom-controls {
+    align-items: stretch;
+  }
+
+  .inline-control,
+  .inline-control.grow {
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    width: min(1600px, calc(100% - 14px));
+    margin: 10px auto 18px;
+  }
+
+  .hero,
+  .card {
+    border-radius: 14px;
+  }
+
+  .csv-hints,
+  .csv-extras,
+  .filters-grid,
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .map-selection {
+    grid-template-columns: 1fr;
+  }
+
+  .selection-actions {
+    justify-content: flex-start;
+  }
+
+  .animation-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .diagram-detail-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .diagram-zoom-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .time-pill {
+    min-height: 34px;
+  }
+}

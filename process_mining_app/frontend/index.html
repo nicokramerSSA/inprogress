@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FlowScope Miner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <!-- Decorative page texture. It is hidden from assistive technology. -->
+    <div class="background-glow" aria-hidden="true"></div>
+
+    <!--
+      App shell:
+      The page has three major analyst steps: import, filter/explore, and inspect
+      the diagram plus supporting tables. JavaScript fills most dynamic content.
+    -->
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">PM4PY-POWERED PROCESS MINING</p>
+          <h1>FlowScope Miner</h1>
+          <p class="subtitle">
+            Disco-style process exploration with interactive filters, variant analysis,
+            bottlenecks, and conformance checks.
+          </p>
+        </div>
+      </header>
+
+      <!-- Step 1: Import and map an event log. -->
+      <section class="card upload-card">
+        <h2>1. Import Event Log</h2>
+        <form id="upload-form" class="upload-form">
+          <label>
+            Event Log File (.csv or .xes)
+            <input id="log-file" type="file" accept=".csv,.xes" required />
+          </label>
+          <div class="csv-hints">
+            <label>
+              CSV Case ID Column
+              <select id="case-col">
+                <option value="">Auto-detect</option>
+              </select>
+            </label>
+            <label>
+              CSV Activity Column
+              <select id="activity-col">
+                <option value="">Auto-detect</option>
+              </select>
+            </label>
+            <label>
+              CSV Start Timestamp Column
+              <select id="start-timestamp-col">
+                <option value="">Auto-detect</option>
+              </select>
+            </label>
+            <label>
+              CSV Stop Timestamp Column (optional)
+              <select id="stop-timestamp-col">
+                <option value="">None / Auto-detect</option>
+              </select>
+            </label>
+            <label>
+              CSV Actor Column
+              <select id="actor-col">
+                <option value="">Auto-detect / none</option>
+              </select>
+            </label>
+          </div>
+          <div class="mapping-actions">
+            <!-- Backend suggestion inspects CSV headers and sample values only. -->
+            <button id="suggest-mapping" class="btn-ghost" type="button">
+              Suggest Mapping from CSV
+            </button>
+            <span id="mapping-status" class="mapping-status">
+              Select a CSV to auto-suggest mappings.
+            </span>
+          </div>
+          <div class="csv-extras">
+            <!--
+              Informational columns are profiled in the dashboard. Filter-only
+              columns become dynamic filters but are not treated as process fields.
+            -->
+            <label>
+              Additional Informational Columns
+              <select
+                id="informational-cols"
+                multiple
+              ></select>
+            </label>
+            <label>
+              Additional Filter-Only Columns
+              <select
+                id="filter-only-cols"
+                multiple
+              ></select>
+            </label>
+          </div>
+          <p class="note">
+            If only one timestamp column exists in your log, map it in
+            <strong>CSV Start Timestamp Column</strong> and leave stop optional.
+          </p>
+          <button type="submit" class="btn-primary">Load Log</button>
+        </form>
+        <p id="upload-status" class="status-text">No log loaded.</p>
+      </section>
+
+      <!-- Step 2 and 3 are hidden until an upload succeeds. -->
+      <section id="dashboard" class="dashboard hidden" aria-live="polite">
+        <!-- Summary cards are rendered from dashboard.summary. -->
+        <section class="metrics" id="metrics"></section>
+
+        <!-- Step 2: Filters that refresh every downstream panel and diagram. -->
+        <section class="card filters-card">
+          <div class="card-head">
+            <h2>2. Explore and Filter</h2>
+            <div class="actions">
+              <button id="apply-filters" class="btn-primary">Apply Filters</button>
+              <button id="reset-filters" class="btn-ghost" type="button">Reset</button>
+              <button id="run-conformance" class="btn-ghost" type="button">
+                Run Conformance
+              </button>
+              <button id="export-analysis" class="btn-ghost" type="button">
+                Export Analysis
+              </button>
+              <button id="export-html-report" class="btn-ghost" type="button">
+                Export HTML Report
+              </button>
+            </div>
+          </div>
+
+          <div class="filter-workspace">
+            <div>
+              <!-- Static filters are always present; dynamic filters are injected below. -->
+              <div class="filters-grid">
+                <label>
+                  Start Time
+                  <input id="start-time" type="datetime-local" />
+                </label>
+                <label>
+                  End Time
+                  <input id="end-time" type="datetime-local" />
+                </label>
+                <label>
+                  Min Activity Frequency
+                  <input id="min-activity-frequency" type="number" min="1" value="1" />
+                </label>
+                <label>
+                  Min Path Frequency
+                  <input id="min-edge-frequency" type="number" min="1" value="1" />
+                </label>
+                <label>
+                  Variant Rows
+                  <input id="variant-top-k" type="number" min="1" value="20" />
+                </label>
+                <label>
+                  Keep Top Variants (optional)
+                  <input id="retain-top-variants" type="number" min="1" placeholder="all" />
+                </label>
+                <label>
+                  Min Case Duration (hours)
+                  <input id="min-case-duration" type="number" step="0.1" min="0" />
+                </label>
+                <label>
+                  Max Case Duration (hours)
+                  <input id="max-case-duration" type="number" step="0.1" min="0" />
+                </label>
+                <label>
+                  Keep Cases Containing Activities (all selected)
+                  <select id="include-activities" multiple></select>
+                </label>
+                <label>
+                  Exclude Cases Containing Activities (any selected)
+                  <select id="exclude-activities" multiple></select>
+                </label>
+              </div>
+              <!-- Populated from user-selected filter-only columns. -->
+              <div id="attribute-filters" class="filters-grid dynamic-filters"></div>
+              <p class="note">
+                Use Shift/Cmd click for multi-select case filters. Click activities and
+                paths in the map to add direct filters without editing this form.
+                Additional filter-only columns appear above when configured during import.
+              </p>
+            </div>
+
+            <!-- Human-readable filter stack built from form controls and map clicks. -->
+            <aside class="filter-stack-panel">
+              <div class="stack-head">
+                <div>
+                  <h3>Filter Stack</h3>
+                  <p id="filter-stack-summary" class="stack-summary">
+                    No active filters. Load a log or click the map to start narrowing the
+                    process.
+                  </p>
+                </div>
+                <button id="clear-filter-stack" class="btn-ghost" type="button">
+                  Clear Active
+                </button>
+              </div>
+              <div id="filter-stack" class="filter-stack" aria-live="polite"></div>
+            </aside>
+          </div>
+
+          <div id="conformance-output" class="conformance"></div>
+        </section>
+
+        <!-- Step 3: Full-width visualization workspace. -->
+        <section class="workspace-grid">
+          <section class="card map-card">
+            <div class="card-head">
+              <h2>3. Process Map</h2>
+              <div class="mode-toggle" role="group" aria-label="Edge label mode">
+                <button id="mode-frequency" class="mode-btn active" type="button">
+                  Frequency
+                </button>
+                <button id="mode-performance" class="mode-btn" type="button">
+                  Performance
+                </button>
+              </div>
+            </div>
+            <!-- Diagram tabs. Availability is controlled by frontend/app.js. -->
+            <div class="view-controls" role="group" aria-label="Diagram view">
+              <button id="view-process" class="mode-btn active" type="button">Process</button>
+              <button id="view-handoff-actor" class="mode-btn" type="button">
+                Handoff (Actor)
+              </button>
+              <button id="view-handoff-activity" class="mode-btn" type="button">
+                Handoff (Activity)
+              </button>
+              <button id="view-swimlane" class="mode-btn" type="button">Swimlane</button>
+              <button id="view-sankey" class="mode-btn" type="button">Sankey</button>
+              <button id="view-rework" class="mode-btn" type="button">Rework</button>
+              <button id="view-queue-heatmap" class="mode-btn" type="button">
+                Queue Heatmap
+              </button>
+              <button id="view-rework-treemap" class="mode-btn" type="button">
+                Rework Treemap
+              </button>
+              <button id="view-variant-boxplot" class="mode-btn" type="button">
+                Variant Boxplot
+              </button>
+            </div>
+            <!-- Animation controls are active only for process and handoff views. -->
+            <div class="animation-controls">
+              <button id="toggle-animation" class="btn-ghost" type="button">
+                Play Animation
+              </button>
+              <button id="rewind-animation" class="btn-ghost" type="button">Rewind</button>
+              <label class="inline-control">
+                Speed
+                <select id="animation-speed">
+                  <option value="0.5">0.5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="2">2x</option>
+                  <option value="3">3x</option>
+                </select>
+              </label>
+              <label class="inline-control grow">
+                Frame
+                <input id="animation-frame" type="range" min="0" max="0" value="0" />
+              </label>
+              <span id="animation-time" class="time-pill">No animation data</span>
+            </div>
+            <!-- Detail sliders simplify dense maps without changing backend filters. -->
+            <div class="diagram-detail-controls" role="group" aria-label="Process detail">
+              <label class="inline-control grow">
+                Activities
+                <input
+                  id="activity-detail"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value="100"
+                />
+              </label>
+              <span id="activity-detail-value" class="time-pill">100% of activity volume</span>
+              <label class="inline-control grow">
+                Paths
+                <input
+                  id="path-detail"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value="50"
+                />
+              </label>
+              <span id="path-detail-value" class="time-pill">50% of path volume</span>
+            </div>
+            <!-- Zoom applies to static diagrams; animations intentionally keep fixed scale. -->
+            <div class="diagram-zoom-controls" role="group" aria-label="Diagram zoom">
+              <button id="zoom-out" class="btn-ghost" type="button">Zoom Out</button>
+              <button id="zoom-reset" class="btn-ghost" type="button">Reset Zoom</button>
+              <button id="zoom-in" class="btn-ghost" type="button">Zoom In</button>
+              <span id="zoom-value" class="time-pill">100%</span>
+            </div>
+            <p id="view-description" class="note"></p>
+            <p id="process-map-summary" class="note process-map-summary"></p>
+            <!-- Actions populated when an activity/path is clicked in selectable maps. -->
+            <section id="map-selection-panel" class="map-selection hidden" aria-live="polite">
+              <div class="map-selection-copy">
+                <p class="selection-eyebrow">Map Selection</p>
+                <h3 id="map-selection-title">No map item selected</h3>
+                <p id="map-selection-subtitle" class="note">
+                  Click an activity or path to add a focused filter.
+                </p>
+              </div>
+              <div id="map-selection-actions" class="selection-actions"></div>
+            </section>
+            <div id="process-map-viewport" class="process-map-viewport">
+              <!-- All diagram views render into this one SVG element. -->
+              <svg id="process-map" viewBox="0 0 1200 760" aria-label="Process map"></svg>
+            </div>
+          </section>
+        </section>
+
+        <!-- Supporting analytics tables. Kept below the full-width visualization. -->
+        <section class="table-grid">
+          <section class="card edge-card">
+            <h2>Top Paths</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Path</th>
+                    <th>Frequency</th>
+                    <th>Median Wait</th>
+                  </tr>
+                </thead>
+                <tbody id="edges-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Variants</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Variant</th>
+                    <th>Cases</th>
+                    <th>Share</th>
+                    <th>Median Duration (h)</th>
+                  </tr>
+                </thead>
+                <tbody id="variants-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Bottlenecks</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Path</th>
+                    <th>Median Wait</th>
+                    <th>p90 Wait</th>
+                    <th>Frequency</th>
+                  </tr>
+                </thead>
+                <tbody id="bottlenecks-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Activity Statistics</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Activity</th>
+                    <th>Frequency</th>
+                    <th>Case Coverage</th>
+                  </tr>
+                </thead>
+                <tbody id="activities-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Rework Insights</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Activity</th>
+                    <th>Cases With Rework</th>
+                    <th>Rework Events</th>
+                    <th>Rework Ratio</th>
+                  </tr>
+                </thead>
+                <tbody id="rework-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>Informational Columns</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>Unique Values</th>
+                    <th>Top Values</th>
+                  </tr>
+                </thead>
+                <tbody id="informational-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
