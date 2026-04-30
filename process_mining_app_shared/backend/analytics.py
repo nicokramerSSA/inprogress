@@ -1774,7 +1774,7 @@ def _build_queue_age_heatmap(transitions: pd.DataFrame) -> dict[str, Any]:
         buckets = [
             {
                 "index": idx,
-                "label": bucket_edges[idx].strftime("%b %-d")
+                "label": f"{bucket_edges[idx].strftime('%b')} {bucket_edges[idx].day}"
                 if hasattr(bucket_edges[idx], "strftime")
                 else str(bucket_edges[idx]),
                 "start_time": _format_datetime(bucket_edges[idx]),

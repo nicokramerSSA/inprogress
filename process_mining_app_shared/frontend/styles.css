@@ -619,6 +619,74 @@ th {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Project management card                                                    */
+/* -------------------------------------------------------------------------- */
+
+.project-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.project-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.project-divider {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.45);
+  padding-bottom: 8px;
+}
+
+.project-create-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.project-create-row input {
+  min-width: 220px;
+}
+
+.project-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.project-log-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 51, 153, 0.04);
+  border: 1px solid rgba(0, 51, 153, 0.12);
+  border-radius: 8px;
+}
+
+.log-filename {
+  font-weight: 600;
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.log-date {
+  font-size: 0.78rem;
+  color: rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+.btn-sm {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Responsive behavior                                                        */
 /* -------------------------------------------------------------------------- */
 

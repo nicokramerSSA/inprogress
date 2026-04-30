@@ -48,6 +48,8 @@ from .analytics import (
     mermaid_export_payload,
     suggest_csv_mapping,
 )
+from .database import create_tables, engine, logs, projects
+from sqlalchemy import select, insert
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -153,6 +155,13 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
+@app.on_event("startup")
+def on_startup() -> None:
+    """Create DB tables on first boot if they do not exist yet."""
+    create_tables()
+    logger.info("Database tables verified/created on startup")
+
 # The app is normally run locally from VS Code, but CORS is kept open so the
 # static frontend can be served either by FastAPI or by a simple dev server.
 app.add_middleware(
@@ -215,11 +224,57 @@ LOG_STORE: Dict[str, StoredLog] = {}
 # ---------------------------------------------------------------------------
 
 def _get_log_or_404(log_id: str) -> StoredLog:
-    """Fetch a stored log or raise the HTTP error expected by API clients."""
+    """Fetch a stored log from the in-memory cache or reload it from the DB.
+
+    On a fresh server start the cache is empty, but logs persisted to Postgres
+    can be reconstructed on first access without requiring a re-upload.
+    """
     record = LOG_STORE.get(log_id)
-    if record is None:
+    if record is not None:
+        return record
+
+    with engine.connect() as conn:
+        row = conn.execute(
+            select(logs).where(logs.c.id == log_id)
+        ).mappings().fetchone()
+
+    if row is None:
         raise HTTPException(status_code=404, detail="Unknown log_id")
-    return record
+
+    content = bytes(row["file_data"])
+    file_format = row["file_format"]
+    filename = row["filename"]
+
+    try:
+        if file_format == "csv":
+            dataframe = load_csv_bytes(
+                content,
+                case_id_col=row["column_mapping"].get("case_id_col") or "",
+                activity_col=row["column_mapping"].get("activity_col") or "",
+                timestamp_col="",
+                start_timestamp_col=row["column_mapping"].get("start_timestamp_col") or "",
+                stop_timestamp_col=row["column_mapping"].get("stop_timestamp_col") or "",
+                actor_col=row["column_mapping"].get("actor_col") or "",
+            )
+        else:
+            dataframe = load_xes_bytes(content)
+    except AnalyticsError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to reload log from DB: {exc}") from exc
+
+    restored = StoredLog(
+        log_id=log_id,
+        filename=filename,
+        dataframe=dataframe,
+        uploaded_at=row["uploaded_at"],
+        column_mapping=dict(row["column_mapping"] or {}),
+        informational_columns=list(row["informational_columns"] or []),
+        filter_only_columns=list(row["filter_only_columns"] or []),
+        filter_only_values=dict(row["filter_only_values"] or {}),
+        mapping_warnings=list(row["mapping_warnings"] or []),
+    )
+    LOG_STORE[log_id] = restored
+    logger.info("Reloaded log %s (%s) from DB into cache", log_id, filename)
+    return restored
 
 
 def _safe_export_basename(filename: str) -> str:
@@ -959,8 +1014,109 @@ def _build_html_report(
 # API endpoints
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Project management endpoints
+# ---------------------------------------------------------------------------
+
+class CreateProjectRequest(BaseModel):
+    name: str
+
+
+@app.post("/api/projects")
+def create_project(body: CreateProjectRequest) -> dict:
+    """Create a named project. Project names must be unique."""
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Project name cannot be empty")
+
+    project_id = str(uuid4())
+    try:
+        with engine.begin() as conn:
+            conn.execute(insert(projects).values(id=project_id, name=name))
+    except Exception as exc:
+        if "unique" in str(exc).lower():
+            raise HTTPException(status_code=409, detail=f"A project named '{name}' already exists") from exc
+        raise
+
+    logger.info("Created project %s (%s)", project_id, name)
+    return {"project_id": project_id, "name": name}
+
+
+@app.get("/api/projects")
+def list_projects() -> dict:
+    """Return all projects ordered by creation time."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(projects).order_by(projects.c.created_at.desc())
+        ).mappings().fetchall()
+
+    return {
+        "projects": [
+            {
+                "project_id": str(row["id"]),
+                "name": row["name"],
+                "created_at": row["created_at"].isoformat(),
+            }
+            for row in rows
+        ]
+    }
+
+
+@app.get("/api/projects/{project_id}/logs")
+def list_project_logs(project_id: str) -> dict:
+    """Return all logs uploaded to a project, newest first."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(
+                logs.c.id,
+                logs.c.filename,
+                logs.c.file_format,
+                logs.c.uploaded_at,
+            )
+            .where(logs.c.project_id == project_id)
+            .order_by(logs.c.uploaded_at.desc())
+        ).mappings().fetchall()
+
+    return {
+        "project_id": project_id,
+        "logs": [
+            {
+                "log_id": str(row["id"]),
+                "filename": row["filename"],
+                "file_format": row["file_format"],
+                "uploaded_at": row["uploaded_at"].isoformat(),
+            }
+            for row in rows
+        ],
+    }
+
+
+@app.post("/api/projects/{project_id}/logs/{log_id}/assign")
+def assign_log_to_project(project_id: str, log_id: str) -> dict:
+    """Assign an uploaded log to a project."""
+    from sqlalchemy import update as sql_update
+    with engine.connect() as conn:
+        exists = conn.execute(
+            select(projects.c.id).where(projects.c.id == project_id)
+        ).fetchone()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            sql_update(logs)
+            .where(logs.c.id == log_id)
+            .values(project_id=project_id)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Log not found")
+
+    logger.info("Assigned log %s to project %s", log_id, project_id)
+    return {"log_id": log_id, "project_id": project_id}
+
+
 @app.get("/api/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, Any]:
     log_count = len(LOG_STORE)
     logger.debug("Health check — %d log(s) in memory", log_count)
     return {"status": "ok", "logs_in_memory": log_count}
@@ -1109,11 +1265,27 @@ async def upload_log(
     filter_only_values = attribute_filter_options(dataframe, filter_only_columns)
 
     log_id = str(uuid4())
+    uploaded_at = datetime.now(timezone.utc)
+
+    with engine.begin() as conn:
+        conn.execute(insert(logs).values(
+            id=log_id,
+            project_id=None,
+            filename=filename,
+            file_data=content,
+            file_format=suffix.lstrip("."),
+            column_mapping=column_mapping,
+            informational_columns=informational_columns,
+            filter_only_columns=filter_only_columns,
+            filter_only_values=filter_only_values,
+            mapping_warnings=mapping_warnings,
+        ))
+
     LOG_STORE[log_id] = StoredLog(
         log_id=log_id,
         filename=filename,
         dataframe=dataframe,
-        uploaded_at=datetime.now(timezone.utc),
+        uploaded_at=uploaded_at,
         column_mapping=column_mapping,
         informational_columns=informational_columns,
         filter_only_columns=filter_only_columns,

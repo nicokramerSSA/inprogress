@@ -33,6 +33,32 @@
         </div>
       </header>
 
+      <!-- Step 0: Select or create a shared project. -->
+      <section class="card project-card">
+        <h2>0. Select or Create a Project</h2>
+        <p class="subtitle">Projects let your team share and reload the same event logs without re-uploading.</p>
+        <div class="project-controls">
+          <label>
+            Existing Projects
+            <select id="project-select">
+              <option value="">— loading projects… —</option>
+            </select>
+          </label>
+          <span class="project-divider">or</span>
+          <div class="project-create-row">
+            <input id="project-name-input" type="text" placeholder="New project name…" />
+            <button id="create-project-btn" class="btn-ghost" type="button">Create Project</button>
+          </div>
+        </div>
+        <p id="project-status" class="status-text"></p>
+
+        <div id="project-logs-section" class="hidden">
+          <h3>Logs in this Project</h3>
+          <p class="note">Click Load to restore a previous upload, or upload a new log below.</p>
+          <div id="project-logs-list" class="project-logs-list"></div>
+        </div>
+      </section>
+
       <!-- Step 1: Import and map an event log. -->
       <section class="card upload-card">
         <h2>1. Import Event Log</h2>

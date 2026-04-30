@@ -58,6 +58,8 @@ const FlowScope = {
 // filter changes, and animation frame updates predictable without a framework.
 const state = {
   logId: null,
+  projectId: null,
+  projectName: null,
   activities: [],
   baseSummary: null,
   dashboard: null,
@@ -86,6 +88,12 @@ const state = {
 // Cached DOM references. This avoids repeated document lookups and also makes
 // it easy to see which HTML ids are part of the JavaScript contract.
 const els = {
+  projectSelect: document.getElementById("project-select"),
+  projectNameInput: document.getElementById("project-name-input"),
+  createProjectBtn: document.getElementById("create-project-btn"),
+  projectStatus: document.getElementById("project-status"),
+  projectLogsSection: document.getElementById("project-logs-section"),
+  projectLogsList: document.getElementById("project-logs-list"),
   uploadForm: document.getElementById("upload-form"),
   uploadStatus: document.getElementById("upload-status"),
   logFile: document.getElementById("log-file"),
@@ -4804,6 +4812,159 @@ els.processMap?.addEventListener("click", (event) => {
   clearMapSelection(true);
 });
 
+// ---------------------------------------------------------------------------
+// Project management
+// ---------------------------------------------------------------------------
+
+function setProjectStatus(message, isError = false) {
+  els.projectStatus.textContent = message;
+  els.projectStatus.style.color = isError ? "#003399" : "#000000";
+}
+
+async function loadProjects() {
+  try {
+    const response = await fetch("/api/projects");
+    const data = await response.json();
+    const projects = data.projects || [];
+
+    els.projectSelect.innerHTML = '<option value="">— select a project —</option>';
+    projects.forEach((p) => {
+      const option = document.createElement("option");
+      option.value = p.project_id;
+      option.textContent = p.name;
+      els.projectSelect.appendChild(option);
+    });
+
+    if (projects.length === 0) {
+      setProjectStatus("No projects yet. Create one to get started.");
+    } else {
+      setProjectStatus(`${projects.length} project${projects.length === 1 ? "" : "s"} available.`);
+    }
+  } catch {
+    setProjectStatus("Could not load projects.", true);
+  }
+}
+
+async function loadProjectLogs(projectId) {
+  try {
+    const response = await fetch(`/api/projects/${projectId}/logs`);
+    const data = await response.json();
+    const logs = data.logs || [];
+
+    els.projectLogsList.innerHTML = "";
+
+    if (logs.length === 0) {
+      els.projectLogsList.innerHTML = '<p class="note">No logs uploaded to this project yet.</p>';
+    } else {
+      logs.forEach((log) => {
+        const row = document.createElement("div");
+        row.className = "project-log-row";
+        const uploadedAt = new Date(log.uploaded_at).toLocaleString();
+        row.innerHTML = `
+          <span class="log-filename">${log.filename}</span>
+          <span class="log-date">${uploadedAt}</span>
+          <button class="btn-ghost btn-sm" data-log-id="${log.log_id}">Load</button>
+        `;
+        row.querySelector("button").addEventListener("click", () =>
+          reloadLogFromProject(log.log_id, log.filename)
+        );
+        els.projectLogsList.appendChild(row);
+      });
+    }
+
+    els.projectLogsSection.classList.remove("hidden");
+  } catch {
+    setProjectStatus("Could not load logs for this project.", true);
+  }
+}
+
+async function reloadLogFromProject(logId, filename) {
+  setStatus(`Loading ${filename} from project…`);
+  setProjectStatus(`Loading ${filename}…`);
+
+  try {
+    const response = await fetch(`/api/logs/${logId}/overview`);
+    if (!response.ok) throw new Error("Could not reload log from database.");
+    const data = await response.json();
+
+    state.logId = logId;
+    state.activities = data.activities || [];
+    state.baseSummary = data.summary;
+    state.columnMapping = data.column_mapping || null;
+    state.informationalColumns = data.informational_columns || [];
+    state.filterOnlyColumns = data.filter_only_columns || [];
+    state.attributeFilterOptions = data.attribute_filter_options || {};
+
+    populateActivityFilters(state.activities);
+    renderAttributeFilterControls(state.filterOnlyColumns, state.attributeFilterOptions);
+    renderInformationalColumns(data.informational_columns_profile || []);
+    setFiltersFromSummary(data.summary);
+    resetFiltersToDefaults();
+
+    els.dashboard.classList.remove("hidden");
+    setStatus(`Loaded ${filename}. Cases: ${formatNumber(data.summary.total_cases)}, Events: ${formatNumber(data.summary.total_events)}.`);
+    setProjectStatus(`Active log: ${filename}`);
+
+    await loadDashboard();
+  } catch (error) {
+    setStatus(error.message || "Failed to reload log.", true);
+    setProjectStatus(error.message || "Failed to reload log.", true);
+  }
+}
+
+els.projectSelect.addEventListener("change", async () => {
+  const projectId = els.projectSelect.value;
+  if (!projectId) {
+    state.projectId = null;
+    state.projectName = null;
+    els.projectLogsSection.classList.add("hidden");
+    setProjectStatus("");
+    return;
+  }
+  const selectedOption = els.projectSelect.options[els.projectSelect.selectedIndex];
+  state.projectId = projectId;
+  state.projectName = selectedOption.textContent;
+  setProjectStatus(`Project selected: ${state.projectName}`);
+  await loadProjectLogs(projectId);
+});
+
+els.createProjectBtn.addEventListener("click", async () => {
+  const name = els.projectNameInput.value.trim();
+  if (!name) {
+    setProjectStatus("Please enter a project name.", true);
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || "Could not create project.");
+    }
+
+    const data = await response.json();
+    state.projectId = data.project_id;
+    state.projectName = data.name;
+    els.projectNameInput.value = "";
+
+    await loadProjects();
+    els.projectSelect.value = data.project_id;
+    setProjectStatus(`Project "${data.name}" created and selected.`);
+    els.projectLogsList.innerHTML = '<p class="note">No logs uploaded to this project yet.</p>';
+    els.projectLogsSection.classList.remove("hidden");
+  } catch (error) {
+    setProjectStatus(error.message || "Could not create project.", true);
+  }
+});
+
+// Load projects on page start
+loadProjects();
+
 els.uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -4876,6 +5037,14 @@ els.uploadForm.addEventListener("submit", async (event) => {
     state.informationalColumns = data.informational_columns || [];
     state.filterOnlyColumns = data.filter_only_columns || [];
     state.attributeFilterOptions = data.attribute_filter_options || {};
+
+    if (state.projectId) {
+      await fetch(`/api/projects/${state.projectId}/logs/${data.log_id}/assign`, {
+        method: "POST",
+      });
+      await loadProjectLogs(state.projectId);
+      setProjectStatus(`Log saved to project "${state.projectName}".`);
+    }
 
     populateActivityFilters(state.activities);
     renderAttributeFilterControls(state.filterOnlyColumns, state.attributeFilterOptions);

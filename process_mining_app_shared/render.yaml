@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: flowscope-miner
+    runtime: python
+    rootDir: process_mining_app_shared
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --app-dir .
+    envVars:
+      - key: DATABASE_URL
+        sync: false
