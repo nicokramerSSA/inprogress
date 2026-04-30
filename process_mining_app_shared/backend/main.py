@@ -8,7 +8,10 @@ API endpoints without knowing about pandas or pm4py internals.
 
 from __future__ import annotations
 
+import base64
 import logging
+import os
+import secrets
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -171,6 +174,43 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_AUTH_USERNAME = "flowteam"
+_AUTH_PASSWORD = os.getenv("APP_PASSWORD", "")
+
+
+@app.middleware("http")
+async def basic_auth_middleware(request: Request, call_next):
+    """Require HTTP Basic Auth when APP_PASSWORD is set in the environment.
+
+    Skipped entirely in local dev if APP_PASSWORD is not set.
+    """
+    if not _AUTH_PASSWORD:
+        return await call_next(request)
+
+    auth_header = request.headers.get("Authorization", "")
+    authorized = False
+    if auth_header.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
+            username, _, password = decoded.partition(":")
+            authorized = (
+                secrets.compare_digest(username, _AUTH_USERNAME)
+                and secrets.compare_digest(password, _AUTH_PASSWORD)
+            )
+        except Exception:
+            pass
+
+    if not authorized:
+        from fastapi.responses import Response as FastAPIResponse
+        return FastAPIResponse(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="FlowScope Miner"'},
+            content="Unauthorized",
+        )
+
+    return await call_next(request)
 
 
 @app.middleware("http")
