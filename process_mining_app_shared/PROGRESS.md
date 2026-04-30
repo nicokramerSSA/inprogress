@@ -48,6 +48,13 @@ Then open: http://127.0.0.1:8000
   **Workaround:** restart VS Code / WSL terminal between sessions to clear them.
   For development, always use a new port (`--port 8002`, `--port 8003`, etc.) if the default is taken.
 
+### Deployed to Render (2026-04-30)
+- Live URL: https://flowscope-miner.onrender.com/
+- Web service connected to `nicokramerSSA/inprogress` repo, `dev-ap` branch, root dir `process_mining_app_shared`
+- `DATABASE_URL` set as environment variable on Render using Internal Database URL
+- Verified: projects and logs created locally are visible on Render (shared Postgres DB)
+- Verified: full flow works on Render — create project, upload log, reload log across sessions
+
 ## Next steps
-- Test the full project UI in browser (create project, upload log, reload log)
-- Deploy to Render web service (point at dev-ap branch, set DATABASE_URL env var)
+- Share URL with team: https://flowscope-miner.onrender.com/
+- Note: Render free tier spins down after 15 min of inactivity — first load after idle takes ~30 sec to wake up
