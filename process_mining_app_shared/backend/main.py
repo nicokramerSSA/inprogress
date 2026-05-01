@@ -8,7 +8,6 @@ API endpoints without knowing about pandas or pm4py internals.
 
 from __future__ import annotations
 
-import base64
 import logging
 import os
 import secrets
@@ -29,7 +28,7 @@ import zipfile
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -51,7 +50,7 @@ from .analytics import (
     mermaid_export_payload,
     suggest_csv_mapping,
 )
-from .database import create_tables, engine, logs, projects
+from .database import create_tables, migrate_schema, engine, logs, projects
 from sqlalchemy import select, insert
 
 # ---------------------------------------------------------------------------
@@ -102,6 +101,7 @@ class StoredLog:
     filter_only_columns: list[str]
     filter_only_values: dict[str, list[str]]
     mapping_warnings: list[str]
+    owner: str = "flowteam"
 
 
 class DashboardFilterRequest(BaseModel):
@@ -159,11 +159,40 @@ app = FastAPI(
 )
 
 
+_SESSION_COOKIE = "fs_session"
+SESSION_STORE: Dict[str, str] = {}  # token → username
+
+
+def _parse_users() -> Dict[str, str]:
+    """Parse USERS env var (format: user1:pass1,user2:pass2) into a dict."""
+    raw = os.getenv("USERS", "")
+    users: Dict[str, str] = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if ":" in pair:
+            username, _, password = pair.partition(":")
+            username, password = username.strip(), password.strip()
+            if username and password:
+                users[username] = password
+    return users
+
+
+_USERS: Dict[str, str] = _parse_users()
+_AUTH_ENABLED: bool = bool(_USERS)
+
+
+def _owner(request: Request) -> str:
+    """Return authenticated username, or 'flowteam' in local-dev (auth disabled) mode."""
+    username = getattr(request.state, "username", None)
+    return username or "flowteam"
+
+
 @app.on_event("startup")
 def on_startup() -> None:
-    """Create DB tables on first boot if they do not exist yet."""
+    """Create DB tables and run schema migrations on first boot."""
     create_tables()
-    logger.info("Database tables verified/created on startup")
+    migrate_schema()
+    logger.info("Database tables verified/migrated on startup")
 
 # The app is normally run locally from VS Code, but CORS is kept open so the
 # static frontend can be served either by FastAPI or by a simple dev server.
@@ -176,40 +205,30 @@ app.add_middleware(
 )
 
 
-_AUTH_USERNAME = "flowteam"
-_AUTH_PASSWORD = os.getenv("APP_PASSWORD", "")
+_LOGIN_PUBLIC_PATHS = {"/login", "/logout"}
 
 
 @app.middleware("http")
-async def basic_auth_middleware(request: Request, call_next):
-    """Require HTTP Basic Auth when APP_PASSWORD is set in the environment.
+async def session_auth_middleware(request: Request, call_next):
+    """Redirect unauthenticated requests to /login when USERS env var is set.
 
-    Skipped entirely in local dev if APP_PASSWORD is not set.
+    Skipped entirely in local dev if USERS is not configured.
     """
-    if not _AUTH_PASSWORD:
+    if not _AUTH_ENABLED:
+        request.state.username = None
         return await call_next(request)
 
-    auth_header = request.headers.get("Authorization", "")
-    authorized = False
-    if auth_header.startswith("Basic "):
-        try:
-            decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
-            username, _, password = decoded.partition(":")
-            authorized = (
-                secrets.compare_digest(username, _AUTH_USERNAME)
-                and secrets.compare_digest(password, _AUTH_PASSWORD)
-            )
-        except Exception:
-            pass
+    path = request.url.path
+    if path in _LOGIN_PUBLIC_PATHS or path.startswith("/assets/"):
+        return await call_next(request)
 
-    if not authorized:
-        from fastapi.responses import Response as FastAPIResponse
-        return FastAPIResponse(
-            status_code=401,
-            headers={"WWW-Authenticate": 'Basic realm="FlowScope Miner"'},
-            content="Unauthorized",
-        )
+    token = request.cookies.get(_SESSION_COOKIE)
+    username = SESSION_STORE.get(token) if token else None
 
+    if not username:
+        return RedirectResponse(url="/login", status_code=302)
+
+    request.state.username = username
     return await call_next(request)
 
 
@@ -263,20 +282,24 @@ LOG_STORE: Dict[str, StoredLog] = {}
 # Shared request and export helpers
 # ---------------------------------------------------------------------------
 
-def _get_log_or_404(log_id: str) -> StoredLog:
+def _get_log_or_404(log_id: str, owner: str | None = None) -> StoredLog:
     """Fetch a stored log from the in-memory cache or reload it from the DB.
 
     On a fresh server start the cache is empty, but logs persisted to Postgres
     can be reconstructed on first access without requiring a re-upload.
+    When owner is provided, access is denied if the log belongs to another user.
     """
     record = LOG_STORE.get(log_id)
     if record is not None:
+        if owner and record.owner != owner:
+            raise HTTPException(status_code=404, detail="Unknown log_id")
         return record
 
     with engine.connect() as conn:
-        row = conn.execute(
-            select(logs).where(logs.c.id == log_id)
-        ).mappings().fetchone()
+        query = select(logs).where(logs.c.id == log_id)
+        if owner:
+            query = query.where(logs.c.owner == owner)
+        row = conn.execute(query).mappings().fetchone()
 
     if row is None:
         raise HTTPException(status_code=404, detail="Unknown log_id")
@@ -311,6 +334,7 @@ def _get_log_or_404(log_id: str) -> StoredLog:
         filter_only_columns=list(row["filter_only_columns"] or []),
         filter_only_values=dict(row["filter_only_values"] or {}),
         mapping_warnings=list(row["mapping_warnings"] or []),
+        owner=row.get("owner") or "flowteam",
     )
     LOG_STORE[log_id] = restored
     logger.info("Reloaded log %s (%s) from DB into cache", log_id, filename)
@@ -1063,8 +1087,9 @@ class CreateProjectRequest(BaseModel):
 
 
 @app.post("/api/projects")
-def create_project(body: CreateProjectRequest) -> dict:
-    """Create a named project. Project names must be unique."""
+def create_project(body: CreateProjectRequest, request: Request) -> dict:
+    """Create a named project scoped to the current user."""
+    owner = _owner(request)
     name = body.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Project name cannot be empty")
@@ -1072,22 +1097,25 @@ def create_project(body: CreateProjectRequest) -> dict:
     project_id = str(uuid4())
     try:
         with engine.begin() as conn:
-            conn.execute(insert(projects).values(id=project_id, name=name))
+            conn.execute(insert(projects).values(id=project_id, name=name, owner=owner))
     except Exception as exc:
         if "unique" in str(exc).lower():
-            raise HTTPException(status_code=409, detail=f"A project named '{name}' already exists") from exc
+            raise HTTPException(status_code=409, detail=f"You already have a project named '{name}'") from exc
         raise
 
-    logger.info("Created project %s (%s)", project_id, name)
+    logger.info("Created project %s (%s) for %s", project_id, name, owner)
     return {"project_id": project_id, "name": name}
 
 
 @app.get("/api/projects")
-def list_projects() -> dict:
-    """Return all projects ordered by creation time."""
+def list_projects(request: Request) -> dict:
+    """Return projects belonging to the current user, newest first."""
+    owner = _owner(request)
     with engine.connect() as conn:
         rows = conn.execute(
-            select(projects).order_by(projects.c.created_at.desc())
+            select(projects)
+            .where(projects.c.owner == owner)
+            .order_by(projects.c.created_at.desc())
         ).mappings().fetchall()
 
     return {
@@ -1103,17 +1131,22 @@ def list_projects() -> dict:
 
 
 @app.get("/api/projects/{project_id}/logs")
-def list_project_logs(project_id: str) -> dict:
-    """Return all logs uploaded to a project, newest first."""
+def list_project_logs(project_id: str, request: Request) -> dict:
+    """Return all logs in a project owned by the current user, newest first."""
+    owner = _owner(request)
     with engine.connect() as conn:
+        proj = conn.execute(
+            select(projects.c.id)
+            .where(projects.c.id == project_id)
+            .where(projects.c.owner == owner)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(status_code=404, detail="Project not found")
+
         rows = conn.execute(
-            select(
-                logs.c.id,
-                logs.c.filename,
-                logs.c.file_format,
-                logs.c.uploaded_at,
-            )
+            select(logs.c.id, logs.c.filename, logs.c.file_format, logs.c.uploaded_at)
             .where(logs.c.project_id == project_id)
+            .where(logs.c.owner == owner)
             .order_by(logs.c.uploaded_at.desc())
         ).mappings().fetchall()
 
@@ -1132,12 +1165,15 @@ def list_project_logs(project_id: str) -> dict:
 
 
 @app.post("/api/projects/{project_id}/logs/{log_id}/assign")
-def assign_log_to_project(project_id: str, log_id: str) -> dict:
-    """Assign an uploaded log to a project."""
+def assign_log_to_project(project_id: str, log_id: str, request: Request) -> dict:
+    """Assign an uploaded log to a project (both must belong to current user)."""
     from sqlalchemy import update as sql_update
+    owner = _owner(request)
     with engine.connect() as conn:
         exists = conn.execute(
-            select(projects.c.id).where(projects.c.id == project_id)
+            select(projects.c.id)
+            .where(projects.c.id == project_id)
+            .where(projects.c.owner == owner)
         ).fetchone()
         if not exists:
             raise HTTPException(status_code=404, detail="Project not found")
@@ -1146,6 +1182,7 @@ def assign_log_to_project(project_id: str, log_id: str) -> dict:
         result = conn.execute(
             sql_update(logs)
             .where(logs.c.id == log_id)
+            .where(logs.c.owner == owner)
             .values(project_id=project_id)
         )
         if result.rowcount == 0:
@@ -1164,6 +1201,7 @@ def health() -> dict[str, Any]:
 
 @app.post("/api/logs/upload")
 async def upload_log(
+    request: Request,
     file: UploadFile = File(...),
     case_id_col: str = Form(""),
     activity_col: str = Form(""),
@@ -1306,11 +1344,13 @@ async def upload_log(
 
     log_id = str(uuid4())
     uploaded_at = datetime.now(timezone.utc)
+    owner = _owner(request)
 
     with engine.begin() as conn:
         conn.execute(insert(logs).values(
             id=log_id,
             project_id=None,
+            owner=owner,
             filename=filename,
             file_data=content,
             file_format=suffix.lstrip("."),
@@ -1331,6 +1371,7 @@ async def upload_log(
         filter_only_columns=filter_only_columns,
         filter_only_values=filter_only_values,
         mapping_warnings=mapping_warnings,
+        owner=owner,
     )
     logger.info(
         "Stored log %s (%s) — %d rows, info_cols=%d, filter_cols=%d, warnings=%d",
@@ -1399,8 +1440,9 @@ async def suggest_log_mapping(file: UploadFile = File(...)) -> dict[str, Any]:
 
 
 @app.get("/api/logs")
-def list_logs() -> dict:
+def list_logs(request: Request) -> dict:
     """Expose currently uploaded logs for lightweight debugging."""
+    owner = _owner(request)
     return {
         "logs": [
             {
@@ -1409,14 +1451,15 @@ def list_logs() -> dict:
                 "uploaded_at": record.uploaded_at.isoformat(),
             }
             for record in LOG_STORE.values()
+            if record.owner == owner
         ]
     }
 
 
 @app.get("/api/logs/{log_id}/overview")
-def log_overview(log_id: str) -> dict:
+def log_overview(log_id: str, request: Request) -> dict:
     """Return the unfiltered summary and import metadata for a stored log."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
     payload = dashboard_payload(record.dataframe, FilterSpec())
 
     return {
@@ -1436,9 +1479,9 @@ def log_overview(log_id: str) -> dict:
 
 
 @app.post("/api/logs/{log_id}/dashboard")
-def log_dashboard(log_id: str, filters: DashboardFilterRequest) -> dict:
+def log_dashboard(log_id: str, filters: DashboardFilterRequest, request: Request) -> dict:
     """Build the filtered dashboard payload consumed by the frontend."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
 
     try:
         filter_spec = filters.to_filter_spec()
@@ -1472,9 +1515,9 @@ def log_dashboard(log_id: str, filters: DashboardFilterRequest) -> dict:
 
 
 @app.post("/api/logs/{log_id}/conformance")
-def log_conformance(log_id: str, filters: DashboardFilterRequest) -> dict:
+def log_conformance(log_id: str, filters: DashboardFilterRequest, request: Request) -> dict:
     """Run optional pm4py conformance checks for the current filter state."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
 
     try:
         with _log_timer("conformance", log_id=log_id):
@@ -1497,10 +1540,10 @@ def log_conformance(log_id: str, filters: DashboardFilterRequest) -> dict:
 
 @app.post("/api/logs/{log_id}/animation")
 def log_animation(
-    log_id: str, filters: DashboardFilterRequest, frame_count: int = 80
+    log_id: str, filters: DashboardFilterRequest, request: Request, frame_count: int = 80
 ) -> dict:
     """Return synchronized animation payloads for process and handoff maps."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
 
     try:
         with _log_timer("animation", log_id=log_id, frame_count=frame_count):
@@ -1573,10 +1616,10 @@ def _collect_export_data(
 
 @app.post("/api/logs/{log_id}/export")
 def export_analysis(
-    log_id: str, filters: DashboardFilterRequest, include_conformance: bool = True
+    log_id: str, filters: DashboardFilterRequest, request: Request, include_conformance: bool = True
 ) -> StreamingResponse:
     """Package CSV/JSON/Mermaid/BPMN artifacts into a downloadable ZIP file."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
     logger.info("Export ZIP requested for %s (conformance=%s)", log_id, include_conformance)
 
     try:
@@ -1689,10 +1732,10 @@ def export_analysis(
 
 @app.post("/api/logs/{log_id}/export/html")
 def export_analysis_html(
-    log_id: str, filters: DashboardFilterRequest, include_conformance: bool = True
+    log_id: str, filters: DashboardFilterRequest, request: Request, include_conformance: bool = True
 ) -> StreamingResponse:
     """Create a single-file HTML report for sharing the current analysis."""
-    record = _get_log_or_404(log_id)
+    record = _get_log_or_404(log_id, _owner(request))
     logger.info("Export HTML requested for %s (conformance=%s)", log_id, include_conformance)
 
     try:
@@ -1727,6 +1770,38 @@ def export_analysis_html(
         media_type="text/html; charset=utf-8",
         headers=headers,
     )
+
+
+@app.get("/login")
+def login_page() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "login.html")
+
+
+@app.post("/login")
+async def login_submit(
+    username: str = Form(...),
+    password: str = Form(...),
+) -> RedirectResponse:
+    expected = _USERS.get(username, "")
+    if expected and secrets.compare_digest(password, expected):
+        token = secrets.token_urlsafe(32)
+        SESSION_STORE[token] = username
+        logger.info("Login success: %s", username)
+        response = RedirectResponse(url="/", status_code=302)
+        response.set_cookie(_SESSION_COOKIE, token, httponly=True, samesite="lax")
+        return response
+    logger.warning("Login failed for username: %s", username)
+    return RedirectResponse(url="/login?error=1", status_code=302)
+
+
+@app.post("/logout")
+def logout(request: Request) -> RedirectResponse:
+    token = request.cookies.get(_SESSION_COOKIE)
+    if token:
+        SESSION_STORE.pop(token, None)
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(_SESSION_COOKIE)
+    return response
 
 
 @app.get("/")

@@ -22,7 +22,7 @@
       the diagram plus supporting tables. JavaScript fills most dynamic content.
     -->
     <main class="app-shell">
-      <header class="hero">
+      <header class="hero" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div>
           <p class="eyebrow">PM4PY-POWERED PROCESS MINING</p>
           <h1>FlowScope Miner</h1>
@@ -31,6 +31,11 @@
             bottlenecks, and conformance checks.
           </p>
         </div>
+        <form method="POST" action="/logout" style="flex-shrink:0;padding-top:4px;">
+          <button type="submit" class="btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);">
+            Sign out
+          </button>
+        </form>
       </header>
 
       <!-- Step 0: Select or create a shared project. -->

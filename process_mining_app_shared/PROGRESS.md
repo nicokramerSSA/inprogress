@@ -58,18 +58,31 @@ Then open: http://127.0.0.1:8000
 ### SSA Brand Theme (2026-04-29)
 - Full dark theme rewrite of `frontend/styles.css`:
   - Page background: dark navy gradient (`#001233 → #002060 → #001a4d`)
-  - Cards: dark translucent blue panels with Nepal (#8CA3B2) borders
+  - Cards: light gray (#f0f2f7) with near-black text and SSA Blue (#003399) headers
   - Primary buttons: SSA Blue (#003399) → Curious Blue (#0A7CC1) gradient
   - Persimmon (#DE4702) reserved for alerts, warnings, error states only
-  - All text changed to near-white (#f0f4ff); muted text uses Nepal (#8CA3B2)
-  - Inputs/selects: dark navy background with white text
-  - Process map viewport: dark navy (#001233)
+  - Muted text: #4b5873; inputs: white background with dark text
+  - Process map viewport stays dark navy (#001233) for diagram contrast
 - Updated `FLOW_COLORS` in `frontend/app.js` for SVG diagram colors on dark background:
   - Edge markers/secondary strokes: Nepal (#8CA3B2)
   - Backbone/anchor strokes: Eastern Blue / Curious Blue family
   - Case ball: Persimmon (#DE4702) — high contrast on dark, warm vs. cool
   - Frequency heat map: dark navy (low) → Curious Blue (high)
   - Performance heat map: dark navy (low) → Persimmon (high, signals "slow/bad")
+
+### Per-user login and data isolation (2026-05-01)
+- Replaced HTTP Basic Auth popup with a styled form-based login page (`frontend/login.html`)
+- `USERS` env var replaces `APP_PASSWORD` — format: `user1:pass1,user2:pass2`
+- Session cookie auth (`fs_session`) — sessions stored in-memory, cleared on server restart
+- Added `owner` column to `projects` and `logs` tables (existing rows default to `flowteam`)
+- DB schema migration runs automatically on startup via `migrate_schema()` (idempotent)
+- All project/log DB queries now filter by owner — each login sees only their own data
+- Added Sign Out button to app hero header
+- Auth disabled in local dev when `USERS` env var is not set
+
+**Render env var change required:**
+- Remove `APP_PASSWORD`
+- Add `USERS` = `flowteam:yourpassword,flowtestuser:theirpassword`
 
 ## Next steps
 - Share URL with team: https://flowscope-miner.onrender.com/

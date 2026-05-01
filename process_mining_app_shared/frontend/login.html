@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlowScope Miner — Sign In</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/assets/styles.css" />
+  <style>
+    .login-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      width: min(420px, 100%);
+      padding: 32px;
+    }
+
+    .login-logo {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 6px;
+    }
+
+    .login-title {
+      margin: 0 0 4px;
+      font-size: 1.6rem;
+      color: #003399;
+    }
+
+    .login-subtitle {
+      margin: 0 0 28px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .login-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .login-form .btn-primary {
+      width: 100%;
+      padding: 12px;
+      font-size: 1rem;
+      margin-top: 4px;
+    }
+
+    .login-error {
+      display: none;
+      background: rgba(222, 71, 2, 0.1);
+      border: 1px solid rgba(222, 71, 2, 0.4);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #DE4702;
+      font-size: 0.88rem;
+    }
+
+    .login-error.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-shell">
+    <div class="card login-card">
+      <p class="login-logo">PM4PY-Powered Process Mining</p>
+      <h1 class="login-title">FlowScope Miner</h1>
+      <p class="login-subtitle">Sign in to continue</p>
+
+      <div id="login-error" class="login-error">
+        Incorrect username or password. Please try again.
+      </div>
+
+      <form class="login-form" method="POST" action="/login">
+        <label>
+          Username
+          <input
+            type="text"
+            name="username"
+            autocomplete="username"
+            required
+            autofocus
+          />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit" class="btn-primary">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    if (new URLSearchParams(location.search).get("error")) {
+      document.getElementById("login-error").classList.add("visible");
+    }
+  </script>
+</body>
+</html>

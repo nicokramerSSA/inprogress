@@ -1,18 +1,18 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --black: #000000;
   --white: #ffffff;
   --blue: #003399;
-  --ink: #f0f4ff;
-  --muted: #8CA3B2;
-  --line: rgba(140, 163, 178, 0.2);
+  --ink: #111827;
+  --muted: #4b5873;
+  --line: #d1d8e8;
   --paper: #001233;
-  --panel: rgba(0, 28, 90, 0.82);
+  --panel: #f0f2f7;
   --brand: #003399;
   --brand-deep: #001a66;
   --accent: #0A7CC1;
   --ok: #1D9A19;
-  --shadow: rgba(0, 0, 0, 0.5);
+  --shadow: rgba(0, 18, 60, 0.22);
 }
 
 * {
@@ -99,7 +99,6 @@ body {
 .card {
   border: 1px solid var(--line);
   background: var(--panel);
-  backdrop-filter: blur(16px);
   border-radius: 20px;
   box-shadow: 0 14px 38px var(--shadow);
   padding: 16px;
@@ -109,11 +108,11 @@ body {
   margin: 0;
   font-size: 1.05rem;
   letter-spacing: 0.01em;
-  color: var(--ink);
+  color: #003399;
 }
 
 .card h3 {
-  color: var(--ink);
+  color: #003399;
 }
 
 .card-head {
@@ -172,7 +171,7 @@ select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(0, 18, 60, 0.7);
+  background: #ffffff;
   padding: 9px 10px;
   color: var(--ink);
 }
@@ -183,7 +182,7 @@ input::placeholder {
 }
 
 select option {
-  background: #001a4d;
+  background: #ffffff;
   color: var(--ink);
 }
 
@@ -212,14 +211,14 @@ button:hover {
 }
 
 .btn-ghost {
-  background: rgba(0, 51, 153, 0.18);
-  color: var(--ink);
+  background: rgba(0, 51, 153, 0.07);
+  color: #003399;
   font-weight: 600;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(0, 51, 153, 0.25);
 }
 
 .btn-ghost:hover {
-  background: rgba(10, 124, 193, 0.28);
+  background: rgba(0, 51, 153, 0.14);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -249,10 +248,10 @@ button:hover {
 }
 
 .metric {
-  border: 1px solid rgba(10, 124, 193, 0.25);
+  border: 1px solid rgba(0, 51, 153, 0.18);
   border-radius: 14px;
   padding: 12px;
-  background: linear-gradient(145deg, rgba(0, 40, 120, 0.7), rgba(10, 124, 193, 0.15));
+  background: linear-gradient(145deg, rgba(0, 51, 153, 0.06), rgba(10, 124, 193, 0.1));
 }
 
 .metric .label {
@@ -267,7 +266,7 @@ button:hover {
   margin-top: 6px;
   font-size: 1.45rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #003399;
 }
 
 .actions {
@@ -293,7 +292,7 @@ button:hover {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 14px;
-  background: rgba(0, 20, 70, 0.6);
+  background: rgba(0, 51, 153, 0.04);
   display: grid;
   gap: 12px;
 }
@@ -308,7 +307,7 @@ button:hover {
 .stack-head h3 {
   margin: 0;
   font-size: 0.96rem;
-  color: var(--ink);
+  color: #003399;
 }
 
 .stack-summary {
@@ -324,20 +323,20 @@ button:hover {
 
 .filter-stack:empty::before {
   content: "No active filters";
-  border: 1px dashed rgba(140, 163, 178, 0.25);
+  border: 1px dashed rgba(0, 51, 153, 0.2);
   border-radius: 14px;
   padding: 16px 14px;
   color: var(--muted);
-  background: rgba(0, 51, 153, 0.1);
+  background: rgba(0, 51, 153, 0.04);
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.78rem;
 }
 
 .filter-chip {
-  border: 1px solid rgba(10, 124, 193, 0.25);
+  border: 1px solid rgba(0, 51, 153, 0.2);
   border-radius: 14px;
   padding: 10px 12px;
-  background: rgba(0, 51, 153, 0.2);
+  background: rgba(0, 51, 153, 0.06);
   display: grid;
   gap: 6px;
 }
@@ -389,8 +388,8 @@ button:hover {
   margin-top: 10px;
   border-radius: 12px;
   padding: 10px 12px;
-  background: rgba(0, 51, 153, 0.2);
-  border: 1px solid rgba(10, 124, 193, 0.25);
+  background: rgba(0, 51, 153, 0.06);
+  border: 1px solid rgba(0, 51, 153, 0.18);
   color: var(--ink);
   font-size: 0.88rem;
   min-height: 42px;
@@ -453,9 +452,9 @@ button:hover {
   align-items: center;
   min-height: 38px;
   border-radius: 999px;
-  background: rgba(0, 51, 153, 0.25);
-  border: 1px solid rgba(10, 124, 193, 0.3);
-  color: var(--muted);
+  background: rgba(0, 51, 153, 0.06);
+  border: 1px solid rgba(0, 51, 153, 0.2);
+  color: #003399;
   padding: 0 12px;
   font-size: 0.79rem;
   font-family: "IBM Plex Mono", monospace;
@@ -467,7 +466,7 @@ button:hover {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(10, 124, 193, 0.3);
   border-radius: 16px;
   background: #001233;
 }
@@ -492,9 +491,9 @@ button:hover {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  border: 1px solid rgba(10, 124, 193, 0.25);
+  border: 1px solid rgba(0, 51, 153, 0.18);
   border-radius: 16px;
-  background: rgba(0, 40, 120, 0.5);
+  background: rgba(0, 51, 153, 0.05);
   padding: 12px 14px;
   margin-bottom: 10px;
 }
@@ -502,7 +501,7 @@ button:hover {
 .map-selection-copy h3 {
   margin: 2px 0 2px;
   font-size: 0.95rem;
-  color: var(--ink);
+  color: #003399;
 }
 
 .selection-eyebrow {
@@ -529,7 +528,7 @@ button:hover {
 .mode-toggle {
   display: inline-flex;
   border-radius: 999px;
-  background: rgba(0, 51, 153, 0.2);
+  background: rgba(0, 51, 153, 0.08);
   border: 1px solid var(--line);
   padding: 4px;
   gap: 4px;
@@ -553,7 +552,7 @@ button:hover {
 
 .mode-btn.active {
   background: linear-gradient(110deg, #003399, #0A7CC1);
-  box-shadow: 0 6px 16px rgba(10, 124, 193, 0.3);
+  box-shadow: 0 6px 16px rgba(10, 124, 193, 0.25);
   color: #ffffff;
   border-color: rgba(10, 124, 193, 0.4);
 }
@@ -577,7 +576,7 @@ th,
 td {
   text-align: left;
   padding: 8px;
-  border-bottom: 1px solid rgba(140, 163, 178, 0.12);
+  border-bottom: 1px solid var(--line);
   vertical-align: top;
   color: var(--ink);
 }
@@ -585,12 +584,12 @@ td {
 th {
   position: sticky;
   top: 0;
-  background: rgba(0, 20, 70, 0.95);
+  background: rgba(0, 51, 153, 0.07);
   z-index: 1;
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--muted);
+  color: #003399;
 }
 
 .table-grid {
@@ -660,8 +659,8 @@ th {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  background: rgba(0, 51, 153, 0.18);
-  border: 1px solid rgba(10, 124, 193, 0.25);
+  background: rgba(0, 51, 153, 0.05);
+  border: 1px solid rgba(0, 51, 153, 0.18);
   border-radius: 8px;
 }
 

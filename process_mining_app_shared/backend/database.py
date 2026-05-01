@@ -17,6 +17,7 @@ from sqlalchemy import (
     Table,
     Text,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -33,7 +34,8 @@ projects = Table(
     "projects",
     metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()),
-    Column("name", String(255), nullable=False, unique=True),
+    Column("name", String(255), nullable=False),
+    Column("owner", String(255), nullable=False, server_default="flowteam"),
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
@@ -42,6 +44,7 @@ logs = Table(
     metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid()),
     Column("project_id", UUID(as_uuid=True), nullable=True),
+    Column("owner", String(255), nullable=False, server_default="flowteam"),
     Column("filename", String(255), nullable=False),
     Column("file_data", LargeBinary, nullable=False),
     Column("file_format", String(10), nullable=False),
@@ -57,3 +60,21 @@ logs = Table(
 def create_tables() -> None:
     """Create all tables if they do not already exist."""
     metadata.create_all(engine)
+
+
+def migrate_schema() -> None:
+    """Add columns and constraints introduced after the initial schema. Idempotent."""
+    with engine.connect() as conn:
+        # Add owner column to both tables (existing rows default to 'flowteam')
+        conn.execute(text(
+            "ALTER TABLE projects ADD COLUMN IF NOT EXISTS owner VARCHAR(255) NOT NULL DEFAULT 'flowteam'"
+        ))
+        conn.execute(text(
+            "ALTER TABLE logs ADD COLUMN IF NOT EXISTS owner VARCHAR(255) NOT NULL DEFAULT 'flowteam'"
+        ))
+        # Swap global name uniqueness for per-user name uniqueness
+        conn.execute(text("ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_name_key"))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_name_owner ON projects(name, owner)"
+        ))
+        conn.commit()
