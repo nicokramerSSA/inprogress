@@ -55,6 +55,22 @@ Then open: http://127.0.0.1:8000
 - Verified: projects and logs created locally are visible on Render (shared Postgres DB)
 - Verified: full flow works on Render — create project, upload log, reload log across sessions
 
+### SSA Brand Theme (2026-04-29)
+- Full dark theme rewrite of `frontend/styles.css`:
+  - Page background: dark navy gradient (`#001233 → #002060 → #001a4d`)
+  - Cards: dark translucent blue panels with Nepal (#8CA3B2) borders
+  - Primary buttons: SSA Blue (#003399) → Curious Blue (#0A7CC1) gradient
+  - Persimmon (#DE4702) reserved for alerts, warnings, error states only
+  - All text changed to near-white (#f0f4ff); muted text uses Nepal (#8CA3B2)
+  - Inputs/selects: dark navy background with white text
+  - Process map viewport: dark navy (#001233)
+- Updated `FLOW_COLORS` in `frontend/app.js` for SVG diagram colors on dark background:
+  - Edge markers/secondary strokes: Nepal (#8CA3B2)
+  - Backbone/anchor strokes: Eastern Blue / Curious Blue family
+  - Case ball: Persimmon (#DE4702) — high contrast on dark, warm vs. cool
+  - Frequency heat map: dark navy (low) → Curious Blue (high)
+  - Performance heat map: dark navy (low) → Persimmon (high, signals "slow/bad")
+
 ## Next steps
 - Share URL with team: https://flowscope-miner.onrender.com/
 - Note: Render free tier spins down after 15 min of inactivity — first load after idle takes ~30 sec to wake up
