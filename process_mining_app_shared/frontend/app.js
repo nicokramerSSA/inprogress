@@ -150,8 +150,9 @@ const els = {
   modeFrequency: document.getElementById("mode-frequency"),
   modePerformance: document.getElementById("mode-performance"),
   toggleAnimation: document.getElementById("toggle-animation"),
-  rewindAnimation: document.getElementById("rewind-animation"),
   restartAnimation: document.getElementById("restart-animation"),
+  stepBackAnimation: document.getElementById("step-back-animation"),
+  stepForwardAnimation: document.getElementById("step-forward-animation"),
   animationSpeed: document.getElementById("animation-speed"),
   animationFrame: document.getElementById("animation-frame"),
   animationTime: document.getElementById("animation-time"),
@@ -2363,15 +2364,15 @@ function renderProcessMap(nodes, edges) {
   const hasAnimationOverlay = Boolean(activeFrame);
 
   const layout = computeProcessLayout(simplified.nodes, simplified.edges, {
-    orientation: "ltr",
-    topPad: 300,
-    bottomPad: 280,
-    leftPad: 180,
-    rightPad: 160,
-    minStageGap: 400,
-    stageGapBase: 340,
-    horizontalGap: 500,
-    verticalShift: 20,
+    topPad: 150,
+    bottomPad: 140,
+    leftPad: 80,
+    rightPad: 80,
+    minStageGap: 132,
+    stageGapBase: 108,
+    horizontalGap: 160,
+    nodeWidthScale: 1.5,
+    nodeHeightOverride: 72,
   });
   const width = layout.width;
   const height = layout.height;
@@ -2420,13 +2421,13 @@ function renderProcessMap(nodes, edges) {
   const nodesLayer = svgElement("g");
 
   for (let stage = 0; stage <= layout.maxStage; stage += 1) {
-    const x = layout.stageXs.get(stage) || width / 2;
+    const y = layout.stageYs.get(stage) || height / 2;
     guidesLayer.appendChild(
       svgElement("line", {
-        x1: x,
-        y1: 34,
-        x2: x,
-        y2: height - 34,
+        x1: 34,
+        y1: y,
+        x2: width - 34,
+        y2: y,
         stroke: "rgba(0, 0, 0, 0.06)",
         "stroke-width": 1,
       })
@@ -2436,8 +2437,8 @@ function renderProcessMap(nodes, edges) {
   const anchorFill = "rgba(0, 51, 153, 0.1)";
   const pillW = 110, pillH = 40, pillR = 20;
   const startRect = svgElement("rect", {
-    x: layout.leftAnchor.x - pillW / 2,
-    y: layout.leftAnchor.y - pillH / 2,
+    x: layout.topAnchor.x - pillW / 2,
+    y: layout.topAnchor.y - pillH / 2,
     width: pillW,
     height: pillH,
     rx: pillR,
@@ -2445,8 +2446,8 @@ function renderProcessMap(nodes, edges) {
     stroke: "rgba(0, 51, 153, 0.24)",
   });
   const endRect = svgElement("rect", {
-    x: layout.rightAnchor.x - pillW / 2,
-    y: layout.rightAnchor.y - pillH / 2,
+    x: layout.bottomAnchor.x - pillW / 2,
+    y: layout.bottomAnchor.y - pillH / 2,
     width: pillW,
     height: pillH,
     rx: pillR,
@@ -2457,8 +2458,8 @@ function renderProcessMap(nodes, edges) {
   anchorLayer.appendChild(endRect);
 
   const startLabel = svgElement("text", {
-    x: layout.leftAnchor.x,
-    y: layout.leftAnchor.y,
+    x: layout.topAnchor.x,
+    y: layout.topAnchor.y,
     "text-anchor": "middle",
     "dominant-baseline": "central",
     "font-size": 25,
@@ -2469,8 +2470,8 @@ function renderProcessMap(nodes, edges) {
   anchorLayer.appendChild(startLabel);
 
   const endLabel = svgElement("text", {
-    x: layout.rightAnchor.x,
-    y: layout.rightAnchor.y,
+    x: layout.bottomAnchor.x,
+    y: layout.bottomAnchor.y,
     "text-anchor": "middle",
     "dominant-baseline": "central",
     "font-size": 25,
@@ -2492,11 +2493,14 @@ function renderProcessMap(nodes, edges) {
         return;
       }
       const strength = Math.max(Number(node.start_count || 0) / topStartCount, 0.08);
+      const startConnY = layout.topAnchor.y + pillH / 2;
+      const startNodeY = point.y - point.height / 2;
+      const startCp = Math.max((startNodeY - startConnY) * 0.5, 8);
       const path = svgElement("path", {
-        d: `M ${layout.leftAnchor.x + 55} ${layout.leftAnchor.y}
-          C ${layout.leftAnchor.x + 110} ${layout.leftAnchor.y},
-            ${point.x - point.width / 2 - 52} ${point.y},
-            ${point.x - point.width / 2} ${point.y}`,
+        d: `M ${layout.topAnchor.x} ${startConnY}
+          C ${layout.topAnchor.x} ${startConnY + startCp},
+            ${point.x} ${startNodeY - startCp},
+            ${point.x} ${startNodeY}`,
         fill: "none",
         stroke: FLOW_COLORS.anchorStroke(0.42 + strength * 0.42),
         "stroke-width": 1.4 + strength * 5.4,
@@ -2514,11 +2518,14 @@ function renderProcessMap(nodes, edges) {
         return;
       }
       const strength = Math.max(Number(node.end_count || 0) / topEndCount, 0.08);
+      const endNodeY = point.y + point.height / 2;
+      const endConnY = layout.bottomAnchor.y - pillH / 2;
+      const endCp = Math.max((endConnY - endNodeY) * 0.5, 8);
       const path = svgElement("path", {
-        d: `M ${point.x + point.width / 2} ${point.y}
-          C ${point.x + point.width / 2 + 52} ${point.y},
-            ${layout.rightAnchor.x - 110} ${layout.rightAnchor.y},
-            ${layout.rightAnchor.x - 55} ${layout.rightAnchor.y}`,
+        d: `M ${point.x} ${endNodeY}
+          C ${point.x} ${endNodeY + endCp},
+            ${layout.bottomAnchor.x} ${endConnY - endCp},
+            ${layout.bottomAnchor.x} ${endConnY}`,
         fill: "none",
         stroke: FLOW_COLORS.anchorStroke(0.4 + strength * 0.42),
         "stroke-width": 1.4 + strength * 5.4,
@@ -2530,8 +2537,8 @@ function renderProcessMap(nodes, edges) {
 
   const allProcessPos = [...positionedNodes.values()];
   const processNodeBounds = {
-    minNodeY: Math.min(...allProcessPos.map((n) => n.y - n.height / 2)),
-    maxNodeY: Math.max(...allProcessPos.map((n) => n.y + n.height / 2)),
+    minNodeX: Math.min(...allProcessPos.map((n) => n.x - n.width / 2)),
+    maxNodeX: Math.max(...allProcessPos.map((n) => n.x + n.width / 2)),
   };
 
   simplified.edges.slice(0, 260).forEach((edge, index) => {
@@ -2541,7 +2548,7 @@ function renderProcessMap(nodes, edges) {
       return;
     }
 
-    const geometry = processEdgeGeometry(edge, source, target, height, "ltr", processNodeBounds);
+    const geometry = processEdgeGeometry(edge, source, target, width, "ttb", processNodeBounds);
     const edgeKey = processEdgeKey(edge.source, edge.target);
     const activeCount = hasAnimationOverlay ? activeFrame.edgeCounts.get(edgeKey) || 0 : 0;
     const activityIntensity = hasAnimationOverlay
@@ -2555,7 +2562,7 @@ function renderProcessMap(nodes, edges) {
     const isBackbone = simplified.backbone.edgeKeys.has(edgeKey);
     const isSelected = isSelectedMapPath(edge.source, edge.target, "process");
 
-    let strokeWidth = 1.1 + strength * (state.mode === "performance" ? 12 : 13) + (isBackbone ? 1.2 : 0);
+    let strokeWidth = 1.0 + strength * (state.mode === "performance" ? 4 : 5) + (isBackbone ? 0.6 : 0);
     let strokeColor =
       state.mode === "performance"
         ? twoStopHeat(
@@ -2611,12 +2618,14 @@ function renderProcessMap(nodes, edges) {
     }
 
     if (index < 26) {
-      const labelPoint = geometryMidpoint(geometry);
+      const labelX = Math.max(source.x, target.x) + 23;
+      const labelY = (source.y + source.height / 2 + target.y - target.height / 2) / 2;
       const label = svgElement("text", {
-        x: labelPoint.x,
-        y: labelPoint.y - 28,
-        "text-anchor": "middle",
-        "font-size": 25,
+        x: labelX,
+        y: labelY,
+        "text-anchor": "start",
+        "dominant-baseline": "central",
+        "font-size": 18,
         "font-family": "IBM Plex Mono, monospace",
         fill:
           state.mode === "performance" && durationHeat > 0.5
@@ -2702,14 +2711,14 @@ function renderProcessMap(nodes, edges) {
       })
     );
 
-    const labelLines = wrapActivityLabel(node.label || "", point.width, 30);
-    const lineH = 36;
-    const statGap = 46;
-    const firstLabelY = Math.round(point.y - ((labelLines.length - 1) * lineH + statGap - 10) / 2);
+    const labelLines = wrapActivityLabel(node.label || "", point.width, 17);
+    const lineH = 22;
+    const statGap = 20;
+    const firstLabelY = Math.round(point.y - ((labelLines.length - 1) * lineH + statGap - 8) / 2);
     const statY = firstLabelY + (labelLines.length - 1) * lineH + statGap;
     const labelEl = svgElement("text", {
       "text-anchor": "middle",
-      "font-size": 30,
+      "font-size": 17,
       "font-family": "Space Grotesk, sans-serif",
       "font-weight": 700,
       fill: textColor,
@@ -2725,7 +2734,7 @@ function renderProcessMap(nodes, edges) {
       x: point.x,
       y: statY,
       "text-anchor": "middle",
-      "font-size": 25,
+      "font-size": 15,
       "font-family": "IBM Plex Mono, monospace",
       fill: textColor,
     });
@@ -2832,8 +2841,8 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     leftPad: viewKey === "handoff_actor" ? 72 : 110,
     rightPad: viewKey === "handoff_actor" ? 72 : 110,
     horizontalGap: viewKey === "handoff_actor" ? 80 : 100,
-    minStageGap: viewKey === "handoff_actor" ? 120 : 156,
-    stageGapBase: viewKey === "handoff_actor" ? 96 : 118,
+    minStageGap: viewKey === "handoff_actor" ? 200 : 156,
+    stageGapBase: viewKey === "handoff_actor" ? 160 : 118,
     extraWidth: viewKey === "handoff_actor" ? 80 : 140,
     protectLoopTop: viewKey === "handoff_activity",
     nodeHeightOverride: 67,
@@ -2911,7 +2920,7 @@ function renderGenericNetwork(nodes, edges, options = {}) {
       ? isSelectedMapPath(edge.source, edge.target, "handoff_activity")
       : false;
 
-    let strokeWidth = 1.2 + edgeStrength * 10 + (isBackbone ? 1.2 : 0);
+    let strokeWidth = 1.2 + edgeStrength * 7 + (isBackbone ? 1.0 : 0);
     let strokeColor = state.mode === "performance"
       ? twoStopHeat(
           FLOW_COLORS.performanceEdgeLow,
@@ -4579,8 +4588,9 @@ function renderCurrentMap() {
 
   const hasAnimationFrames = animatedView && state.animation.frames.length > 0;
   els.toggleAnimation.disabled = !hasAnimationFrames;
-  els.rewindAnimation.disabled = !hasAnimationFrames;
   els.restartAnimation.disabled = !hasAnimationFrames;
+  els.stepBackAnimation.disabled = !hasAnimationFrames;
+  els.stepForwardAnimation.disabled = !hasAnimationFrames;
   els.animationFrame.disabled = !hasAnimationFrames;
   els.animationSpeed.disabled = !hasAnimationFrames;
   if (els.activityDetail) {
@@ -5570,13 +5580,6 @@ els.toggleAnimation.addEventListener("click", () => {
   toggleAnimation();
 });
 
-els.rewindAnimation.addEventListener("click", () => {
-  stopAnimation({ hideOverlay: true });
-  state.animation.frameIndex = 0;
-  els.animationFrame.value = "0";
-  updateAnimationTimeLabel();
-  renderCurrentMap();
-});
 
 els.restartAnimation.addEventListener("click", () => {
   stopAnimation({ hideOverlay: false });
@@ -5584,6 +5587,22 @@ els.restartAnimation.addEventListener("click", () => {
   els.animationFrame.value = "0";
   updateAnimationTimeLabel();
   startAnimation();
+});
+
+els.stepBackAnimation.addEventListener("click", () => {
+  if (state.animation.isPlaying) {
+    stopAnimation({ hideOverlay: false });
+  }
+  state.animation.overlayVisible = true;
+  advanceAnimationFrame(-1);
+});
+
+els.stepForwardAnimation.addEventListener("click", () => {
+  if (state.animation.isPlaying) {
+    stopAnimation({ hideOverlay: false });
+  }
+  state.animation.overlayVisible = true;
+  advanceAnimationFrame(1);
 });
 
 els.animationSpeed.addEventListener("change", () => {
@@ -5599,8 +5618,6 @@ els.animationFrame.addEventListener("input", (event) => {
   }
 
   stopAnimation({ hideOverlay: false });
-  // While scrubbing, keep the overlay visible so the current frame's yellow
-  // case dots remain visible under the slider thumb.
   state.animation.overlayVisible = true;
   state.animation.frameIndex = Math.max(0, Math.min(index, state.animation.frames.length - 1));
   updateAnimationTimeLabel();
@@ -5612,7 +5629,6 @@ els.animationFrame.addEventListener("change", () => {
   if (state.animation.isPlaying) {
     return;
   }
-  state.animation.overlayVisible = false;
   updateMapZoomControls();
   renderCurrentMap();
 });

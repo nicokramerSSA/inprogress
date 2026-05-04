@@ -438,7 +438,7 @@ button:hover {
 }
 
 .inline-control.grow {
-  min-width: 220px;
+  min-width: 120px;
   flex: 1;
 }
 

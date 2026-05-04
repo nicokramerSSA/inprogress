@@ -28,7 +28,7 @@ FlowScope Miner is a Disco-style process mining web app built on top of `pm4py`.
   - Performance labels (median waiting time between activities)
 - Animated process playback:
   - Time-binned transition animation
-  - Play/pause, speed control, frame scrubber, rewind
+  - Play/pause, restart, step forward/back, speed control, frame scrubber
 - Actor-aware handoff analytics (when actor/resource is present):
   - Actor-focused handoff graph
   - Activity-focused handoff graph (handoffs only where actor changes)

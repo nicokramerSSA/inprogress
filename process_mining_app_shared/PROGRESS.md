@@ -202,6 +202,48 @@ Then open: http://127.0.0.1:8000
 - `geometryMidpoint(geometry)` helper checks `waypoints` first, then falls back to bezier `points` — used everywhere a label or dot needs the path midpoint
 - Process view `horizontalGap` raised to 500px, `topPad: 300, bottomPad: 280` for more breathing room; bezier bypass routing reverted (accepted as known limitation)
 
+### UI polish and diagram overhaul (2026-05-04)
+
+**Frequency palette — all remaining tab views**
+- SSA 6-color frequency palette (`#C5E7FC` → `#50B7F6` → `#053E60` for nodes; `#8ACFF9` → `#0A7CC1` → `#085D91` for edges) applied to every frequency-mode view: Handoff Actor/Activity edges and nodes, Sankey links and nodes, Rework bar chart, Queue Heatmap cells, Rework Treemap tiles, Variant Boxplot stripes/whiskers/IQR box
+- Added `frequencyNodeMid` and `frequencyEdgeMid` tokens to `FLOW_COLORS` so all views pull from one source
+
+**Sankey — label and edge fixes**
+- Left/right-column labels were clipping at the SVG edge; increased `leftPad`/`rightPad` from 40 to 100 and switched text-anchor to `"start"`/`"end"` for the first and last stages
+- Count line split to a second `<tspan>` on its own line below the node name
+
+**Export HTML — START/END pills**
+- Pill size halved: `pill_w/h/r` 110/40/20 → 55/20/10, font size 25 → 13
+- Anchor X positions now computed post-layout using actual node half-widths to prevent pills overlapping first/last nodes
+
+**Animation controls**
+- Added SVG icons to zoom buttons: minus (−), magnifying glass, plus (+)
+- Added step-back (◀) and step-forward (▶) buttons flanking the Frame slider; Frame slider `min-width` reduced 220 → 120 px to make room
+- Fixed: step buttons did nothing before Play had been pressed — added `state.animation.overlayVisible = true` in both step handlers before calling `advanceAnimationFrame`
+- Fixed: clicking the Frame slider caused arrow labels to flash (briefly showed frame data then reverted to static) — `change` event handler no longer clears `overlayVisible`; scrubbing the slider now immediately enters frame view and stays there
+- Removed Rewind button (identical behaviour to Restart)
+
+**Process tab — top-to-bottom orientation**
+- Switched Process view from LTR to TTB layout: removed `orientation: "ltr"` from `computeProcessLayout` options
+- Guide lines changed from vertical (stageXs) to horizontal (stageYs)
+- START/END pills moved from `leftAnchor`/`rightAnchor` to `topAnchor`/`bottomAnchor`
+- Anchor bezier paths now fan vertically (top pill → node top, node bottom → bottom pill) with adaptive control points (50% of gap) so curves scale correctly regardless of padding
+- Edge geometry call changed from `"ltr"` to `"ttb"` with horizontal bounds
+
+**Process tab — box and text sizing**
+- `nodeWidthScale: 1.5` (×1.5 of base width), `nodeHeightOverride: 72`
+- `minStageGap: 132`, `stageGapBase: 108` — ~60 SVG-unit gap between box rows
+- `horizontalGap: 160` — sibling spacing within a stage row
+- Label font 30 → 17 px, stat font 25 → 15 px, `lineH` 36 → 22, `statGap` 46 → 20
+- Edge label font 25 → 18 px; position changed to `text-anchor: "start"`, `dominant-baseline: "central"`; X = `max(source.x, target.x) + 23` (path's rightmost point + ~2 character widths); Y = exact vertical midpoint between box rows
+
+**Process tab — arrow thickness**
+- Static stroke multiplier reduced: frequency `× 13 → × 5`, performance `× 12 → × 4`; backbone bonus `+1.2 → +0.6` — max backbone ~6.6 SVG units, consistent with animation inactive-edge weight so the jump on Play is minimised
+
+**Handoff Actor — layout and thickness**
+- `minStageGap` 120 → 200, `stageGapBase` 96 → 160 — ~130 SVG-unit gap between actor rows
+- Static stroke multiplier `× 10 → × 7`; backbone bonus `+1.2 → +1.0`
+
 ## Next steps
 - Push all local changes to Render when ready
 - Share URL with team: https://flowscope-miner.onrender.com/
