@@ -476,12 +476,14 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
     if not nodes or not edges:
         return "<p class=\"empty\">No process-map edges for current filters.</p>"
 
-    width = 1200
+    # LTR layout: stages spread on X axis, nodes stack vertically within each stage.
+    width = 1400
     height = 760
-    top_pad = 86
-    bottom_pad = 84
-    left_pad = 58
-    right_pad = 58
+    left_pad = 240
+    right_pad = 220
+    top_pad = 60
+    bottom_pad = 60
+    sibling_gap = 62
 
     normalized_nodes = []
     for node in nodes:
@@ -509,13 +511,34 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
     if not normalized_edges:
         return "<p class=\"empty\">No process-map edges for current filters.</p>"
 
-    # Keep the report layout deterministic: stages are based on median event
-    # position, then nodes within each stage are sorted by process importance.
-    def _edge_key(source: str, target: str) -> str:
-        return f"{source}|||{target}"
-
     def _truncate(label: str, max_chars: int = 20) -> str:
         return label if len(label) <= max_chars else f"{label[: max_chars - 3]}..."
+
+    def _wrap_label(text: str, node_width: float, font_size: int) -> list[str]:
+        avg_char_w = font_size * 0.58
+        max_chars = max(int((node_width - 28) / avg_char_w), 4)
+        if len(text) <= max_chars:
+            return [text]
+        words = text.split()
+        lines: list[str] = []
+        line = ""
+        for word in words:
+            if len(word) > max_chars:
+                if line:
+                    lines.append(line); line = ""
+                rem = word
+                while len(rem) > max_chars:
+                    lines.append(rem[: max_chars - 1] + "-"); rem = rem[max_chars - 1:]
+                line = rem
+                continue
+            test = line + " " + word if line else word
+            if len(test) > max_chars and line:
+                lines.append(line); line = word
+            else:
+                line = test
+        if line:
+            lines.append(line)
+        return lines[:4]
 
     stage_map = {
         node["id"]: max(0, int(round(node.get("median_position", 0) or 0)))
@@ -540,103 +563,122 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
         )
 
     max_stage = max(nodes_by_stage.keys(), default=0)
-    usable_width = width - left_pad - right_pad
-    stage_gap = 0 if max_stage == 0 else (height - top_pad - bottom_pad) / max_stage
     node_max = max((int(node.get("frequency", 0)) for node in normalized_nodes), default=1)
+    min_stage_gap = 280  # minimum center-to-center px; gives ~140 px edge-to-edge for typical nodes
+    natural_gap = 0 if max_stage == 0 else (width - left_pad - right_pad) / max_stage
+    stage_gap = max(natural_gap, float(min_stage_gap)) if max_stage > 0 else 0.0
+    # Widen the canvas if the minimum stage gap requires more room than the preset width.
+    if max_stage > 0:
+        required_width = left_pad + right_pad + max_stage * stage_gap
+        if required_width > width:
+            width = int(required_width)
 
     node_pos: dict[str, dict[str, float | int | str]] = {}
     for stage, stage_nodes in sorted(nodes_by_stage.items()):
-        y = height / 2 if max_stage == 0 else top_pad + stage * stage_gap
+        x = width / 2 if max_stage == 0 else left_pad + stage * stage_gap
         count = max(len(stage_nodes), 1)
+        total_h = count * 200 + max(count - 1, 0) * sibling_gap
+        cursor_y = (height - total_h) / 2
         for index, node in enumerate(stage_nodes):
             scale = max(int(node.get("frequency", 0)) / max(node_max, 1), 0.08)
-            width_by_frequency = 92 + scale * 60
-            width_by_label = max(min(len(str(node.get("label", ""))) * 6.4 + 30, 54), 0)
-            box_width = min(max(width_by_frequency + width_by_label, 110), 188)
-            x = left_pad + ((index + 0.5) * usable_width) / count
+            width_by_frequency = 88 + scale * 56
+            width_by_label = max(min(len(str(node.get("label", ""))) * 6.4 + 30, 96), 0)
+            box_width = min(max(width_by_frequency + width_by_label, 112), 200)
+            y = cursor_y + 100
+            cursor_y += 200 + sibling_gap
             node_pos[node["id"]] = {
                 "x": x,
                 "y": y,
                 "stage": stage,
                 "order": index,
                 "width": box_width,
-                "height": 46,
+                "height": 200,
             }
 
+    # Compute anchor positions after node layout so pill clearance uses real widths.
+    pill_w, pill_h, pill_r = 55, 20, 10
+    max_node_half_w = max((float(pos["width"]) / 2 for pos in node_pos.values()), default=100.0)
+    left_anchor_x = max(pill_w / 2 + 6, left_pad - max_node_half_w - 60)
+    right_anchor_x = min(float(width) - pill_w / 2 - 6, float(width) - right_pad + max_node_half_w + 60)
+    left_anchor = (left_anchor_x, height / 2)
+    right_anchor = (right_anchor_x, height / 2)
+
     def _edge_geometry(source: dict[str, float | int | str], target: dict[str, float | int | str], edge: dict[str, Any]) -> tuple[str, tuple[float, float, float, float, float, float, float, float]]:
-        """Return a cubic path for normal, same-stage, self-loop, and back edges."""
+        """Return an LTR path: exit right of source, enter left of target."""
         if edge["source"] == edge["target"]:
             return (
                 f"M {source['x'] + source['width'] / 2 - 6:.2f} {source['y'] - 8:.2f} "
-                f"C {source['x'] + source['width'] / 2 + 36:.2f} {source['y'] - 52:.2f}, "
-                f"{source['x'] + source['width'] / 2 + 36:.2f} {source['y'] + 10:.2f}, "
+                f"C {source['x'] + source['width'] / 2 + 54:.2f} {source['y'] - 70:.2f}, "
+                f"{source['x'] + source['width'] / 2 + 54:.2f} {source['y'] + 18:.2f}, "
                 f"{source['x'] + 4:.2f} {source['y'] + source['height'] / 2:.2f}",
                 (
                     source["x"] + source["width"] / 2 - 6,
                     source["y"] - 8,
-                    source["x"] + source["width"] / 2 + 36,
-                    source["y"] - 52,
-                    source["x"] + source["width"] / 2 + 36,
-                    source["y"] + 10,
+                    source["x"] + source["width"] / 2 + 54,
+                    source["y"] - 70,
+                    source["x"] + source["width"] / 2 + 54,
+                    source["y"] + 18,
                     source["x"] + 4,
                     source["y"] + source["height"] / 2,
                 ),
             )
 
         if int(source["stage"]) == int(target["stage"]):
-            loop_height = 80 + abs(int(source["order"]) - int(target["order"])) * 18
+            loop_w = 80 + abs(int(source["order"]) - int(target["order"])) * 18
             return (
-                f"M {source['x']:.2f} {source['y'] - source['height'] / 2:.2f} "
-                f"C {source['x']:.2f} {source['y'] - loop_height:.2f}, "
-                f"{target['x']:.2f} {target['y'] - loop_height:.2f}, "
-                f"{target['x']:.2f} {target['y'] - target['height'] / 2:.2f}",
+                f"M {source['x'] - source['width'] / 2:.2f} {source['y']:.2f} "
+                f"C {source['x'] - loop_w:.2f} {source['y']:.2f}, "
+                f"{target['x'] - loop_w:.2f} {target['y']:.2f}, "
+                f"{target['x'] - target['width'] / 2:.2f} {target['y']:.2f}",
                 (
-                    source["x"],
-                    source["y"] - source["height"] / 2,
-                    source["x"],
-                    source["y"] - loop_height,
-                    target["x"],
-                    target["y"] - loop_height,
-                    target["x"],
-                    target["y"] - target["height"] / 2,
+                    source["x"] - source["width"] / 2,
+                    source["y"],
+                    source["x"] - loop_w,
+                    source["y"],
+                    target["x"] - loop_w,
+                    target["y"],
+                    target["x"] - target["width"] / 2,
+                    target["y"],
                 ),
             )
 
         if int(source["stage"]) > int(target["stage"]):
-            outer_x = 34 if (source["x"] + target["x"]) / 2 < width / 2 else width - 34
+            outer_y = 34.0 if (source["y"] + target["y"]) / 2 < height / 2 else float(height) - 34
             return (
-                f"M {source['x']:.2f} {source['y'] + source['height'] / 2:.2f} "
-                f"C {outer_x:.2f} {source['y'] + 30:.2f}, "
-                f"{outer_x:.2f} {target['y'] - 30:.2f}, "
-                f"{target['x']:.2f} {target['y'] - target['height'] / 2:.2f}",
+                f"M {source['x'] - source['width'] / 2:.2f} {source['y']:.2f} "
+                f"C {source['x'] - source['width'] / 2 - 44:.2f} {outer_y:.2f}, "
+                f"{target['x'] + target['width'] / 2 + 44:.2f} {outer_y:.2f}, "
+                f"{target['x'] + target['width'] / 2:.2f} {target['y']:.2f}",
                 (
-                    source["x"],
-                    source["y"] + source["height"] / 2,
-                    outer_x,
-                    source["y"] + 30,
-                    outer_x,
-                    target["y"] - 30,
-                    target["x"],
-                    target["y"] - target["height"] / 2,
+                    source["x"] - source["width"] / 2,
+                    source["y"],
+                    source["x"] - source["width"] / 2 - 44,
+                    outer_y,
+                    target["x"] + target["width"] / 2 + 44,
+                    outer_y,
+                    target["x"] + target["width"] / 2,
+                    target["y"],
                 ),
             )
 
-        vertical_gap = max(float(target["y"]) - float(source["y"]), 40.0)
-        sway = max(min((float(target["x"]) - float(source["x"])) * 0.12, 56.0), -56.0)
+        exit_x = float(source["x"]) + float(source["width"]) / 2
+        entry_x = float(target["x"]) - float(target["width"]) / 2
+        edge_span = max(entry_x - exit_x, 20.0)
+        sway = max(min((float(target["y"]) - float(source["y"])) * 0.12, 56.0), -56.0)
         return (
-            f"M {source['x']:.2f} {source['y'] + source['height'] / 2:.2f} "
-            f"C {source['x'] + sway:.2f} {source['y'] + vertical_gap * 0.38:.2f}, "
-            f"{target['x'] - sway:.2f} {target['y'] - vertical_gap * 0.38:.2f}, "
-            f"{target['x']:.2f} {target['y'] - target['height'] / 2:.2f}",
+            f"M {exit_x:.2f} {source['y']:.2f} "
+            f"C {exit_x + edge_span * 0.45:.2f} {source['y'] + sway:.2f}, "
+            f"{entry_x - edge_span * 0.45:.2f} {target['y'] - sway:.2f}, "
+            f"{entry_x:.2f} {target['y']:.2f}",
             (
-                source["x"],
-                source["y"] + source["height"] / 2,
-                source["x"] + sway,
-                source["y"] + vertical_gap * 0.38,
-                target["x"] - sway,
-                target["y"] - vertical_gap * 0.38,
-                target["x"],
-                target["y"] - target["height"] / 2,
+                exit_x,
+                source["y"],
+                exit_x + edge_span * 0.45,
+                source["y"] + sway,
+                entry_x - edge_span * 0.45,
+                target["y"] - sway,
+                entry_x,
+                target["y"],
             ),
         )
 
@@ -650,18 +692,16 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
     edge_max = max((int(edge.get("frequency", 0)) for edge in normalized_edges), default=1)
     guide_lines = []
     for stage in range(max_stage + 1):
-        y = height / 2 if max_stage == 0 else top_pad + stage * stage_gap
+        x = width / 2 if max_stage == 0 else left_pad + stage * stage_gap
         guide_lines.append(
-            f"<line x1=\"34\" y1=\"{y:.2f}\" x2=\"{width - 34}\" y2=\"{y:.2f}\" stroke=\"rgba(0,0,0,0.06)\" stroke-width=\"1\"/>"
+            f"<line x1=\"{x:.2f}\" y1=\"34\" x2=\"{x:.2f}\" y2=\"{height - 34}\" stroke=\"rgba(0,0,0,0.06)\" stroke-width=\"1\"/>"
         )
 
-    top_anchor = (width / 2, 34)
-    bottom_anchor = (width / 2, height - 34)
     anchor_marks = [
-        f"<rect x=\"{top_anchor[0] - 48:.2f}\" y=\"{top_anchor[1] - 16:.2f}\" width=\"96\" height=\"28\" rx=\"14\" fill=\"rgba(0,51,153,0.1)\" stroke=\"rgba(0,51,153,0.24)\"/>",
-        f"<rect x=\"{bottom_anchor[0] - 48:.2f}\" y=\"{bottom_anchor[1] - 12:.2f}\" width=\"96\" height=\"28\" rx=\"14\" fill=\"rgba(0,51,153,0.1)\" stroke=\"rgba(0,51,153,0.24)\"/>",
-        f"<text x=\"{top_anchor[0]:.2f}\" y=\"{top_anchor[1] + 2:.2f}\" text-anchor=\"middle\" font-size=\"12\" fill=\"#003399\" font-family=\"IBM Plex Mono, monospace\">START</text>",
-        f"<text x=\"{bottom_anchor[0]:.2f}\" y=\"{bottom_anchor[1] + 6:.2f}\" text-anchor=\"middle\" font-size=\"12\" fill=\"#003399\" font-family=\"IBM Plex Mono, monospace\">END</text>",
+        f"<rect x=\"{left_anchor[0] - pill_w / 2:.2f}\" y=\"{left_anchor[1] - pill_h / 2:.2f}\" width=\"{pill_w}\" height=\"{pill_h}\" rx=\"{pill_r}\" fill=\"rgba(0,51,153,0.1)\" stroke=\"rgba(0,51,153,0.24)\"/>",
+        f"<rect x=\"{right_anchor[0] - pill_w / 2:.2f}\" y=\"{right_anchor[1] - pill_h / 2:.2f}\" width=\"{pill_w}\" height=\"{pill_h}\" rx=\"{pill_r}\" fill=\"rgba(0,51,153,0.1)\" stroke=\"rgba(0,51,153,0.24)\"/>",
+        f"<text x=\"{left_anchor[0]:.2f}\" y=\"{left_anchor[1]:.2f}\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"13\" fill=\"#003399\" font-family=\"IBM Plex Mono, monospace\">START</text>",
+        f"<text x=\"{right_anchor[0]:.2f}\" y=\"{right_anchor[1]:.2f}\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"13\" fill=\"#003399\" font-family=\"IBM Plex Mono, monospace\">END</text>",
     ]
 
     top_start_count = max((int(node.get("start_count", 0)) for node in normalized_nodes), default=1)
@@ -671,23 +711,24 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
         pos = node_pos.get(node["id"])
         if not pos:
             continue
+        pill_half = pill_w / 2
         if int(node.get("start_count", 0)) > 0:
             strength = max(int(node.get("start_count", 0)) / max(top_start_count, 1), 0.08)
             start_end_lines.append(
-                f"<path d=\"M {top_anchor[0]:.2f} {top_anchor[1] + 12:.2f} "
-                f"C {top_anchor[0]:.2f} {top_anchor[1] + 48:.2f}, "
-                f"{pos['x']:.2f} {pos['y'] - pos['height'] / 2 - 52:.2f}, "
-                f"{pos['x']:.2f} {pos['y'] - pos['height'] / 2:.2f}\" "
+                f"<path d=\"M {left_anchor[0] + pill_half:.2f} {left_anchor[1]:.2f} "
+                f"C {left_anchor[0] + pill_half * 2:.2f} {left_anchor[1]:.2f}, "
+                f"{pos['x'] - pos['width'] / 2 - 52:.2f} {pos['y']:.2f}, "
+                f"{pos['x'] - pos['width'] / 2:.2f} {pos['y']:.2f}\" "
                 f"fill=\"none\" stroke=\"rgba(0,51,153,{0.18 + strength * 0.34:.2f})\" "
                 f"stroke-width=\"{1 + strength * 5:.2f}\" opacity=\"0.7\"/>"
             )
         if int(node.get("end_count", 0)) > 0:
             strength = max(int(node.get("end_count", 0)) / max(top_end_count, 1), 0.08)
             start_end_lines.append(
-                f"<path d=\"M {pos['x']:.2f} {pos['y'] + pos['height'] / 2:.2f} "
-                f"C {pos['x']:.2f} {pos['y'] + pos['height'] / 2 + 52:.2f}, "
-                f"{bottom_anchor[0]:.2f} {bottom_anchor[1] - 44:.2f}, "
-                f"{bottom_anchor[0]:.2f} {bottom_anchor[1]:.2f}\" "
+                f"<path d=\"M {pos['x'] + pos['width'] / 2:.2f} {pos['y']:.2f} "
+                f"C {pos['x'] + pos['width'] / 2 + 52:.2f} {pos['y']:.2f}, "
+                f"{right_anchor[0] - pill_half * 2:.2f} {right_anchor[1]:.2f}, "
+                f"{right_anchor[0] - pill_half:.2f} {right_anchor[1]:.2f}\" "
                 f"fill=\"none\" stroke=\"rgba(0,51,153,{0.16 + strength * 0.30:.2f})\" "
                 f"stroke-width=\"{1 + strength * 5:.2f}\" opacity=\"0.7\"/>"
             )
@@ -712,7 +753,7 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
             lx, ly = _cubic_point(curve_points, 0.5)
             edge_labels.append(
                 f"<text x=\"{lx:.2f}\" y=\"{ly - 4:.2f}\" text-anchor=\"middle\" "
-                "font-size=\"12\" fill=\"#111111\" font-family=\"IBM Plex Mono, monospace\">"
+                "font-size=\"25\" fill=\"#111111\" font-family=\"IBM Plex Mono, monospace\">"
                 f"{_format_int(frequency)}</text>"
             )
 
@@ -724,7 +765,8 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
         scale = max(int(node.get("frequency", 0)) / max(node_max, 1), 0.08)
         fill_opacity = 0.12 + scale * 0.86
         text_color = "#ffffff" if fill_opacity > 0.45 else "#001033"
-        label = escape(_truncate(str(node.get("label", "")), 20))
+        raw_label = str(node.get("label", ""))
+        label_lines = _wrap_label(raw_label, float(pos["width"]), 30)
         marker = ""
         if int(node.get("start_count", 0)) > 0 and int(node.get("end_count", 0)) > 0:
             marker = " | S/E"
@@ -739,20 +781,27 @@ def _report_map_svg(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) ->
             f"stroke=\"{'#001a66' if int(node.get('start_count', 0)) > 0 or int(node.get('end_count', 0)) > 0 else 'rgba(0,51,153,0.34)'}\" "
             f"stroke-width=\"{'2.4' if int(node.get('start_count', 0)) > 0 or int(node.get('end_count', 0)) > 0 else '1.6'}\"/>"
         )
-        node_marks.append(
-            f"<text x=\"{pos['x']:.2f}\" y=\"{pos['y'] - 4:.2f}\" text-anchor=\"middle\" "
-            f"font-size=\"12\" font-family=\"Space Grotesk, sans-serif\" font-weight=\"700\" fill=\"{text_color}\">{label}</text>"
+        line_h, stat_gap = 36, 32
+        first_label_y = round(pos["y"] - ((len(label_lines) - 1) * line_h + stat_gap - 17) / 2)
+        stat_y = first_label_y + (len(label_lines) - 1) * line_h + stat_gap
+        tspans = "".join(
+            f"<tspan x=\"{pos['x']:.2f}\" y=\"{first_label_y + i * line_h:.2f}\">{escape(ln)}</tspan>"
+            for i, ln in enumerate(label_lines)
         )
         node_marks.append(
-            f"<text x=\"{pos['x']:.2f}\" y=\"{pos['y'] + 13:.2f}\" text-anchor=\"middle\" "
-            f"font-size=\"11\" font-family=\"IBM Plex Mono, monospace\" fill=\"{text_color}\">{_format_int(node.get('frequency'))}{escape(marker)}</text>"
+            f"<text text-anchor=\"middle\" font-size=\"30\" font-family=\"Space Grotesk, sans-serif\" "
+            f"font-weight=\"700\" fill=\"{text_color}\">{tspans}</text>"
+        )
+        node_marks.append(
+            f"<text x=\"{pos['x']:.2f}\" y=\"{stat_y:.2f}\" text-anchor=\"middle\" "
+            f"font-size=\"25\" font-family=\"IBM Plex Mono, monospace\" fill=\"{text_color}\">{_format_int(node.get('frequency'))}{escape(marker)}</text>"
         )
 
     return (
         "<div class=\"map-wrap\">"
         f"<svg viewBox=\"0 0 {width} {height}\" role=\"img\" aria-label=\"Process map snapshot\">"
         "<defs>"
-        "<marker id=\"process-arrowhead-report\" viewBox=\"0 0 10 10\" refX=\"7\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">"
+        "<marker id=\"process-arrowhead-report\" viewBox=\"0 0 10 10\" refX=\"10\" refY=\"5\" markerUnits=\"userSpaceOnUse\" markerWidth=\"27\" markerHeight=\"27\" orient=\"auto-start-reverse\">"
         "<path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#111111\"/>"
         "</marker>"
         "</defs>"

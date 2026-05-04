@@ -84,6 +84,125 @@ Then open: http://127.0.0.1:8000
 - Remove `APP_PASSWORD`
 - Add `USERS` = `flowteam:yourpassword,flowtestuser:theirpassword`
 
+### Left-to-right process maps + white viewport (2026-05-01)
+- `computeProcessLayout` in `app.js` — added `orientation: "ltr"` option; stages now spread on X axis, nodes stack vertically within each stage; returns `stageXs`, `leftAnchor`, `rightAnchor` instead of `stageYs`/`topAnchor`/`bottomAnchor`; existing TTB path unchanged (handoff views unaffected)
+- Added `processEdgeGeometryLTR` — LTR edge routing: forward exits right/enters left, same-stage loops arc left, backward edges swing above/below via outer Y
+- `processEdgeGeometry` now accepts `(edge, source, target, dimension, orientation)` — delegates to LTR variant when orientation is `"ltr"`
+- `bpmnOrthogonalPath` — added `orientation` param; LTR mode bends at X midpoint instead of Y midpoint
+- `computeBpmnGateways` — added `orientation` param; split gateways now appear to the right of source nodes and merge gateways to the left of target nodes in LTR mode
+- `bpmnFlowEdgeGeometry` — updated connection points to exit right/enter left in LTR mode
+- `renderBpmnFlowDiagram` — uses `orientation: "ltr"` layout; start/end events moved to left/right center; guide lines are now vertical; start→node and node→end paths flow horizontally
+- Process map renderer — uses `orientation: "ltr"`; guide lines vertical; START/END anchors are vertical pills on left/right edge; anchor connection paths flow left-to-right
+- `FLOW_COLORS.edgeMarker` changed to `#003399` for visibility on white background
+- `frontend/styles.css` — `.process-map-viewport` background changed from `#001233` to `#ffffff`; hero card border changed to `rgba(255,255,255,0.45)` (white)
+- `backend/main.py` `_report_map_svg` — rewritten to LTR layout: stages on X axis, node positions computed vertically within each stage, guide lines vertical, anchors vertical pills on left/right, edge geometry updated for LTR routing
+
+### LTR polish — Process + BPMN Flow (2026-05-03)
+- Fixed bezier control-point inversion in `processEdgeGeometryLTR`: switched from center-to-center distance to edge-to-edge (`edgeSpan = entryX - exitX`) for control-point offsets; offsets now `edgeSpan * 0.45` so they never cross when nodes are close
+- Increased default stage gap: Process view `minStageGap: 400`, `stageGapBase: 340`; BPMN view same — leaves ~220 px edge-to-edge for typical 140–160 px nodes
+- Node boxes narrower: `widthByFrequency = 88 + scale * 56` (was 112 + 80), max clamped to 200 px (was 268), height 50 px (was 54)
+- Arrowheads fixed-size: added `markerUnits="userSpaceOnUse"` to `process-arrowhead` and `bpmn-arrowhead`; `markerWidth/Height: 9` px in canvas coordinates (was 6 × stroke-width, which ballooned to ~84 px on thick lines)
+- START/END pills changed from vertical (28×96) to horizontal (72×26) pills; label text moved inside pill using `dominant-baseline="central"`; anchor path exit/entry points updated to right/left edges of horizontal pill
+- Anchor X positions now computed from `leftPad`/`rightPad` minus `maxNodeHalfW + 60` so pills always sit visibly left/right of stage-0/last nodes regardless of diagram size; Process map passes `topPad: 240, bottomPad: 220` to provide adequate margin
+- Node height 50→68 px; activity label 12→15 px, data/stat line 11→13 px (matching Handoff Actor sizing) across Process, BPMN Flow views and Python export
+- Arrowheads scaled 9→27 px (`markerUnits="userSpaceOnUse"`); `refX` changed 7→10 so tip lands exactly at the path endpoint (node left edge) rather than 30% into the node box
+- Sticky table header `background` changed from `rgba(0,51,153,0.07)` (semi-transparent) to solid `#f0f2f7` so row content no longer bleeds through while scrolling
+- Node height 68→100 px; activity label 15→25 px bold, stat line 13→20 px, edge labels 12→20 px — Process, BPMN Flow, and Python export
+- Filter grid 5→4 columns so datetime-local inputs have adequate width; Filter Stack column narrowed from `0.9fr / 300px` to `0.7fr / 240px`
+- Play/Pause animation button: inline SVG triangle (play) and two-bar (pause) icons added; HTML initial state and both JS `textContent` → `innerHTML` assignments updated
+- Added "Restart" button (`#restart-animation`) to the right of "Rewind" in the animation controls; resets frameIndex to 0 and immediately calls `startAnimation()`, always playing from the beginning
+
+### Node / text / layout refinements (2026-05-03)
+- Node height 100→200 px; activity label 25→30 px bold with multi-line SVG `<tspan>` word-wrap (`wrapActivityLabel` helper, max 4 lines); stat line 20→25 px; edge labels 20→25 px — Process, BPMN Flow, Python export
+- `wrapActivityLabel` breaks on word boundaries, falls back to character-level hyphenation for long single words; `_wrap_label` Python equivalent added to `_report_map_svg`
+- BPMN Flow nodes +25% wider via `nodeWidthScale: 1.25` option in `computeProcessLayout`
+- START/END pill size 72×26→110×40, label 11→25 px; path connection offsets updated for new pill half-width (55px); Python export matched
+- BPMN START/END circle labels 12→25 px, label y-offset +44→+54
+- Handoff (Actor/Activity) arrowhead fixed to `markerUnits="userSpaceOnUse"` at 14 px (50% smaller than process/BPMN)
+- Handoff diagrams pushed down 68 px by increasing topPad (Actor 142→210, Activity 190→260)
+- Same gap and arrowhead fixes applied to `backend/main.py` `_report_map_svg`
+
+### Bug fixes and diagram polish (2026-05-03, session 2)
+
+**Critical bug fix**
+- Fixed `label is not defined` ReferenceError that prevented map loading — `appendSvgTitle(label, …)` in `renderProcessMap` node loop was not updated when `const label` was renamed to `const labelEl` for tspan multi-line; changed to `appendSvgTitle(labelEl, …)`
+
+**BPMN Flow — arrow width**
+- Stroke-width multiplier bumped: `× 1.3 → × 1.95` (another 1.5× pass on top of prior session)
+
+**BPMN Flow — node stat two-line split**
+- Stat text (frequency mode) now renders as two `<tspan>` lines: `"N events"` / `"X% cases"` instead of one concatenated line
+- `statGap` reduced 32→24 to accommodate second line; centering offset adjusted (`+12−17`) so the label+stat block stays vertically centered in 200 px node
+
+**BPMN Flow — edge label visibility**
+- Added semi-transparent white background rect (`opacity: 0.92, rx: 4`) behind each edge label so text is readable over colored arrow strokes
+- Reordered SVG layers so `labelLayer` is appended **after** `nodeLayer` — node boxes had been painted on top of labels, clipping any label near a node edge
+
+**Process view — node stat spacing**
+- `statGap` increased 32→46 in `renderProcessMap`; centering offset adjusted (`−10`) — matches the additional breathing room added to BPMN in the same session
+
+**BPMN Flow + Process — stat gap breathing room**
+- BPMN: `statGap` 24→38, centering offset `+12→+19`
+- Both views: extra vertical space between activity label text and data/stat line
+
+**Process view — animation anchor path geometry**
+- Fixed S-curve / crossing-node visual artifact: `leftAnchorX` and `rightAnchorX` formulas in `computeProcessLayout` changed from `±60` offset to `±120`, giving bezier control points clearance past stage-0/last-stage node edges
+
+**Animation — Pause behaviour**
+- `toggleAnimation()` now calls `stopAnimation({ hideOverlay: false, … })` when pausing — the map freezes on the current animation frame instead of reverting to the static (no-overlay) view
+
+**Handoff (Actor/Activity) — node size and spacing**
+- `nodeHeightOverride: 67` added to `computeProcessLayout` options in `renderGenericNetwork` — reduces node height from 200 px to ~67 px (one-third), eliminating vertical overlap between adjacent stage rows
+- `horizontalGap` increased: Actor 44→80, Activity 58→100 — prevents sibling nodes in the same row from crowding each other
+
+**Performance mode — SSA brand colour palette**
+- `FLOW_COLORS` performance entries replaced with SSA blue scale:
+  - `performanceNodeLow`: `#C5E7FC` (light sky blue — fast)
+  - `performanceNodeMid`: `#0A7CC1` (Curious Blue)
+  - `performanceNodeHigh`: `#053E60` (dark navy — slow/bottleneck)
+  - `performanceEdgeLow`: `#8CA3B2`, `performanceEdgeMid`: `#0A7CC1`, `performanceEdgeHigh`: `#053E60`
+- Performance-mode node text colour: `#20170e` (warm brown) → `#08152a` (dark navy) for better contrast on light-blue low-duration nodes; applied in both `renderProcessMap` and `renderBpmnFlowDiagram`
+
+### Arrow routing and BPMN label polish (2026-05-03, session 3)
+
+**Obstacle avoidance for backward edges**
+- `processEdgeGeometry` now accepts `bounds = {}` (6th param) and passes it to `processEdgeGeometryLTR`
+- TTB backward edge `outerX` replaced with bounds-aware calculation: routes 60 px outside the actual x-extent of all nodes, falling back to canvas edge only when bounds are absent
+- `renderProcessMap` computes `processNodeBounds` (minNodeY / maxNodeY from positionedNodes) and passes to LTR edge call — backward arcs now clear the node cluster with 60 px margin
+- `renderGenericNetwork` (Handoff views) computes `handoffNodeBounds` (minNodeX / maxNodeX) and passes to TTB edge call — Handoff backward arcs now clear node cluster
+
+**Arrow routing — final approach (no highway, larger vertical spacing)**
+- Reverted all highway routing (stageDiff > 1 multi-bezier approach) — it caused multiple highway arcs to overlap each other at the same Y corridor
+- Instead: increased Process view `horizontalGap` 160 → 300 (sibling gap between nodes in same stage); added `leftPad: 120, rightPad: 100` Y-axis margins; reduced `verticalShift` 60 → 20 — canvas height auto-expands to ~920px giving bezier arcs ample vertical room
+- With 300px gap between Approve Claim and Request Additional Info (same stage), any edge going from center to bottom has a natural clear corridor above the bottom-path nodes
+- Handoff (Actor/Activity) TTB backward edges: changed routing to exit source BOTTOM and enter target RIGHT SIDE (or left, if source is right of target) — avoids crossing through other nodes. Path: `M src.x srcBottom C src.x srcBottom+60 entryEdgeX±60 target.y entryEdgeX target.y`
+- Python `_edge_geometry` highway routing removed; backward edges in Python export use LTR above/below routing (static SVG draws edges behind node boxes so visual overlap is a non-issue there)
+
+**BPMN Flow — arrow width fixed**
+- Stroke-width multiplier reduced from `× 1.95` back to `× 0.65` — eliminates the "thick rectangle" appearance on high-frequency edges; visible range is now ~1–8 px instead of ~3–25 px
+
+**BPMN Flow — edge labels split to two lines**
+- Frequency mode arrow label split into two `<tspan>` lines: `formatNumber(edge.frequency)` / `formatPct(edge.outgoing_share)` with `dy="1.3em"` between lines
+- Label y raised to `labelPoint.y - 36` and font-size reduced 25→22 px to keep block centered over arrow
+- White background rect removed from edge labels (clean, no highlight)
+
+### Analytics view palette — SSA 6-color scheme (2026-05-03, session 4)
+
+**SSA palette applied to all remaining views (unconditionally, not gated on mode)**
+- **Handoff (Actor/Activity)** — performance mode: edges use `twoStopHeat(performanceEdgeLow, …, performanceEdgeHigh, durationStrength)`; nodes use `twoStopHeat(performanceNodeLow, …, performanceNodeHigh, durationHeat^0.7)`; text flips white above 64% intensity
+- **Sankey** — link stroke replaced `FLOW_COLORS.secondaryStroke()` with `twoStopHeat(performanceEdgeLow, performanceEdgeMid, performanceEdgeHigh, strength)`; node box fill `#003399` → `#336179`
+- **Rework (bar chart)** — bar fill `rgba(0,51,153,…)` → `twoStopHeat(performanceNodeLow, performanceNodeMid, performanceNodeHigh, intensity)`
+- **Queue Heatmap** — cell fill same `twoStopHeat` ramp; cell border stroke `rgba(0,51,153,0.18)` → `#A0C4D7`
+- **Rework Treemap** — tile fill same `twoStopHeat` ramp; text contrast threshold unchanged (>0.42 = white)
+- **Variant Boxplot** — row stripe `rgba(0,51,153,0.035)` → `rgba(160,196,215,0.18)`; whisker/endcap strokes `secondaryStroke()` → `#336179`; IQR box fill `rgba(0,51,153,0.74)` → `#336179`
+
+**Arrow routing (earlier in this session)**
+- Handoff (Actor/Activity) TTB forward edges replaced with orthogonal elbow routing — exits node bottom, horizontal at mid-Y inter-row gap, enters top — structurally prevents node-box overlap
+- `waypointPoint(t, waypoints)` helper added for arc-length linear interpolation along polyline (used by animation dots and label midpoints on orthogonal edges)
+- `geometryMidpoint(geometry)` helper checks `waypoints` first, then falls back to bezier `points` — used everywhere a label or dot needs the path midpoint
+- Process view `horizontalGap` raised to 500px, `topPad: 300, bottomPad: 280` for more breathing room; bezier bypass routing reverted (accepted as known limitation)
+
 ## Next steps
+- Push all local changes to Render when ready
 - Share URL with team: https://flowscope-miner.onrender.com/
 - Note: Render free tier spins down after 15 min of inactivity — first load after idle takes ~30 sec to wake up

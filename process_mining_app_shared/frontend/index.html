@@ -145,7 +145,10 @@
       <!-- Step 2 and 3 are hidden until an upload succeeds. -->
       <section id="dashboard" class="dashboard hidden" aria-live="polite">
         <!-- Summary cards are rendered from dashboard.summary. -->
-        <section class="metrics" id="metrics"></section>
+        <section class="card">
+          <h2>Summary</h2>
+          <div class="metrics" id="metrics"></div>
+        </section>
 
         <!-- Step 2: Filters that refresh every downstream panel and diagram. -->
         <section class="card filters-card">
@@ -280,9 +283,10 @@
             <!-- Animation controls are active only for process and handoff views. -->
             <div class="animation-controls">
               <button id="toggle-animation" class="btn-ghost" type="button">
-                Play Animation
+                <svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg>Play Animation
               </button>
               <button id="rewind-animation" class="btn-ghost" type="button">Rewind</button>
+              <button id="restart-animation" class="btn-ghost" type="button">Restart</button>
               <label class="inline-control">
                 Speed
                 <select id="animation-speed">

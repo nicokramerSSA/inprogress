@@ -151,6 +151,7 @@ const els = {
   modePerformance: document.getElementById("mode-performance"),
   toggleAnimation: document.getElementById("toggle-animation"),
   rewindAnimation: document.getElementById("rewind-animation"),
+  restartAnimation: document.getElementById("restart-animation"),
   animationSpeed: document.getElementById("animation-speed"),
   animationFrame: document.getElementById("animation-frame"),
   animationTime: document.getElementById("animation-time"),
@@ -195,23 +196,25 @@ const VIEW_DESCRIPTIONS = {
 // Keep diagram colors centralized so the process map, handoff maps, and
 // animation overlays stay visually consistent.
 const FLOW_COLORS = {
-  edgeMarker: "#8CA3B2",
+  edgeMarker: "#003399",
   anchorStroke: (alpha) => `rgba(0, 136, 161, ${alpha})`,
   backboneStroke: (alpha) => `rgba(10, 124, 193, ${alpha})`,
   secondaryStroke: (alpha) => `rgba(140, 163, 178, ${alpha})`,
   activeStroke: (alpha) => `rgba(10, 124, 193, ${alpha})`,
   caseBallFill: "#DE4702",
   caseBallStroke: "rgba(255, 255, 255, 0.3)",
-  frequencyNodeLow: "#c8dcea",
-  frequencyNodeHigh: "#0A7CC1",
-  frequencyEdgeLow: "#6a8fa8",
-  frequencyEdgeHigh: "#8CA3B2",
-  performanceNodeLow: "#c8dcea",
-  performanceNodeMid: "#f0a050",
-  performanceNodeHigh: "#DE4702",
-  performanceEdgeLow: "#6a8fa8",
-  performanceEdgeMid: "#cc7a00",
-  performanceEdgeHigh: "#DE4702",
+  frequencyNodeLow: "#C5E7FC",
+  frequencyNodeMid: "#50B7F6",
+  frequencyNodeHigh: "#053E60",
+  frequencyEdgeLow: "#8ACFF9",
+  frequencyEdgeMid: "#0A7CC1",
+  frequencyEdgeHigh: "#085D91",
+  performanceNodeLow: "#CFE2EB",
+  performanceNodeMid: "#70A7C3",
+  performanceNodeHigh: "#19303C",
+  performanceEdgeLow: "#A0C4D7",
+  performanceEdgeMid: "#336179",
+  performanceEdgeHigh: "#26495B",
 };
 
 function emptyAnimationPayload() {
@@ -1336,6 +1339,34 @@ function cubicBezierPoint(t, x0, y0, cx1, cy1, cx2, cy2, x1, y1) {
   return { x, y };
 }
 
+// Linearly interpolate along an orthogonal polyline for animation dots.
+function waypointPoint(t, waypoints) {
+  if (waypoints.length < 2) return waypoints[0] || { x: 0, y: 0 };
+  let totalLen = 0;
+  const segLens = [];
+  for (let i = 1; i < waypoints.length; i++) {
+    const dx = waypoints[i].x - waypoints[i - 1].x;
+    const dy = waypoints[i].y - waypoints[i - 1].y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    segLens.push(len);
+    totalLen += len;
+  }
+  if (totalLen === 0) return waypoints[0];
+  const tgt = t * totalLen;
+  let cum = 0;
+  for (let i = 0; i < segLens.length; i++) {
+    if (tgt <= cum + segLens[i] + 0.001) {
+      const segT = segLens[i] > 0 ? Math.min((tgt - cum) / segLens[i], 1) : 0;
+      return {
+        x: waypoints[i].x + segT * (waypoints[i + 1].x - waypoints[i].x),
+        y: waypoints[i].y + segT * (waypoints[i + 1].y - waypoints[i].y),
+      };
+    }
+    cum += segLens[i];
+  }
+  return waypoints[waypoints.length - 1];
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -1375,6 +1406,39 @@ function truncateProcessLabel(label, maxChars = 18) {
     return text;
   }
   return `${text.slice(0, Math.max(maxChars - 3, 1))}...`;
+}
+
+// Wraps an activity label into lines that fit within nodeWidth at the given fontSize.
+// Breaks on word boundaries; falls back to character-level hyphenation for long single words.
+function wrapActivityLabel(text, nodeWidth, fontSize) {
+  const avgCharW = fontSize * 0.58;
+  const maxLineW = nodeWidth - 28;
+  const maxChars = Math.max(Math.floor(maxLineW / avgCharW), 4);
+  if (text.length <= maxChars) return [text];
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    if (word.length > maxChars) {
+      if (line) { lines.push(line); line = ""; }
+      let rem = word;
+      while (rem.length > maxChars) {
+        lines.push(rem.slice(0, maxChars - 1) + "-");
+        rem = rem.slice(maxChars - 1);
+      }
+      line = rem;
+      continue;
+    }
+    const test = line ? line + " " + word : word;
+    if (test.length > maxChars && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 4);
 }
 
 function currentProcessDetailSettings() {
@@ -1772,11 +1836,11 @@ function computeProcessStages(nodes, edges) {
 
 function nodeBoxDimensions(node, nodeMaxFrequency) {
   const scale = Math.max(Number(node.frequency || 0) / nodeMaxFrequency, 0.08);
-  const widthByFrequency = 112 + scale * 80;
-  const widthByLabel = clamp(String(node.label || "").length * 8.4 + 44, 0, 116);
+  const widthByFrequency = 88 + scale * 56;
+  const widthByLabel = clamp(String(node.label || "").length * 8.4 + 44, 0, 96);
   return {
-    width: clamp(widthByFrequency + widthByLabel, 144, 268),
-    height: 54,
+    width: clamp(widthByFrequency + widthByLabel, 112, 200),
+    height: 200,
   };
 }
 
@@ -1860,13 +1924,96 @@ function computeProcessLayout(nodes, edges, options = {}) {
 
   const maxStage = Math.max(...stages, 0);
   const nodeMaxFrequency = Math.max(...nodes.map((node) => Number(node.frequency || 0)), 1);
+  const nodeWidthScale = Number(options.nodeWidthScale || 1.0);
+  const nodeHeightOverride = options.nodeHeightOverride;
   const boxByNode = new Map();
   nodes.forEach((node) => {
-    boxByNode.set(node.id, nodeBoxDimensions(node, nodeMaxFrequency));
+    const box = nodeBoxDimensions(node, nodeMaxFrequency);
+    boxByNode.set(node.id, {
+      width: nodeWidthScale !== 1.0 ? Math.round(box.width * nodeWidthScale) : box.width,
+      height: nodeHeightOverride !== undefined ? nodeHeightOverride : box.height,
+    });
   });
 
-  const horizontalGap = Number(options.horizontalGap || 58);
+  const siblingGap = Number(options.horizontalGap || 58);
+  const isLTR = options.orientation === "ltr";
   const maxNodesInStage = Math.max(...[...nodesByStage.values()].map((group) => group.length), 1);
+
+  if (isLTR) {
+    // Stages spread on X axis; nodes stack vertically within each stage.
+    // options.topPad/bottomPad reinterpreted as left/right stage-axis padding.
+    const leftPad = options.protectLoopTop
+      ? Math.max(Number(options.topPad || 140), 126 + maxNodesInStage * 26)
+      : Number(options.topPad || 140);
+    const rightPad = Number(options.bottomPad || 120);
+    const topPad = Number(options.leftPad || 80);
+    const bottomPad = Number(options.rightPad || 80);
+    const stageGap =
+      maxStage === 0
+        ? 0
+        : Math.max(
+            Number(options.minStageGap || 300),
+            Number(options.stageGapBase || 260) + Math.max(maxNodesInStage - 1, 0) * 8
+          );
+    const heightByStage = stages.map((stage) => {
+      const group = nodesByStage.get(stage) || [];
+      return (
+        group.reduce((sum, node) => sum + (boxByNode.get(node.id)?.height || 0), 0) +
+        Math.max(group.length - 1, 0) * siblingGap
+      );
+    });
+    const requiredInnerHeight = Math.max(...heightByStage, 0);
+    const ltrWidth = Math.max(
+      Number(options.minWidth || 1200),
+      Math.ceil(leftPad + rightPad + maxStage * stageGap)
+    );
+    const ltrHeight = Math.max(
+      Number(options.minHeight || 600),
+      Math.ceil(requiredInnerHeight + topPad + bottomPad + Number(options.extraHeight || 0))
+    );
+    const ltrLayout = new Map();
+    const stageXs = new Map();
+    const verticalShift = Number(options.verticalShift || 0);
+    stages.forEach((stage) => {
+      const group = nodesByStage.get(stage) || [];
+      const x = maxStage === 0 ? ltrWidth / 2 : leftPad + stage * stageGap;
+      stageXs.set(stage, x);
+      const groupHeight =
+        group.reduce((sum, node) => sum + (boxByNode.get(node.id)?.height || 0), 0) +
+        Math.max(group.length - 1, 0) * siblingGap;
+      let cursorY = (ltrHeight - groupHeight) / 2 + verticalShift;
+      group.forEach((node, index) => {
+        const box = boxByNode.get(node.id) || { width: 160, height: 54 };
+        const y = cursorY + box.height / 2;
+        cursorY += box.height + siblingGap;
+        ltrLayout.set(node.id, {
+          ...node,
+          stage,
+          order: index,
+          x,
+          y,
+          width: box.width,
+          height: box.height,
+        });
+      });
+    });
+    const maxNodeHalfW = Math.max(...[...boxByNode.values()].map((b) => b.width / 2), 60);
+    const leftAnchorX = Math.max(leftPad - maxNodeHalfW - 120, 70);
+    const rightAnchorX = Math.min(ltrWidth - rightPad + maxNodeHalfW + 120, ltrWidth - 70);
+    const anchorY = ltrHeight / 2 + verticalShift;
+    return {
+      nodesByStage,
+      positionedNodes: ltrLayout,
+      maxStage,
+      width: ltrWidth,
+      height: ltrHeight,
+      stageXs,
+      leftAnchor: { x: leftAnchorX, y: anchorY },
+      rightAnchor: { x: rightAnchorX, y: anchorY },
+    };
+  }
+
+  const horizontalGap = siblingGap;
   const topPad = options.protectLoopTop
     ? Math.max(Number(options.topPad || 122), 126 + maxNodesInStage * 26)
     : Number(options.topPad || 122);
@@ -1933,9 +2080,103 @@ function computeProcessLayout(nodes, edges, options = {}) {
   };
 }
 
-function processEdgeGeometry(edge, source, target, width) {
+function processEdgeGeometryLTR(edge, source, target, height, bounds = {}) {
+  // LTR variant: forward edges exit the right side of source and enter the left
+  // side of target. Same-stage loops arc left; backward edges swing above/below.
+  const sameStage = source.stage === target.stage;
+  const backward = source.stage > target.stage;
+
+  if (edge.source === edge.target) {
+    return {
+      d: `M ${source.x + source.width / 2 - 6} ${source.y - 8}
+        C ${source.x + source.width / 2 + 54} ${source.y - 70},
+          ${source.x + source.width / 2 + 54} ${source.y + 18},
+          ${source.x + 4} ${source.y + source.height / 2}`,
+      points: {
+        x0: source.x + source.width / 2 - 6,
+        y0: source.y - 8,
+        cx1: source.x + source.width / 2 + 54,
+        cy1: source.y - 70,
+        cx2: source.x + source.width / 2 + 54,
+        cy2: source.y + 18,
+        x1: source.x + 4,
+        y1: source.y + source.height / 2,
+      },
+    };
+  }
+
+  if (sameStage) {
+    const loopWidth = 106 + Math.abs(source.order - target.order) * 26;
+    return {
+      d: `M ${source.x - source.width / 2} ${source.y}
+        C ${source.x - loopWidth} ${source.y},
+          ${target.x - loopWidth} ${target.y},
+          ${target.x - target.width / 2} ${target.y}`,
+      points: {
+        x0: source.x - source.width / 2,
+        y0: source.y,
+        cx1: source.x - loopWidth,
+        cy1: source.y,
+        cx2: target.x - loopWidth,
+        cy2: target.y,
+        x1: target.x - target.width / 2,
+        y1: target.y,
+      },
+    };
+  }
+
+  if (backward) {
+    const { minNodeY, maxNodeY } = bounds;
+    const margin = 60;
+    const aboveY = minNodeY !== undefined ? Math.max(minNodeY - margin, 10) : 42;
+    const belowY = maxNodeY !== undefined ? Math.min(maxNodeY + margin, height - 10) : height - 42;
+    const outerY = (source.y + target.y) / 2 < height / 2 ? aboveY : belowY;
+    return {
+      d: `M ${source.x - source.width / 2} ${source.y}
+        C ${source.x - source.width / 2 - 44} ${outerY},
+          ${target.x + target.width / 2 + 44} ${outerY},
+          ${target.x + target.width / 2} ${target.y}`,
+      points: {
+        x0: source.x - source.width / 2,
+        y0: source.y,
+        cx1: source.x - source.width / 2 - 44,
+        cy1: outerY,
+        cx2: target.x + target.width / 2 + 44,
+        cy2: outerY,
+        x1: target.x + target.width / 2,
+        y1: target.y,
+      },
+    };
+  }
+
+  const exitX = source.x + source.width / 2;
+  const entryX = target.x - target.width / 2;
+  const edgeSpan = Math.max(entryX - exitX, 20);
+  const sway = clamp((target.y - source.y) * 0.16, -84, 84);
+  return {
+    d: `M ${exitX} ${source.y}
+      C ${exitX + edgeSpan * 0.45} ${source.y + sway},
+        ${entryX - edgeSpan * 0.45} ${target.y - sway},
+        ${entryX} ${target.y}`,
+    points: {
+      x0: exitX,
+      y0: source.y,
+      cx1: exitX + edgeSpan * 0.45,
+      cy1: source.y + sway,
+      cx2: entryX - edgeSpan * 0.45,
+      cy2: target.y - sway,
+      x1: entryX,
+      y1: target.y,
+    },
+  };
+}
+
+function processEdgeGeometry(edge, source, target, dimension, orientation = "ttb", bounds = {}) {
   // Different edge shapes prevent self-loops, same-stage loops, back edges, and
   // normal forward paths from collapsing onto the same curve.
+  if (orientation === "ltr") {
+    return processEdgeGeometryLTR(edge, source, target, dimension, bounds);
+  }
   const sameStage = source.stage === target.stage;
   const backward = source.stage > target.stage;
 
@@ -1979,43 +2220,69 @@ function processEdgeGeometry(edge, source, target, width) {
   }
 
   if (backward) {
-    const outerX = (source.x + target.x) / 2 < width / 2 ? 42 : width - 42;
+    // Exit source bottom; enter target's right side (if source is left of target)
+    // or left side (if source is right of target) so the arc wraps around the
+    // outside without crossing intervening nodes.
+    const useRight = source.x <= target.x;
+    const entryEdgeX = useRight
+      ? target.x + target.width / 2
+      : target.x - target.width / 2;
+    const outPad = 60;
+    const srcBottomY = source.y + source.height / 2;
     return {
-      d: `M ${source.x} ${source.y + source.height / 2}
-        C ${outerX} ${source.y + 44},
-          ${outerX} ${target.y - 44},
-          ${target.x} ${target.y - target.height / 2}`,
+      d: `M ${source.x} ${srcBottomY}
+        C ${source.x} ${srcBottomY + outPad},
+          ${entryEdgeX + (useRight ? outPad : -outPad)} ${target.y},
+          ${entryEdgeX} ${target.y}`,
       points: {
         x0: source.x,
-        y0: source.y + source.height / 2,
-        cx1: outerX,
-        cy1: source.y + 44,
-        cx2: outerX,
-        cy2: target.y - 44,
-        x1: target.x,
-        y1: target.y - target.height / 2,
+        y0: srcBottomY,
+        cx1: source.x,
+        cy1: srcBottomY + outPad,
+        cx2: entryEdgeX + (useRight ? outPad : -outPad),
+        cy2: target.y,
+        x1: entryEdgeX,
+        y1: target.y,
       },
     };
   }
 
-  const verticalGap = Math.max(target.y - source.y, 54);
-  const sway = clamp((target.x - source.x) * 0.16, -84, 84);
+  // Orthogonal elbow: vertical in source column → horizontal at midY → vertical in
+  // target column. This guarantees the path never enters any node bounding box
+  // because the only horizontal segment runs through the inter-row gap.
+  const exitY = source.y + source.height / 2;
+  const entryY = target.y - target.height / 2;
+  const midY = (exitY + entryY) / 2;
+  const dx = target.x - source.x;
+  if (Math.abs(dx) < 4) {
+    return {
+      d: `M ${source.x} ${exitY} L ${target.x} ${entryY}`,
+      waypoints: [{ x: source.x, y: exitY }, { x: target.x, y: entryY }],
+    };
+  }
+  const dir = dx > 0 ? 1 : -1;
+  const r = Math.min(18, Math.abs(dx) / 4, Math.max(midY - exitY - 2, 2));
   return {
-    d: `M ${source.x} ${source.y + source.height / 2}
-      C ${source.x + sway} ${source.y + verticalGap * 0.34},
-        ${target.x - sway} ${target.y - verticalGap * 0.34},
-        ${target.x} ${target.y - target.height / 2}`,
-    points: {
-      x0: source.x,
-      y0: source.y + source.height / 2,
-      cx1: source.x + sway,
-      cy1: source.y + verticalGap * 0.34,
-      cx2: target.x - sway,
-      cy2: target.y - verticalGap * 0.34,
-      x1: target.x,
-      y1: target.y - target.height / 2,
-    },
+    d: `M ${source.x} ${exitY}
+      L ${source.x} ${midY - r}
+      Q ${source.x} ${midY} ${source.x + dir * r} ${midY}
+      L ${target.x - dir * r} ${midY}
+      Q ${target.x} ${midY} ${target.x} ${midY + r}
+      L ${target.x} ${entryY}`,
+    waypoints: [
+      { x: source.x, y: exitY },
+      { x: source.x, y: midY },
+      { x: target.x, y: midY },
+      { x: target.x, y: entryY },
+    ],
   };
+}
+
+// Returns the midpoint of a geometry object regardless of its routing type.
+function geometryMidpoint(geometry) {
+  if (geometry.waypoints) return waypointPoint(0.5, geometry.waypoints);
+  const p = geometry.points;
+  return cubicBezierPoint(0.5, p.x0, p.y0, p.cx1, p.cy1, p.cx2, p.cy2, p.x1, p.y1);
 }
 
 function appendSvgTitle(element, text) {
@@ -2034,17 +2301,28 @@ function appendAnimatedCaseDots(pulseLayer, geometry, activeCount, activityInten
 
   for (let dotIndex = 0; dotIndex < dotCount; dotIndex += 1) {
     const dotT = (pulseT + dotIndex / dotCount) % 1;
-    const pulsePoint = cubicBezierPoint(
-      dotT,
-      geometry.points.x0,
-      geometry.points.y0,
-      geometry.points.cx1,
-      geometry.points.cy1,
-      geometry.points.cx2,
-      geometry.points.cy2,
-      geometry.points.x1,
-      geometry.points.y1
-    );
+    // Two-segment paths (highway routing for multi-stage skips) split the travel:
+    // first half = first bezier, second half = second bezier.
+    let pulsePoint;
+    if (geometry.waypoints) {
+      pulsePoint = waypointPoint(dotT, geometry.waypoints);
+    } else if (geometry.points2) {
+      const seg = dotT < 0.5 ? geometry.points : geometry.points2;
+      const segT = dotT < 0.5 ? dotT * 2 : (dotT - 0.5) * 2;
+      pulsePoint = cubicBezierPoint(segT, seg.x0, seg.y0, seg.cx1, seg.cy1, seg.cx2, seg.cy2, seg.x1, seg.y1);
+    } else {
+      pulsePoint = cubicBezierPoint(
+        dotT,
+        geometry.points.x0,
+        geometry.points.y0,
+        geometry.points.cx1,
+        geometry.points.cy1,
+        geometry.points.cx2,
+        geometry.points.cy2,
+        geometry.points.x1,
+        geometry.points.y1
+      );
+    }
     pulseLayer.appendChild(
       svgElement("circle", {
         cx: pulsePoint.x,
@@ -2084,7 +2362,17 @@ function renderProcessMap(nodes, edges) {
   const activeFrame = currentAnimationFrameData();
   const hasAnimationOverlay = Boolean(activeFrame);
 
-  const layout = computeProcessLayout(simplified.nodes, simplified.edges);
+  const layout = computeProcessLayout(simplified.nodes, simplified.edges, {
+    orientation: "ltr",
+    topPad: 300,
+    bottomPad: 280,
+    leftPad: 180,
+    rightPad: 160,
+    minStageGap: 400,
+    stageGapBase: 340,
+    horizontalGap: 500,
+    verticalShift: 20,
+  });
   const width = layout.width;
   const height = layout.height;
   els.processMap.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -2093,10 +2381,11 @@ function renderProcessMap(nodes, edges) {
   const marker = svgElement("marker", {
     id: "process-arrowhead",
     viewBox: "0 0 10 10",
-    refX: 7,
+    refX: 10,
     refY: 5,
-    markerWidth: 6,
-    markerHeight: 6,
+    markerUnits: "userSpaceOnUse",
+    markerWidth: 27,
+    markerHeight: 27,
     orient: "auto-start-reverse",
   });
   marker.appendChild(
@@ -2131,13 +2420,13 @@ function renderProcessMap(nodes, edges) {
   const nodesLayer = svgElement("g");
 
   for (let stage = 0; stage <= layout.maxStage; stage += 1) {
-    const y = layout.stageYs.get(stage) || height / 2;
+    const x = layout.stageXs.get(stage) || width / 2;
     guidesLayer.appendChild(
       svgElement("line", {
-        x1: 34,
-        y1: y,
-        x2: width - 34,
-        y2: y,
+        x1: x,
+        y1: 34,
+        x2: x,
+        y2: height - 34,
         stroke: "rgba(0, 0, 0, 0.06)",
         "stroke-width": 1,
       })
@@ -2145,21 +2434,22 @@ function renderProcessMap(nodes, edges) {
   }
 
   const anchorFill = "rgba(0, 51, 153, 0.1)";
+  const pillW = 110, pillH = 40, pillR = 20;
   const startRect = svgElement("rect", {
-    x: layout.topAnchor.x - 48,
-    y: layout.topAnchor.y - 16,
-    width: 96,
-    height: 28,
-    rx: 14,
+    x: layout.leftAnchor.x - pillW / 2,
+    y: layout.leftAnchor.y - pillH / 2,
+    width: pillW,
+    height: pillH,
+    rx: pillR,
     fill: anchorFill,
     stroke: "rgba(0, 51, 153, 0.24)",
   });
   const endRect = svgElement("rect", {
-    x: layout.bottomAnchor.x - 48,
-    y: layout.bottomAnchor.y - 12,
-    width: 96,
-    height: 28,
-    rx: 14,
+    x: layout.rightAnchor.x - pillW / 2,
+    y: layout.rightAnchor.y - pillH / 2,
+    width: pillW,
+    height: pillH,
+    rx: pillR,
     fill: anchorFill,
     stroke: "rgba(0, 51, 153, 0.24)",
   });
@@ -2167,10 +2457,11 @@ function renderProcessMap(nodes, edges) {
   anchorLayer.appendChild(endRect);
 
   const startLabel = svgElement("text", {
-    x: layout.topAnchor.x,
-    y: layout.topAnchor.y + 2,
+    x: layout.leftAnchor.x,
+    y: layout.leftAnchor.y,
     "text-anchor": "middle",
-    "font-size": 12,
+    "dominant-baseline": "central",
+    "font-size": 25,
     "font-family": "IBM Plex Mono, monospace",
     fill: "#1258ff",
   });
@@ -2178,10 +2469,11 @@ function renderProcessMap(nodes, edges) {
   anchorLayer.appendChild(startLabel);
 
   const endLabel = svgElement("text", {
-    x: layout.bottomAnchor.x,
-    y: layout.bottomAnchor.y + 6,
+    x: layout.rightAnchor.x,
+    y: layout.rightAnchor.y,
     "text-anchor": "middle",
-    "font-size": 12,
+    "dominant-baseline": "central",
+    "font-size": 25,
     "font-family": "IBM Plex Mono, monospace",
     fill: "#1258ff",
   });
@@ -2201,10 +2493,10 @@ function renderProcessMap(nodes, edges) {
       }
       const strength = Math.max(Number(node.start_count || 0) / topStartCount, 0.08);
       const path = svgElement("path", {
-        d: `M ${layout.topAnchor.x} ${layout.topAnchor.y + 12}
-          C ${layout.topAnchor.x} ${layout.topAnchor.y + 48},
-            ${point.x} ${point.y - point.height / 2 - 52},
-            ${point.x} ${point.y - point.height / 2}`,
+        d: `M ${layout.leftAnchor.x + 55} ${layout.leftAnchor.y}
+          C ${layout.leftAnchor.x + 110} ${layout.leftAnchor.y},
+            ${point.x - point.width / 2 - 52} ${point.y},
+            ${point.x - point.width / 2} ${point.y}`,
         fill: "none",
         stroke: FLOW_COLORS.anchorStroke(0.42 + strength * 0.42),
         "stroke-width": 1.4 + strength * 5.4,
@@ -2223,10 +2515,10 @@ function renderProcessMap(nodes, edges) {
       }
       const strength = Math.max(Number(node.end_count || 0) / topEndCount, 0.08);
       const path = svgElement("path", {
-        d: `M ${point.x} ${point.y + point.height / 2}
-          C ${point.x} ${point.y + point.height / 2 + 52},
-            ${layout.bottomAnchor.x} ${layout.bottomAnchor.y - 44},
-            ${layout.bottomAnchor.x} ${layout.bottomAnchor.y}`,
+        d: `M ${point.x + point.width / 2} ${point.y}
+          C ${point.x + point.width / 2 + 52} ${point.y},
+            ${layout.rightAnchor.x - 110} ${layout.rightAnchor.y},
+            ${layout.rightAnchor.x - 55} ${layout.rightAnchor.y}`,
         fill: "none",
         stroke: FLOW_COLORS.anchorStroke(0.4 + strength * 0.42),
         "stroke-width": 1.4 + strength * 5.4,
@@ -2236,6 +2528,12 @@ function renderProcessMap(nodes, edges) {
       edgesLayer.appendChild(path);
     });
 
+  const allProcessPos = [...positionedNodes.values()];
+  const processNodeBounds = {
+    minNodeY: Math.min(...allProcessPos.map((n) => n.y - n.height / 2)),
+    maxNodeY: Math.max(...allProcessPos.map((n) => n.y + n.height / 2)),
+  };
+
   simplified.edges.slice(0, 260).forEach((edge, index) => {
     const source = positionedNodes.get(edge.source);
     const target = positionedNodes.get(edge.target);
@@ -2243,7 +2541,7 @@ function renderProcessMap(nodes, edges) {
       return;
     }
 
-    const geometry = processEdgeGeometry(edge, source, target, width);
+    const geometry = processEdgeGeometry(edge, source, target, height, "ltr", processNodeBounds);
     const edgeKey = processEdgeKey(edge.source, edge.target);
     const activeCount = hasAnimationOverlay ? activeFrame.edgeCounts.get(edgeKey) || 0 : 0;
     const activityIntensity = hasAnimationOverlay
@@ -2313,22 +2611,12 @@ function renderProcessMap(nodes, edges) {
     }
 
     if (index < 26) {
-      const labelPoint = cubicBezierPoint(
-        0.5,
-        geometry.points.x0,
-        geometry.points.y0,
-        geometry.points.cx1,
-        geometry.points.cy1,
-        geometry.points.cx2,
-        geometry.points.cy2,
-        geometry.points.x1,
-        geometry.points.y1
-      );
+      const labelPoint = geometryMidpoint(geometry);
       const label = svgElement("text", {
         x: labelPoint.x,
-        y: labelPoint.y - 4,
+        y: labelPoint.y - 28,
         "text-anchor": "middle",
-        "font-size": 12,
+        "font-size": 25,
         "font-family": "IBM Plex Mono, monospace",
         fill:
           state.mode === "performance" && durationHeat > 0.5
@@ -2377,7 +2665,7 @@ function renderProcessMap(nodes, edges) {
     const textColor = isPerformanceMode
       ? durationHeat > 0.64
         ? "#ffffff"
-        : "#20170e"
+        : "#08152a"
       : frequencyScale > 0.62
         ? "#ffffff"
         : "#08152a";
@@ -2414,23 +2702,30 @@ function renderProcessMap(nodes, edges) {
       })
     );
 
-    const label = svgElement("text", {
-      x: point.x,
-      y: point.y - 4,
+    const labelLines = wrapActivityLabel(node.label || "", point.width, 30);
+    const lineH = 36;
+    const statGap = 46;
+    const firstLabelY = Math.round(point.y - ((labelLines.length - 1) * lineH + statGap - 10) / 2);
+    const statY = firstLabelY + (labelLines.length - 1) * lineH + statGap;
+    const labelEl = svgElement("text", {
       "text-anchor": "middle",
-      "font-size": 12,
+      "font-size": 30,
       "font-family": "Space Grotesk, sans-serif",
       "font-weight": 700,
       fill: textColor,
     });
-    label.textContent = truncateProcessLabel(node.label, 20);
-    group.appendChild(label);
+    labelLines.forEach((line, i) => {
+      const tspan = svgElement("tspan", { x: point.x, y: firstLabelY + i * lineH });
+      tspan.textContent = line;
+      labelEl.appendChild(tspan);
+    });
+    group.appendChild(labelEl);
 
     const stat = svgElement("text", {
       x: point.x,
-      y: point.y + 13,
+      y: statY,
       "text-anchor": "middle",
-      "font-size": 11,
+      "font-size": 25,
       "font-family": "IBM Plex Mono, monospace",
       fill: textColor,
     });
@@ -2449,7 +2744,7 @@ function renderProcessMap(nodes, edges) {
     group.appendChild(stat);
 
     appendSvgTitle(
-      label,
+      labelEl,
       `${node.label}\nEvents: ${formatNumber(node.frequency)}\nTotal activity duration: ${formatDuration(node.total_duration_seconds)}\nStart in case: ${formatNumber(node.start_count)}\nEnd in case: ${formatNumber(node.end_count)}`
     );
     nodesLayer.appendChild(group);
@@ -2490,10 +2785,11 @@ function renderGenericNetwork(nodes, edges, options = {}) {
   const marker = svgElement("marker", {
     id: "generic-arrowhead",
     viewBox: "0 0 10 10",
-    refX: 7,
+    refX: 10,
     refY: 5,
-    markerWidth: 6,
-    markerHeight: 6,
+    markerUnits: "userSpaceOnUse",
+    markerWidth: 14,
+    markerHeight: 14,
     orient: "auto-start-reverse",
   });
   marker.appendChild(
@@ -2531,15 +2827,16 @@ function renderGenericNetwork(nodes, edges, options = {}) {
   const layout = computeProcessLayout(simplified.nodes, simplified.edges, {
     minWidth: viewKey === "handoff_actor" ? 980 : 1320,
     minHeight: viewKey === "handoff_actor" ? 620 : 900,
-    topPad: viewKey === "handoff_activity" ? 190 : 142,
-    bottomPad: viewKey === "handoff_activity" ? 130 : 102,
+    topPad: viewKey === "handoff_activity" ? 260 : 210,
+    bottomPad: viewKey === "handoff_activity" ? 160 : 130,
     leftPad: viewKey === "handoff_actor" ? 72 : 110,
     rightPad: viewKey === "handoff_actor" ? 72 : 110,
-    horizontalGap: viewKey === "handoff_actor" ? 44 : 58,
+    horizontalGap: viewKey === "handoff_actor" ? 80 : 100,
     minStageGap: viewKey === "handoff_actor" ? 120 : 156,
     stageGapBase: viewKey === "handoff_actor" ? 96 : 118,
     extraWidth: viewKey === "handoff_actor" ? 80 : 140,
     protectLoopTop: viewKey === "handoff_activity",
+    nodeHeightOverride: 67,
   });
   const width = layout.width;
   const height = layout.height;
@@ -2552,6 +2849,14 @@ function renderGenericNetwork(nodes, edges, options = {}) {
   );
   const maxEdgeValue = Math.max(
     ...simplified.edges.map((edge) => Number(edge.frequency || 0)),
+    1
+  );
+  const edgeMaxDuration = Math.max(
+    ...simplified.edges.map((edge) => Number(edge.total_duration_seconds || 0)),
+    1
+  );
+  const nodeMaxDuration = Math.max(
+    ...simplified.nodes.map((node) => Number(node.total_duration_seconds || 0)),
     1
   );
   const pulseT = ((state.animation.frameIndex % 16) + 1) / 17;
@@ -2576,6 +2881,12 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     );
   }
 
+  const allHandoffPos = [...positionedNodes.values()];
+  const handoffNodeBounds = {
+    minNodeX: Math.min(...allHandoffPos.map((n) => n.x - n.width / 2)),
+    maxNodeX: Math.max(...allHandoffPos.map((n) => n.x + n.width / 2)),
+  };
+
   simplified.edges.slice(0, 260).forEach((edge, index) => {
     const source = positionedNodes.get(String(edge.source));
     const target = positionedNodes.get(String(edge.target));
@@ -2583,7 +2894,7 @@ function renderGenericNetwork(nodes, edges, options = {}) {
       return;
     }
 
-    const geometry = processEdgeGeometry(edge, source, target, width);
+    const geometry = processEdgeGeometry(edge, source, target, width, "ttb", handoffNodeBounds);
     const edgeKey = processEdgeKey(edge.source, edge.target);
     const activeCount = hasAnimationOverlay ? activeFrame.edgeCounts.get(edgeKey) || 0 : 0;
     const activityIntensity = hasAnimationOverlay
@@ -2591,16 +2902,24 @@ function renderGenericNetwork(nodes, edges, options = {}) {
       : 0;
     const value = Number(edge.frequency || 0);
     const strength = Math.max(value / maxEdgeValue, 0.05);
+    const totalDuration = Number(edge.total_duration_seconds || 0);
+    const durationStrength = Math.max(totalDuration / edgeMaxDuration, 0.05);
+    const edgeStrength = state.mode === "performance" ? durationStrength : strength;
     const isBackbone = simplified.backbone.edgeKeys.has(edgeKey);
     const supportsPathSelection = viewKey === "handoff_activity";
     const isSelected = supportsPathSelection
       ? isSelectedMapPath(edge.source, edge.target, "handoff_activity")
       : false;
 
-    let strokeWidth = 1.2 + strength * 10 + (isBackbone ? 1.2 : 0);
-    let strokeColor = isBackbone
-      ? FLOW_COLORS.backboneStroke(0.62 + strength * 0.32)
-      : FLOW_COLORS.secondaryStroke(0.48 + strength * 0.32);
+    let strokeWidth = 1.2 + edgeStrength * 10 + (isBackbone ? 1.2 : 0);
+    let strokeColor = state.mode === "performance"
+      ? twoStopHeat(
+          FLOW_COLORS.performanceEdgeLow,
+          FLOW_COLORS.performanceEdgeMid,
+          FLOW_COLORS.performanceEdgeHigh,
+          durationStrength
+        )
+      : twoStopHeat(FLOW_COLORS.frequencyEdgeLow, FLOW_COLORS.frequencyEdgeMid, FLOW_COLORS.frequencyEdgeHigh, strength);
     let opacity = isBackbone ? 0.97 : 0.9;
 
     if (hasAnimationOverlay) {
@@ -2649,17 +2968,7 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     }
 
     if (index < 26) {
-      const labelPoint = cubicBezierPoint(
-        0.5,
-        geometry.points.x0,
-        geometry.points.y0,
-        geometry.points.cx1,
-        geometry.points.cy1,
-        geometry.points.cx2,
-        geometry.points.cy2,
-        geometry.points.x1,
-        geometry.points.y1
-      );
+      const labelPoint = geometryMidpoint(geometry);
       const text = svgElement("text", {
         x: labelPoint.x,
         y: labelPoint.y - 4,
@@ -2698,8 +3007,21 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     }
 
     const scale = Math.max(Number(node.frequency || 0) / maxNodeFrequency, 0.08);
+    const nodeDuration = Number(node.total_duration_seconds || 0);
+    const durationHeat = clamp(nodeDuration / nodeMaxDuration, 0, 1);
+    const isPerformanceMode = state.mode === "performance";
     const fillOpacity = 0.12 + scale * 0.86;
-    const textColor = fillOpacity > 0.45 ? "#ffffff" : "#001033";
+    const nodeFill = isPerformanceMode
+      ? twoStopHeat(
+          FLOW_COLORS.performanceNodeLow,
+          FLOW_COLORS.performanceNodeMid,
+          FLOW_COLORS.performanceNodeHigh,
+          Math.pow(durationHeat, 0.7)
+        )
+      : twoStopHeat(FLOW_COLORS.frequencyNodeLow, FLOW_COLORS.frequencyNodeMid, FLOW_COLORS.frequencyNodeHigh, Math.pow(scale, 0.7));
+    const textColor = isPerformanceMode
+      ? durationHeat > 0.64 ? "#ffffff" : "#08152a"
+      : Math.pow(scale, 0.7) > 0.5 ? "#ffffff" : "#001033";
     const isActivityView = viewKey === "handoff_activity";
     const isActorView = viewKey === "handoff_actor";
     const isSelected = isActivityView
@@ -2737,7 +3059,7 @@ function renderGenericNetwork(nodes, edges, options = {}) {
         width: point.width,
         height: point.height,
         rx: 12,
-        fill: `rgba(0, 51, 153, ${fillOpacity})`,
+        fill: nodeFill,
         stroke: isSelected ? "#000000" : "rgba(0, 51, 153, 0.34)",
         "stroke-width": isSelected ? 3 : 1.6,
       })
@@ -2785,9 +3107,10 @@ function renderGenericNetwork(nodes, edges, options = {}) {
   applyMapZoom();
 }
 
-function bpmnOrthogonalPath(points) {
+function bpmnOrthogonalPath(points, orientation = "ttb") {
   // BPMN diagrams read better with elbow connectors than free-form curves.
   // Each segment turns halfway between waypoints so branch lines remain tidy.
+  // LTR mode bends at a midpoint X (horizontal first, then vertical).
   if (!points.length) {
     return "";
   }
@@ -2799,8 +3122,13 @@ function bpmnOrthogonalPath(points) {
       d += ` L ${next.x} ${next.y}`;
       continue;
     }
-    const midY = (previous.y + next.y) / 2;
-    d += ` L ${previous.x} ${midY} L ${next.x} ${midY} L ${next.x} ${next.y}`;
+    if (orientation === "ltr") {
+      const midX = (previous.x + next.x) / 2;
+      d += ` L ${midX} ${previous.y} L ${midX} ${next.y} L ${next.x} ${next.y}`;
+    } else {
+      const midY = (previous.y + next.y) / 2;
+      d += ` L ${previous.x} ${midY} L ${next.x} ${midY} L ${next.x} ${next.y}`;
+    }
   }
   return d;
 }
@@ -2823,9 +3151,11 @@ function bpmnGatewayDiamond(gateway) {
   return `${gateway.x} ${gateway.y - size} ${gateway.x + size} ${gateway.y} ${gateway.x} ${gateway.y + size} ${gateway.x - size} ${gateway.y}`;
 }
 
-function computeBpmnGateways(positionedNodes, edges) {
+function computeBpmnGateways(positionedNodes, edges, orientation = "ttb") {
   // Gateways are inferred from visible variation: multiple outgoing paths form
   // an XOR split, and multiple incoming paths form a merge before the task.
+  // In LTR mode, split gateways appear to the right of source nodes and merge
+  // gateways appear to the left of target nodes.
   const outgoing = new Map();
   const incoming = new Map();
   positionedNodes.forEach((node, nodeId) => {
@@ -2837,6 +3167,7 @@ function computeBpmnGateways(positionedNodes, edges) {
     incoming.get(edge.target)?.push(edge);
   });
 
+  const isLTR = orientation === "ltr";
   const split = new Map();
   const merge = new Map();
   outgoing.forEach((items, nodeId) => {
@@ -2850,8 +3181,8 @@ function computeBpmnGateways(positionedNodes, edges) {
     split.set(nodeId, {
       id: `split::${nodeId}`,
       type: "split",
-      x: node.x,
-      y: node.y + node.height / 2 + 48,
+      x: isLTR ? node.x + node.width / 2 + 48 : node.x,
+      y: isLTR ? node.y : node.y + node.height / 2 + 48,
       degree: items.length,
       frequency: items.reduce((sum, edge) => sum + Number(edge.frequency || 0), 0),
     });
@@ -2867,8 +3198,8 @@ function computeBpmnGateways(positionedNodes, edges) {
     merge.set(nodeId, {
       id: `merge::${nodeId}`,
       type: "merge",
-      x: node.x,
-      y: node.y - node.height / 2 - 48,
+      x: isLTR ? node.x - node.width / 2 - 48 : node.x,
+      y: isLTR ? node.y : node.y - node.height / 2 - 48,
       degree: items.length,
       frequency: items.reduce((sum, edge) => sum + Number(edge.frequency || 0), 0),
     });
@@ -2876,12 +3207,13 @@ function computeBpmnGateways(positionedNodes, edges) {
   return { split, merge };
 }
 
-function bpmnFlowEdgeGeometry(edge, source, target, gateways, width) {
+function bpmnFlowEdgeGeometry(edge, source, target, gateways, dimension, orientation = "ttb") {
   // Loops and backwards paths are still possible in real logs. Reuse the
   // process-map curve for those exceptions; otherwise route through BPMN
   // gateways with orthogonal connectors.
+  const isLTR = orientation === "ltr";
   if (edge.source === edge.target || source.stage >= target.stage) {
-    const fallback = processEdgeGeometry(edge, source, target, width);
+    const fallback = processEdgeGeometry(edge, source, target, dimension, orientation);
     return {
       d: fallback.d,
       labelPoint: cubicBezierPoint(
@@ -2898,9 +3230,9 @@ function bpmnFlowEdgeGeometry(edge, source, target, gateways, width) {
     };
   }
 
-  const points = [
-    { x: source.x, y: source.y + source.height / 2 },
-  ];
+  const points = isLTR
+    ? [{ x: source.x + source.width / 2, y: source.y }]
+    : [{ x: source.x, y: source.y + source.height / 2 }];
   const splitGateway = gateways.split.get(edge.source);
   const mergeGateway = gateways.merge.get(edge.target);
   if (splitGateway) {
@@ -2909,10 +3241,14 @@ function bpmnFlowEdgeGeometry(edge, source, target, gateways, width) {
   if (mergeGateway) {
     points.push({ x: mergeGateway.x, y: mergeGateway.y });
   }
-  points.push({ x: target.x, y: target.y - target.height / 2 });
+  if (isLTR) {
+    points.push({ x: target.x - target.width / 2, y: target.y });
+  } else {
+    points.push({ x: target.x, y: target.y - target.height / 2 });
+  }
 
   return {
-    d: bpmnOrthogonalPath(points),
+    d: bpmnOrthogonalPath(points, orientation),
     labelPoint: bpmnLabelPoint(points),
   };
 }
@@ -2947,14 +3283,18 @@ function renderBpmnFlowDiagram(flowchart) {
   }
 
   const layout = computeProcessLayout(simplified.nodes, simplified.edges, {
-    minWidth: 1540,
-    minHeight: 980,
-    topPad: 170,
-    bottomPad: 170,
-    minStageGap: 178,
-    stageGapBase: 146,
-    horizontalGap: 96,
+    orientation: "ltr",
+    minWidth: 1200,
+    minHeight: 700,
+    topPad: 300,
+    bottomPad: 280,
+    leftPad: 90,
+    rightPad: 90,
+    minStageGap: 400,
+    stageGapBase: 340,
+    horizontalGap: 160,
     protectLoopTop: true,
+    nodeWidthScale: 1.25,
   });
   const width = layout.width;
   const height = layout.height;
@@ -2965,10 +3305,11 @@ function renderBpmnFlowDiagram(flowchart) {
   const marker = svgElement("marker", {
     id: "bpmn-arrowhead",
     viewBox: "0 0 10 10",
-    refX: 7,
+    refX: 10,
     refY: 5,
-    markerWidth: 6,
-    markerHeight: 6,
+    markerUnits: "userSpaceOnUse",
+    markerWidth: 27,
+    markerHeight: 27,
     orient: "auto-start-reverse",
   });
   marker.appendChild(
@@ -2978,7 +3319,7 @@ function renderBpmnFlowDiagram(flowchart) {
   els.processMap.appendChild(defs);
 
   const positionedNodes = layout.positionedNodes;
-  const gateways = computeBpmnGateways(positionedNodes, simplified.edges);
+  const gateways = computeBpmnGateways(positionedNodes, simplified.edges, "ltr");
   const edgeMaxFrequency = Math.max(
     ...simplified.edges.map((edge) => Number(edge.frequency || 0)),
     1
@@ -3004,21 +3345,21 @@ function renderBpmnFlowDiagram(flowchart) {
   const nodeLayer = svgElement("g");
 
   for (let stage = 0; stage <= layout.maxStage; stage += 1) {
-    const y = layout.stageYs.get(stage) || height / 2;
+    const x = layout.stageXs.get(stage) || width / 2;
     backdropLayer.appendChild(
       svgElement("line", {
-        x1: 44,
-        y1: y,
-        x2: width - 44,
-        y2: y,
+        x1: x,
+        y1: 44,
+        x2: x,
+        y2: height - 44,
         stroke: "rgba(0, 0, 0, 0.045)",
         "stroke-width": 1,
       })
     );
   }
 
-  const startEvent = { x: width / 2, y: 58, r: 22 };
-  const endEvent = { x: width / 2, y: height - 58, r: 22 };
+  const startEvent = { x: 58, y: height / 2, r: 22 };
+  const endEvent = { x: width - 58, y: height / 2, r: 22 };
   eventLayer.appendChild(
     svgElement("circle", {
       cx: startEvent.x,
@@ -3040,14 +3381,14 @@ function renderBpmnFlowDiagram(flowchart) {
     })
   );
   [
-    { label: "START", x: startEvent.x, y: startEvent.y + 44, color: "#003399" },
-    { label: "END", x: endEvent.x, y: endEvent.y + 48, color: "#000000" },
+    { label: "START", x: startEvent.x, y: startEvent.y + 54, color: "#003399" },
+    { label: "END", x: endEvent.x, y: endEvent.y + 54, color: "#000000" },
   ].forEach((item) => {
     const text = svgElement("text", {
       x: item.x,
       y: item.y,
       "text-anchor": "middle",
-      "font-size": 12,
+      "font-size": 25,
       "font-family": "IBM Plex Mono, monospace",
       "font-weight": 700,
       fill: item.color,
@@ -3067,9 +3408,9 @@ function renderBpmnFlowDiagram(flowchart) {
       }
       const strength = Math.max(Number(node.start_count || 0) / topStartCount, 0.08);
       const d = bpmnOrthogonalPath([
-        { x: startEvent.x, y: startEvent.y + startEvent.r },
-        { x: target.x, y: target.y - target.height / 2 },
-      ]);
+        { x: startEvent.x + startEvent.r, y: startEvent.y },
+        { x: target.x - target.width / 2, y: target.y },
+      ], "ltr");
       edgeLayer.appendChild(
         svgElement("path", {
           d,
@@ -3090,9 +3431,9 @@ function renderBpmnFlowDiagram(flowchart) {
       }
       const strength = Math.max(Number(node.end_count || 0) / topEndCount, 0.08);
       const d = bpmnOrthogonalPath([
-        { x: source.x, y: source.y + source.height / 2 },
-        { x: endEvent.x, y: endEvent.y - endEvent.r },
-      ]);
+        { x: source.x + source.width / 2, y: source.y },
+        { x: endEvent.x - endEvent.r, y: endEvent.y },
+      ], "ltr");
       edgeLayer.appendChild(
         svgElement("path", {
           d,
@@ -3119,7 +3460,7 @@ function renderBpmnFlowDiagram(flowchart) {
     const strength = state.mode === "performance" ? durationStrength : frequencyStrength;
     const isBackbone = simplified.backbone.edgeKeys.has(processEdgeKey(edge.source, edge.target));
     const isSelected = isSelectedMapPath(edge.source, edge.target, "swimlane");
-    const geometry = bpmnFlowEdgeGeometry(edge, source, target, gateways, width);
+    const geometry = bpmnFlowEdgeGeometry(edge, source, target, gateways, height, "ltr");
     const path = svgElement("path", {
       d: geometry.d,
       fill: "none",
@@ -3135,7 +3476,7 @@ function renderBpmnFlowDiagram(flowchart) {
           : isBackbone
             ? mixColor(FLOW_COLORS.frequencyEdgeLow, FLOW_COLORS.frequencyEdgeHigh, frequencyStrength)
             : mixColor(FLOW_COLORS.frequencyEdgeLow, FLOW_COLORS.frequencyEdgeHigh, frequencyStrength * 0.86),
-      "stroke-width": 1.5 + strength * 10 + (isBackbone ? 1.4 : 0) + (isSelected ? 2.2 : 0),
+      "stroke-width": (1.5 + strength * 10 + (isBackbone ? 1.4 : 0) + (isSelected ? 2.2 : 0)) * 0.65,
       opacity: isBackbone || isSelected ? 0.98 : 0.84,
       "marker-end": "url(#bpmn-arrowhead)",
       "data-map-selectable": "true",
@@ -3159,18 +3500,24 @@ function renderBpmnFlowDiagram(flowchart) {
     if (index < 32) {
       const label = svgElement("text", {
         x: geometry.labelPoint.x,
-        y: geometry.labelPoint.y - 5,
+        y: geometry.labelPoint.y - 36,
         "text-anchor": "middle",
-        "font-size": 12,
+        "font-size": 22,
         "font-family": "IBM Plex Mono, monospace",
         fill: "#111111",
         "data-map-selectable": "true",
       });
       label.style.cursor = "pointer";
-      label.textContent =
-        state.mode === "frequency"
-          ? `${formatNumber(edge.frequency)} (${formatPct(edge.outgoing_share)})`
-          : formatDuration(edge.total_duration_seconds);
+      if (state.mode === "frequency") {
+        const line1 = svgElement("tspan", { x: geometry.labelPoint.x, dy: "0" });
+        line1.textContent = formatNumber(edge.frequency);
+        const line2 = svgElement("tspan", { x: geometry.labelPoint.x, dy: "1.3em" });
+        line2.textContent = formatPct(edge.outgoing_share);
+        label.appendChild(line1);
+        label.appendChild(line2);
+      } else {
+        label.textContent = formatDuration(edge.total_duration_seconds);
+      }
       label.addEventListener("click", (event) => {
         event.stopPropagation();
         setMapSelection({
@@ -3226,7 +3573,7 @@ function renderBpmnFlowDiagram(flowchart) {
     const textColor = isPerformanceMode
       ? durationHeat > 0.64
         ? "#ffffff"
-        : "#20170e"
+        : "#08152a"
       : frequencyScale > 0.62
         ? "#ffffff"
         : "#08152a";
@@ -3266,30 +3613,43 @@ function renderBpmnFlowDiagram(flowchart) {
       })
     );
 
-    const label = svgElement("text", {
-      x: node.x,
-      y: node.y - 8,
+    const labelLines = wrapActivityLabel(node.label || "", node.width, 30);
+    const lineH = 36;
+    const statGap = 38;
+    const firstLabelY = Math.round(node.y - ((labelLines.length - 1) * lineH + statGap + 19 - 17) / 2);
+    const statY = firstLabelY + (labelLines.length - 1) * lineH + statGap;
+    const labelEl = svgElement("text", {
       "text-anchor": "middle",
-      "font-size": 12,
+      "font-size": 30,
       "font-family": "Space Grotesk, sans-serif",
       "font-weight": 700,
       fill: textColor,
     });
-    label.textContent = truncateProcessLabel(node.label, 27);
-    group.appendChild(label);
+    labelLines.forEach((line, i) => {
+      const tspan = svgElement("tspan", { x: node.x, y: firstLabelY + i * lineH });
+      tspan.textContent = line;
+      labelEl.appendChild(tspan);
+    });
+    group.appendChild(labelEl);
 
     const stat = svgElement("text", {
-      x: node.x,
-      y: node.y + 11,
       "text-anchor": "middle",
-      "font-size": 11,
+      "font-size": 25,
       "font-family": "IBM Plex Mono, monospace",
       fill: textColor,
     });
-    stat.textContent =
-      state.mode === "frequency"
-        ? `${formatNumber(node.frequency)} events | ${formatPct(node.case_coverage)} cases`
-        : formatDuration(totalDuration);
+    if (state.mode === "frequency") {
+      const tspan1 = svgElement("tspan", { x: node.x, y: statY });
+      tspan1.textContent = `${formatNumber(node.frequency)} events`;
+      const tspan2 = svgElement("tspan", { x: node.x, y: statY + 24 });
+      tspan2.textContent = `${formatPct(node.case_coverage)} cases`;
+      stat.appendChild(tspan1);
+      stat.appendChild(tspan2);
+    } else {
+      const tspan1 = svgElement("tspan", { x: node.x, y: statY });
+      tspan1.textContent = formatDuration(totalDuration);
+      stat.appendChild(tspan1);
+    }
     group.appendChild(stat);
 
     appendSvgTitle(
@@ -3306,9 +3666,9 @@ function renderBpmnFlowDiagram(flowchart) {
   els.processMap.appendChild(backdropLayer);
   els.processMap.appendChild(edgeLayer);
   els.processMap.appendChild(gatewayLayer);
-  els.processMap.appendChild(labelLayer);
   els.processMap.appendChild(eventLayer);
   els.processMap.appendChild(nodeLayer);
+  els.processMap.appendChild(labelLayer);
   applyMapZoom();
 }
 
@@ -3326,9 +3686,9 @@ function renderSankeyDiagram(sankey) {
   els.processMap.setAttribute("viewBox", `0 0 ${width} ${height}`);
   els.processMap.style.aspectRatio = `${width} / ${height}`;
   const topPad = 24;
-  const bottomPad = 24;
-  const leftPad = 40;
-  const rightPad = 40;
+  const bottomPad = 70;
+  const leftPad = 100;
+  const rightPad = 100;
 
   const maxStage = Math.max(...sankey.nodes.map((node) => Number(node.stage || 0)), 0);
   const stageGroups = new Map();
@@ -3350,7 +3710,7 @@ function renderSankeyDiagram(sankey) {
     const count = Math.max(group.length, 1);
     group.forEach((node, index) => {
       const y = topPad + ((index + 0.5) * (height - topPad - bottomPad)) / count;
-      nodeCoords.set(node.id, { x, y, node });
+      nodeCoords.set(node.id, { x, y, node, stage });
     });
   });
 
@@ -3369,14 +3729,14 @@ function renderSankeyDiagram(sankey) {
     const path = svgElement("path", {
       d: `M ${source.x + 14} ${source.y} C ${source.x + 120} ${source.y}, ${target.x - 120} ${target.y}, ${target.x - 14} ${target.y}`,
       fill: "none",
-      stroke: FLOW_COLORS.secondaryStroke(0.42 + strength * 0.38),
+      stroke: twoStopHeat(FLOW_COLORS.frequencyEdgeLow, FLOW_COLORS.frequencyEdgeMid, FLOW_COLORS.frequencyEdgeHigh, strength),
       "stroke-width": 1 + strength * 16,
       opacity: 0.7 + strength * 0.22,
     });
     edgeLayer.appendChild(path);
   });
 
-  nodeCoords.forEach(({ x, y, node }) => {
+  nodeCoords.forEach(({ x, y, node, stage }) => {
     nodeLayer.appendChild(
       svgElement("rect", {
         x: x - 14,
@@ -3384,20 +3744,29 @@ function renderSankeyDiagram(sankey) {
         width: 28,
         height: 36,
         rx: 5,
-        fill: "#003399",
+        fill: "#0A7CC1",
         stroke: "#ffffff",
         "stroke-width": 2,
       })
     );
+    const isFirst = stage === 0;
+    const isLast = stage === maxStage;
+    const anchor = isFirst ? "start" : isLast ? "end" : "middle";
+    const labelX = isFirst ? x - 14 : isLast ? x + 14 : x;
     const label = svgElement("text", {
-      x,
+      x: labelX,
       y: y + 30,
-      "text-anchor": "middle",
+      "text-anchor": anchor,
       "font-size": 11,
       "font-family": "IBM Plex Mono, monospace",
       fill: "#000000",
     });
-    label.textContent = `${node.label} (${formatNumber(node.frequency || 0)})`;
+    const nameLine = svgElement("tspan", { x: labelX, dy: "0" });
+    nameLine.textContent = node.label;
+    const countLine = svgElement("tspan", { x: labelX, dy: "1.3em" });
+    countLine.textContent = `(${formatNumber(node.frequency || 0)})`;
+    label.appendChild(nameLine);
+    label.appendChild(countLine);
     labelLayer.appendChild(label);
   });
 
@@ -3447,7 +3816,7 @@ function renderReworkDiagram(rework) {
         width: Math.max(widthScale, 2),
         height: 24,
         rx: 6,
-        fill: `rgba(0, 51, 153, ${0.24 + intensity * 0.5})`,
+        fill: twoStopHeat(FLOW_COLORS.frequencyNodeLow, FLOW_COLORS.frequencyNodeMid, FLOW_COLORS.frequencyNodeHigh, intensity),
         opacity: 0.86,
       })
     );
@@ -3600,9 +3969,9 @@ function renderQueueAgeHeatmap(heatmap) {
         height: Math.max(rowHeight - 8, 1),
         rx: 10,
         fill: cell
-          ? `rgba(0, 51, 153, ${0.16 + intensity * 0.72})`
+          ? twoStopHeat(FLOW_COLORS.frequencyNodeLow, FLOW_COLORS.frequencyNodeMid, FLOW_COLORS.frequencyNodeHigh, intensity)
           : "rgba(0,0,0,0.035)",
-        stroke: cell ? "rgba(0,51,153,0.18)" : "rgba(0,0,0,0.05)",
+        stroke: cell ? "#8ACFF9" : "rgba(0,0,0,0.05)",
         "stroke-width": 1,
       });
       appendSvgTitle(
@@ -3746,7 +4115,7 @@ function renderReworkTreemap(treemap) {
       width: rectWidth,
       height: rectHeight,
       rx: 16,
-      fill: `rgba(0, 51, 153, ${0.26 + intensity * 0.64})`,
+      fill: twoStopHeat(FLOW_COLORS.frequencyNodeLow, FLOW_COLORS.frequencyNodeMid, FLOW_COLORS.frequencyNodeHigh, intensity),
       stroke: "rgba(255,255,255,0.92)",
       "stroke-width": 2,
     });
@@ -3882,7 +4251,7 @@ function renderVariantDurationBoxplot(boxplot) {
           width: width - 44,
           height: Math.max(rowHeight - 4, 1),
           rx: 10,
-          fill: "rgba(0,51,153,0.035)",
+          fill: "rgba(197,231,252,0.22)",
         })
       );
     }
@@ -3915,7 +4284,7 @@ function renderVariantDurationBoxplot(boxplot) {
       y1: centerY,
       x2: maxX,
       y2: centerY,
-      stroke: FLOW_COLORS.secondaryStroke(0.82),
+      stroke: "#0A7CC1",
       "stroke-width": 4,
       "stroke-linecap": "round",
     });
@@ -3937,7 +4306,7 @@ function renderVariantDurationBoxplot(boxplot) {
           y1: centerY - boxHeight / 2,
           x2: x,
           y2: centerY + boxHeight / 2,
-          stroke: FLOW_COLORS.secondaryStroke(0.88),
+          stroke: "#0A7CC1",
           "stroke-width": 2,
         })
       );
@@ -3950,7 +4319,7 @@ function renderVariantDurationBoxplot(boxplot) {
         width: Math.max(Math.abs(q3X - q1X), 5),
         height: boxHeight,
         rx: 8,
-        fill: "rgba(0, 51, 153, 0.74)",
+        fill: "#0A7CC1",
         stroke: "#ffffff",
         "stroke-width": 2,
       })
@@ -4211,6 +4580,7 @@ function renderCurrentMap() {
   const hasAnimationFrames = animatedView && state.animation.frames.length > 0;
   els.toggleAnimation.disabled = !hasAnimationFrames;
   els.rewindAnimation.disabled = !hasAnimationFrames;
+  els.restartAnimation.disabled = !hasAnimationFrames;
   els.animationFrame.disabled = !hasAnimationFrames;
   els.animationSpeed.disabled = !hasAnimationFrames;
   if (els.activityDetail) {
@@ -4310,7 +4680,7 @@ function stopAnimation(options = {}) {
   if (hideOverlay) {
     state.animation.overlayVisible = false;
   }
-  els.toggleAnimation.textContent = "Play Animation";
+  els.toggleAnimation.innerHTML = '<svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg>Play Animation';
   updateMapZoomControls();
   if (rerender && state.dashboard) {
     renderCurrentMap();
@@ -4382,7 +4752,7 @@ function startAnimation() {
   stopAnimation({ hideOverlay: false });
   state.animation.overlayVisible = true;
   state.animation.isPlaying = true;
-  els.toggleAnimation.textContent = "Pause Animation";
+  els.toggleAnimation.innerHTML = '<svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><rect x="1.5" y="1" width="2.5" height="8" fill="currentColor"/><rect x="6" y="1" width="2.5" height="8" fill="currentColor"/></svg>Pause Animation';
   updateMapZoomControls();
   renderCurrentMap();
 
@@ -4396,7 +4766,7 @@ function startAnimation() {
 
 function toggleAnimation() {
   if (state.animation.isPlaying) {
-    stopAnimation({ hideOverlay: true, rerender: true });
+    stopAnimation({ hideOverlay: false, rerender: true });
     return;
   }
   startAnimation();
@@ -4860,9 +5230,11 @@ async function loadProjectLogs(projectId) {
         const row = document.createElement("div");
         row.className = "project-log-row";
         const uploadedAt = new Date(log.uploaded_at).toLocaleString();
+        row.dataset.logId = log.log_id;
         row.innerHTML = `
           <span class="log-filename">${log.filename}</span>
           <span class="log-date">${uploadedAt}</span>
+          <span class="log-active-badge hidden">Active</span>
           <button class="btn-ghost btn-sm" data-log-id="${log.log_id}">Load</button>
         `;
         row.querySelector("button").addEventListener("click", () =>
@@ -4903,9 +5275,30 @@ async function reloadLogFromProject(logId, filename) {
 
     els.dashboard.classList.remove("hidden");
     setStatus(`Loaded ${filename}. Cases: ${formatNumber(data.summary.total_cases)}, Events: ${formatNumber(data.summary.total_events)}.`);
-    setProjectStatus(`Active log: ${filename}`);
+    setProjectStatus(`Loading dashboard for ${filename}…`);
 
     await loadDashboard();
+
+    // Mark the active log row and clear any previous active state
+    document.querySelectorAll(".project-log-row").forEach((r) => {
+      r.classList.remove("active-log");
+      const badge = r.querySelector(".log-active-badge");
+      if (badge) badge.classList.add("hidden");
+    });
+    const activeRow = document.querySelector(`.project-log-row[data-log-id="${logId}"]`);
+    if (activeRow) {
+      activeRow.classList.add("active-log");
+      const badge = activeRow.querySelector(".log-active-badge");
+      if (badge) badge.classList.remove("hidden");
+    }
+
+    setProjectStatus(`${filename} loaded — dashboard updated below.`);
+
+    // Scroll the dashboard into view so the user sees the updated analysis
+    setTimeout(() => {
+      els.dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+
   } catch (error) {
     setStatus(error.message || "Failed to reload log.", true);
     setProjectStatus(error.message || "Failed to reload log.", true);
@@ -5183,6 +5576,14 @@ els.rewindAnimation.addEventListener("click", () => {
   els.animationFrame.value = "0";
   updateAnimationTimeLabel();
   renderCurrentMap();
+});
+
+els.restartAnimation.addEventListener("click", () => {
+  stopAnimation({ hideOverlay: false });
+  state.animation.frameIndex = 0;
+  els.animationFrame.value = "0";
+  updateAnimationTimeLabel();
+  startAnimation();
 });
 
 els.animationSpeed.addEventListener("change", () => {
