@@ -1368,6 +1368,38 @@ function waypointPoint(t, waypoints) {
   return waypoints[waypoints.length - 1];
 }
 
+// Like waypointPoint but also returns the unit tangent (tx, ty) of the segment
+// containing parameter t. Used to compute outward perpendicular offsets for labels.
+function waypointMidTangent(t, waypoints) {
+  if (waypoints.length < 2) return { x: (waypoints[0] || { x: 0 }).x, y: (waypoints[0] || { y: 0 }).y, tx: 0, ty: 1 };
+  let totalLen = 0;
+  const segLens = [];
+  for (let i = 1; i < waypoints.length; i++) {
+    const dx = waypoints[i].x - waypoints[i - 1].x;
+    const dy = waypoints[i].y - waypoints[i - 1].y;
+    segLens.push(Math.sqrt(dx * dx + dy * dy));
+    totalLen += segLens[segLens.length - 1];
+  }
+  if (totalLen === 0) return { x: waypoints[0].x, y: waypoints[0].y, tx: 0, ty: 1 };
+  const tgt = t * totalLen;
+  let cum = 0;
+  for (let i = 0; i < segLens.length; i++) {
+    if (tgt <= cum + segLens[i] + 0.001) {
+      const len = segLens[i] || 1;
+      const segT = len > 0 ? Math.min((tgt - cum) / len, 1) : 0;
+      const dx = waypoints[i + 1].x - waypoints[i].x;
+      const dy = waypoints[i + 1].y - waypoints[i].y;
+      return { x: waypoints[i].x + segT * dx, y: waypoints[i].y + segT * dy, tx: dx / len, ty: dy / len };
+    }
+    cum += segLens[i];
+  }
+  const last = waypoints.length - 1;
+  const dx = waypoints[last].x - waypoints[last - 1].x;
+  const dy = waypoints[last].y - waypoints[last - 1].y;
+  const len = segLens[segLens.length - 1] || 1;
+  return { x: waypoints[last].x, y: waypoints[last].y, tx: dx / len, ty: dy / len };
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -2286,6 +2318,63 @@ function geometryMidpoint(geometry) {
   return cubicBezierPoint(0.5, p.x0, p.y0, p.cx1, p.cy1, p.cx2, p.cy2, p.x1, p.y1);
 }
 
+// Label position at arc midpoint offset to the convex (outer) side of the bend.
+// For elbow paths: picks the perpendicular normal that points away from the
+// straight-line source→target vector (negative dot product = outward/convex).
+// For bezier arcs: keeps the existing above-apex placement.
+function geometryLabelPosition(geometry, source, target, offsetPx) {
+  if (geometry.waypoints) {
+    const { x, y, tx, ty } = waypointMidTangent(0.5, geometry.waypoints);
+    const n1x = -ty, n1y = tx;
+    const n2x = ty, n2y = -tx;
+    const sdx = target.x - source.x;
+    const sdy = target.y - source.y;
+    const useN1 = (n1x * sdx + n1y * sdy) <= 0;
+    return { x: x + (useN1 ? n1x : n2x) * offsetPx, y: y + (useN1 ? n1y : n2y) * offsetPx, textAnchor: "middle" };
+  }
+  const mid = geometryMidpoint(geometry);
+  return { x: mid.x, y: mid.y - offsetPx, textAnchor: "middle" };
+}
+
+function estimateLabelWidth(text, fontSize) {
+  return text.length * fontSize * 0.61;
+}
+
+// Greedy vertical lane de-collision for edge labels sharing the same horizontal
+// corridor. Items must have { x, y, yOffset, text, fontSize, textAnchor }. Mutates yOffset.
+function resolveEdgeLabelCollisions(items) {
+  const LANE_OFFSETS = [0, -13, 13, -26, 26, -39, 39, -52, 52];
+  const corridors = new Map();
+  items.forEach((item) => {
+    const key = Math.round(item.y);
+    if (!corridors.has(key)) corridors.set(key, []);
+    corridors.get(key).push(item);
+  });
+  corridors.forEach((group) => {
+    group.sort((a, b) => {
+      const leftEdge = (i) => {
+        const w = estimateLabelWidth(i.text, i.fontSize);
+        return i.textAnchor === "start" ? i.x : i.x - w / 2;
+      };
+      return leftEdge(a) - leftEdge(b);
+    });
+    const laneRightX = new Map();
+    group.forEach((item) => {
+      const w = estimateLabelWidth(item.text, item.fontSize);
+      const xMin = item.textAnchor === "start" ? item.x - 6 : item.x - w / 2 - 6;
+      const xMax = item.textAnchor === "start" ? item.x + w + 6 : item.x + w / 2 + 6;
+      for (const offset of LANE_OFFSETS) {
+        if ((laneRightX.get(offset) ?? -Infinity) <= xMin) {
+          laneRightX.set(offset, xMax);
+          item.yOffset = offset;
+          return;
+        }
+      }
+      item.yOffset = LANE_OFFSETS[LANE_OFFSETS.length - 1];
+    });
+  });
+}
+
 function appendSvgTitle(element, text) {
   const title = svgElement("title");
   title.textContent = text;
@@ -2351,9 +2440,7 @@ function renderProcessMap(nodes, edges) {
     return;
   }
 
-  const simplified = simplifyProcessGraph(nodes, edges, {
-    preserveEdgeKeys: currentAnimationEdgeKeys(),
-  });
+  const simplified = simplifyProcessGraph(nodes, edges, {});
   if (!simplified.nodes.length || !simplified.edges.length) {
     setProcessMapSummary("The current activity/path detail settings hide all visible flows.");
     renderEmptyMap("Raise activity or path detail to show flows.");
@@ -2385,8 +2472,8 @@ function renderProcessMap(nodes, edges) {
     refX: 10,
     refY: 5,
     markerUnits: "userSpaceOnUse",
-    markerWidth: 27,
-    markerHeight: 27,
+    markerWidth: 20,
+    markerHeight: 20,
     orient: "auto-start-reverse",
   });
   marker.appendChild(
@@ -2540,6 +2627,12 @@ function renderProcessMap(nodes, edges) {
     minNodeX: Math.min(...allProcessPos.map((n) => n.x - n.width / 2)),
     maxNodeX: Math.max(...allProcessPos.map((n) => n.x + n.width / 2)),
   };
+  const edgeLabelItems = [];
+  const sourceOutDegreeProcess = new Map();
+  simplified.edges.slice(0, 260).forEach((edge) => {
+    const k = String(edge.source);
+    sourceOutDegreeProcess.set(k, (sourceOutDegreeProcess.get(k) || 0) + 1);
+  });
 
   simplified.edges.slice(0, 260).forEach((edge, index) => {
     const source = positionedNodes.get(edge.source);
@@ -2618,38 +2711,25 @@ function renderProcessMap(nodes, edges) {
     }
 
     if (index < 26) {
-      const labelX = Math.max(source.x, target.x) + 23;
-      const labelY = (source.y + source.height / 2 + target.y - target.height / 2) / 2;
-      const label = svgElement("text", {
-        x: labelX,
-        y: labelY,
-        "text-anchor": "start",
-        "dominant-baseline": "central",
-        "font-size": 18,
-        "font-family": "IBM Plex Mono, monospace",
-        fill:
-          state.mode === "performance" && durationHeat > 0.5
-            ? FLOW_COLORS.performanceEdgeHigh
-            : "#111111",
-        "data-map-selectable": "true",
-      });
-      label.style.cursor = "pointer";
-      label.addEventListener("click", (event) => {
-        event.stopPropagation();
-        setMapSelection({
-          type: "path",
-          view: "process",
-          source: String(edge.source),
-          target: String(edge.target),
-        });
-      });
-      label.textContent =
+      const text =
         state.mode === "frequency"
           ? hasAnimationOverlay
             ? `${formatNumber(activeCount)} / ${formatNumber(edge.frequency)}`
             : formatNumber(edge.frequency)
           : formatDuration(edge.total_duration_seconds);
-      labelsLayer.appendChild(label);
+      let lx, ly, textAnchor;
+      const isSplit = (sourceOutDegreeProcess.get(String(edge.source)) || 0) > 1;
+      if (isSplit || !geometry.waypoints) {
+        // Split source or curved arc: place label at midpoint offset to convex side.
+        const pos = geometryLabelPosition(geometry, source, target, 15);
+        lx = pos.x; ly = pos.y; textAnchor = pos.textAnchor;
+      } else {
+        // Single arrow, straight/elbow: label to the right, clear of the arrow.
+        lx = Math.max(source.x, target.x) + 23;
+        ly = (source.y + source.height / 2 + target.y - target.height / 2) / 2;
+        textAnchor = "start";
+      }
+      edgeLabelItems.push({ x: lx, y: ly, yOffset: 0, text, fontSize: 18, textAnchor, edge, source, target, durationHeat });
     }
   });
 
@@ -2763,12 +2843,37 @@ function renderProcessMap(nodes, edges) {
     `Showing ${formatNumber(simplified.nodes.length)} of ${formatNumber(simplified.totalNodeCount)} activities and ${formatNumber(simplified.edges.length)} of ${formatNumber(simplified.totalEdgeCount)} paths. Dominant flow backbone is always preserved while activity/path detail sliders simplify the map.`
   );
 
+  resolveEdgeLabelCollisions(edgeLabelItems);
+  edgeLabelItems.forEach(({ x, y, yOffset, text, textAnchor, edge, source, target, durationHeat }) => {
+    const ly = y + yOffset;
+    const label = svgElement("text", {
+      x,
+      y: ly,
+      "text-anchor": textAnchor,
+      "dominant-baseline": "central",
+      "font-size": 18,
+      "font-family": "IBM Plex Mono, monospace",
+      fill:
+        state.mode === "performance" && durationHeat > 0.5
+          ? FLOW_COLORS.performanceEdgeHigh
+          : "#111111",
+      "data-map-selectable": "true",
+    });
+    label.style.cursor = "pointer";
+    label.addEventListener("click", (evt) => {
+      evt.stopPropagation();
+      setMapSelection({ type: "path", view: "process", source: String(edge.source), target: String(edge.target) });
+    });
+    label.textContent = text;
+    labelsLayer.appendChild(label);
+  });
+
   els.processMap.appendChild(guidesLayer);
   els.processMap.appendChild(anchorLayer);
   els.processMap.appendChild(edgesLayer);
-  els.processMap.appendChild(labelsLayer);
   els.processMap.appendChild(pulseLayer);
   els.processMap.appendChild(nodesLayer);
+  els.processMap.appendChild(labelsLayer);
   applyMapZoom();
 }
 
@@ -2797,8 +2902,8 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     refX: 10,
     refY: 5,
     markerUnits: "userSpaceOnUse",
-    markerWidth: 14,
-    markerHeight: 14,
+    markerWidth: 10,
+    markerHeight: 10,
     orient: "auto-start-reverse",
   });
   marker.appendChild(
@@ -2824,9 +2929,7 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     median_duration_seconds: Number(edge[durationKey] || edge.median_duration_seconds || 0),
   }));
 
-  const simplified = simplifyProcessGraph(normalizedNodes, normalizedEdges, {
-    preserveEdgeKeys: currentAnimationEdgeKeys(),
-  });
+  const simplified = simplifyProcessGraph(normalizedNodes, normalizedEdges, {});
   if (!simplified.nodes.length || !simplified.edges.length) {
     setProcessMapSummary(`Raise ${summaryContext.nodeSingular} or ${summaryContext.edgeSingular} detail to show flows.`);
     renderEmptyMap(`Raise ${summaryContext.nodeSingular} or ${summaryContext.edgeSingular} detail to show flows.`);
@@ -2895,6 +2998,12 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     minNodeX: Math.min(...allHandoffPos.map((n) => n.x - n.width / 2)),
     maxNodeX: Math.max(...allHandoffPos.map((n) => n.x + n.width / 2)),
   };
+  const edgeLabelItems = [];
+  const sourceOutDegreeHandoff = new Map();
+  simplified.edges.slice(0, 260).forEach((edge) => {
+    const k = String(edge.source);
+    sourceOutDegreeHandoff.set(k, (sourceOutDegreeHandoff.get(k) || 0) + 1);
+  });
 
   simplified.edges.slice(0, 260).forEach((edge, index) => {
     const source = positionedNodes.get(String(edge.source));
@@ -2977,35 +3086,23 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     }
 
     if (index < 26) {
-      const labelPoint = geometryMidpoint(geometry);
-      const text = svgElement("text", {
-        x: labelPoint.x,
-        y: labelPoint.y - 4,
-        "text-anchor": "middle",
-        "font-size": 12,
-        "font-family": "IBM Plex Mono, monospace",
-        fill: "#111111",
-        "data-map-selectable": supportsPathSelection ? "true" : "false",
-      });
-      if (supportsPathSelection) {
-        text.style.cursor = "pointer";
-        text.addEventListener("click", (event) => {
-          event.stopPropagation();
-          setMapSelection({
-            type: "path",
-            view: "handoff_activity",
-            source: String(edge.source),
-            target: String(edge.target),
-          });
-        });
-      }
-      text.textContent =
+      const labelText =
         state.mode === "frequency"
           ? hasAnimationOverlay
             ? `${formatNumber(activeCount)} / ${formatNumber(value)}`
             : formatNumber(value)
           : formatDuration(edge.median_duration_seconds);
-      labelLayer.appendChild(text);
+      let lx, ly, textAnchor;
+      const isSplit = (sourceOutDegreeHandoff.get(String(edge.source)) || 0) > 1;
+      if (isSplit || !geometry.waypoints) {
+        const pos = geometryLabelPosition(geometry, source, target, 15);
+        lx = pos.x; ly = pos.y; textAnchor = pos.textAnchor;
+      } else {
+        lx = Math.max(source.x, target.x) + 23;
+        ly = (source.y + source.height / 2 + target.y - target.height / 2) / 2;
+        textAnchor = "start";
+      }
+      edgeLabelItems.push({ x: lx, y: ly, yOffset: 0, text: labelText, fontSize: 12, textAnchor, edge, source, target, supportsPathSelection });
     }
   });
 
@@ -3108,11 +3205,35 @@ function renderGenericNetwork(nodes, edges, options = {}) {
     `Showing ${formatNumber(simplified.nodes.length)} of ${formatNumber(simplified.totalNodeCount)} ${summaryContext.nodePlural} and ${formatNumber(simplified.edges.length)} of ${formatNumber(simplified.totalEdgeCount)} ${summaryContext.edgePlural}. The dominant handoff backbone stays visible while the detail sliders simplify the network.`
   );
 
+  resolveEdgeLabelCollisions(edgeLabelItems);
+  edgeLabelItems.forEach(({ x, y, yOffset, text, textAnchor, edge, source, target, supportsPathSelection }) => {
+    const ly = y + yOffset;
+    const label = svgElement("text", {
+      x,
+      y: ly,
+      "text-anchor": textAnchor,
+      "dominant-baseline": "central",
+      "font-size": 12,
+      "font-family": "IBM Plex Mono, monospace",
+      fill: "#111111",
+      "data-map-selectable": supportsPathSelection ? "true" : "false",
+    });
+    if (supportsPathSelection) {
+      label.style.cursor = "pointer";
+      label.addEventListener("click", (evt) => {
+        evt.stopPropagation();
+        setMapSelection({ type: "path", view: "handoff_activity", source: String(edge.source), target: String(edge.target) });
+      });
+    }
+    label.textContent = text;
+    labelLayer.appendChild(label);
+  });
+
   els.processMap.appendChild(guidesLayer);
   els.processMap.appendChild(edgeLayer);
-  els.processMap.appendChild(labelLayer);
   els.processMap.appendChild(pulseLayer);
   els.processMap.appendChild(nodeLayer);
+  els.processMap.appendChild(labelLayer);
   applyMapZoom();
 }
 

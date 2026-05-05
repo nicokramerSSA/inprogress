@@ -248,3 +248,67 @@ Then open: http://127.0.0.1:8000
 - Push all local changes to Render when ready
 - Share URL with team: https://flowscope-miner.onrender.com/
 - Note: Render free tier spins down after 15 min of inactivity — first load after idle takes ~30 sec to wake up
+
+### Edge label overhaul (2026-05-05, session 5)
+
+**Animation reconfiguration fix**
+- Diagram was reconfiguring mid-animation (nodes/edges appearing/disappearing during playback)
+- Root cause: `preserveEdgeKeys: currentAnimationEdgeKeys()` in two `simplifyProcessGraph` calls was forcing animation-frame edges into the visible set, triggering layout changes
+- Fix: removed `preserveEdgeKeys` from both `renderProcessMap` and `renderGenericNetwork` calls to `simplifyProcessGraph`
+- Paths slider and other filters now remain fully interactive during animation (no locking needed)
+
+**Two-pass edge label system**
+- Replaced per-edge immediate label rendering with a collect → resolve → render pipeline
+- `edgeLabelItems[]` collects `{ x, y, yOffset, text, fontSize, textAnchor, edge, source, target, ... }` for all labeled edges
+- `resolveEdgeLabelCollisions(items)` — greedy vertical lane de-collision: groups items by corridor Y (`Math.round(item.y)`), sorts by X left-edge within each corridor, assigns `yOffset` from `[0, -13, 13, -26, 26, ...]` to prevent horizontal overlap; handles both `"start"` and `"middle"` text anchors correctly for xMin/xMax calculation
+- `estimateLabelWidth(text, fontSize)` helper: `text.length * fontSize * 0.61`
+- Labels rendered after full collection, in a `labelsLayer` painted above `nodesLayer` (layer order fix)
+- Gray background rects behind labels removed
+
+**Label positioning by edge type**
+- Regular elbow/straight edges (single arrow from source): `text-anchor: "start"` anchored at `Math.max(source.x, target.x) + 23` — label sits to the right of both nodes, clear of the arrow
+- Same-stage curved arcs: `text-anchor: "middle"` at `geometryMidpoint(geometry)` with `y - 15` — label floats above the arc apex
+- Split-source edges (2+ arrows leaving same box): label at arc midpoint offset to the **convex/outer side** of the bend — never overlaps the arrow or animation dots
+
+**Split-source outward offset (`geometryLabelPosition`)**
+- Pre-computes `sourceOutDegreeProcess` / `sourceOutDegreeHandoff` maps before edge loop
+- For edges where source has >1 outgoing connections: calls `geometryLabelPosition(geometry, source, target, 15)`
+- `waypointMidTangent(t, waypoints)` — like `waypointPoint` but also returns unit tangent `(tx, ty)` at parameter `t`
+- `geometryLabelPosition`: computes two perpendicular normals from tangent; picks the one with **negative dot product** against the straight-line source→target vector (= outward/convex side); offsets midpoint by 15px in that direction
+- For bezier arcs (no waypoints): falls back to `mid.y - 15` (above apex)
+- Applied to both `renderProcessMap` (Process tab) and `renderGenericNetwork` (Handoff Actor/Activity tabs)
+
+## Pending: arrow routing fixes
+
+### Problem 1 — Skip-stage forward edges (READY TO BUILD)
+
+**Root cause**: TTB forward-edge elbow uses `midY = (exitY + entryY) / 2`. For consecutive-stage edges (N → N+1) midY falls cleanly in the inter-stage gap. For skip-stage edges (N → N+2+), midY lands at the Y center of the intermediate stage row — algebraically guaranteed to hit intermediate node boxes.
+
+**Example**: "Ticket Created" → "Triage" skips "Auto-Categorize"; the horizontal elbow segment runs straight through the Auto-Categorize box.
+
+**Agreed approach**: Detect skip-stage forward edges (`target.stage - source.stage > 1`). Instead of entering target from the **top** with a horizontal crossing at midY, enter from the **side** using a bezier:
+- `source.x < target.x` → enter target from its **LEFT** edge (`target.x - target.width/2, target.y`)
+- `source.x > target.x` → enter target from its **RIGHT** edge
+- Path: cubic bezier `M source.x srcBottom C source.x srcBottom+pad, entryEdgeX±pad target.y, entryEdgeX target.y`
+- No horizontal crossing at any intermediate Y level → intermediate nodes cannot be hit
+- Edge case: same-column skip (`|dx| < threshold`) — exit source from the side, descend, re-enter target from same side (harder, lower priority)
+
+**Files to change**: `processEdgeGeometry` TTB branch in `frontend/app.js`; apply to Process, Handoff Actor/Activity views
+
+### Problem 2 — Backward edges / rework loops (PARTIALLY DESIGNED, NOT READY TO BUILD)
+
+**Root cause**: Current backward-edge bezier exits source bottom with only 60 px outPad and enters target from the side, but control points are not far enough outside to clear intermediate nodes.
+
+**Desired behavior (Disco-style)**: Route back-edges as curved arcs that travel around the outside of the main flow — never crossing through interior nodes.
+
+**Agreed direction for common cases**: Route to the side closest to the source node:
+- `source.x < diagramCenterX` → swing **LEFT** past `bounds.minNodeX - margin`
+- `source.x >= diagramCenterX` → swing **RIGHT** past `bounds.maxNodeX + margin`
+- C-shaped bezier: exit source from the near side, swing to `farX`, travel vertically, enter target from the same side
+
+**Known limitation — opposite-sides case**: When source and target are on opposite sides of the diagram (e.g., source far left, target far right), any routing must cross the interior somewhere. This is geometrically unavoidable without a full constraint-aware layout engine. Options discussed:
+- A. Route to source's side anyway — crossing is minimal (short horizontal entry into target), best-effort
+- B. Full orthogonal constraint routing — major scope, out of range for now
+- Decision: implement common-case source-side routing first; document opposite-sides as known limitation
+
+**Not ready to build** — need to decide: what threshold defines "same side" vs "opposite sides", and what fallback to use for the opposite-sides case before writing code.
