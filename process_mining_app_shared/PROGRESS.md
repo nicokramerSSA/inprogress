@@ -278,6 +278,43 @@ Then open: http://127.0.0.1:8000
 - For bezier arcs (no waypoints): falls back to `mid.y - 15` (above apex)
 - Applied to both `renderProcessMap` (Process tab) and `renderGenericNetwork` (Handoff Actor/Activity tabs)
 
+### BPMN Flow — orthogonal routing and label polish (2026-05-05, session 6)
+
+**Uniform node sizing**
+- `nodeBoxDimensions` now returns a fixed `{ width: 160, height: 200 }` for all nodes — width no longer varies by label length or frequency, so all BPMN boxes are identical size
+
+**Orthogonal edge routing**
+- All BPMN Flow edges now use 90-degree (H/V only) paths with 5 px rounded corners via `bpmnOrthogonalPath`
+- `bpmnFlowEdgeGeometry` refactored into distinct cases: self-loop (bezier), same-stage vertical (straight line), backward U-arc (below nodes), non-LTR fallback (bezier), skip-forward horizontal-middle, forward adjacent (orthogonal through gateways)
+- **Backward edges** (e.g. RAI → Review Claim): U-arc routes below all nodes at `maxNodeY + 60`; label placed at `laneY + 30` (below arc bottom, clear of path)
+- **Skip-forward edges** (e.g. Review Claim → Reject Claim): travels right at `source.y` through split gateway, descends at `mergeGw.x` (left of target column) — avoids passing through intermediate nodes in the same column
+- **Same-stage vertical edges**: straight vertical line; label offset 28 px to the right of midpoint
+- **Forward adjacent edges**: label anchored at `source.right + 20` with `textAnchor="start"` (grows rightward away from source node); `direction: "above"` places label 60 px above the outgoing horizontal; `direction: "below"` places it 50 px below — naturally separates two outgoing edge labels without collision resolution
+
+**ViewBox expansion**
+- BPMN Flow viewBox expands downward after layout if backward arc labels (`maxNodeY + 110`) exceed the static layout height — mirrors the Handoff diagram approach
+
+**Handoff diagrams — text wrap and viewBox**
+- Node labels now use `wrapActivityLabel` for multi-line `<tspan>` word-wrap (same helper used by Process/BPMN views)
+- ViewBox expands upward to prevent loop arcs from being clipped at the top edge; `svgTop` computed from actual node bounds minus `maxLoopH`
+
+**Two-pass label system for BPMN Flow**
+- Collect → `resolveEdgeLabelCollisions` → render pipeline (same as Process/Handoff tabs)
+- Vertical edges and directional (`above`/`below`) edges excluded from collision resolution (already naturally separated)
+- Arc labels (`direction: "arc"`) placed at `laneY + 30` — below the backward arc horizontal, clear of the path
+
+### Animation zoom fix and tooltip (2026-05-05, session 6)
+
+**Zoom works when paused**
+- Root cause: `stopAnimation({ hideOverlay: false })` on pause kept `overlayVisible: true`; all three zoom button handlers and `updateMapZoomControls` were gated on `overlayVisible`, so zoom was blocked even while paused
+- Fix: all four checks changed from `overlayVisible` to `isPlaying` — zoom is available whenever animation is paused or stopped, only blocked while actively playing
+
+**Zoom disabled tooltip**
+- When animation is playing, zoom buttons get CSS class `zoom-disabled` instead of the `disabled` HTML attribute (which kills pointer events needed for hover)
+- `.btn-ghost.zoom-disabled`: opacity 0.4, `cursor: not-allowed`, hover transform/filter suppressed
+- `.btn-ghost.zoom-disabled::after`: CSS pseudo-element tooltip — "Zoom disabled while animation is playing"; dark navy background (`#1e293b`), white text, 11 px font, positioned above the button via `bottom: calc(100% + 7px)`, shown on `:hover`
+- `updateMapZoomControls` now uses `classList.toggle("zoom-disabled", ...)` for the playing state and `button.disabled` only for the no-dashboard state
+
 ## Pending: arrow routing fixes
 
 ### Problem 1 — Skip-stage forward edges (READY TO BUILD)

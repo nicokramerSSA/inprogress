@@ -1556,16 +1556,13 @@ function updateMapZoomControls() {
   if (els.zoomValue) {
     els.zoomValue.textContent = `${Math.round(state.mapZoom * 100)}%`;
   }
-  const disabled = !state.dashboard || state.animation.overlayVisible;
-  if (els.zoomOut) {
-    els.zoomOut.disabled = disabled;
-  }
-  if (els.zoomReset) {
-    els.zoomReset.disabled = disabled;
-  }
-  if (els.zoomIn) {
-    els.zoomIn.disabled = disabled;
-  }
+  const animPlaying = state.animation.isPlaying;
+  const fullyDisabled = !state.dashboard;
+  [els.zoomOut, els.zoomReset, els.zoomIn].forEach((btn) => {
+    if (!btn) return;
+    btn.disabled = fullyDisabled;
+    btn.classList.toggle("zoom-disabled", !fullyDisabled && animPlaying);
+  });
 }
 
 function applyMapZoom() {
@@ -1868,13 +1865,7 @@ function computeProcessStages(nodes, edges) {
 }
 
 function nodeBoxDimensions(node, nodeMaxFrequency) {
-  const scale = Math.max(Number(node.frequency || 0) / nodeMaxFrequency, 0.08);
-  const widthByFrequency = 88 + scale * 56;
-  const widthByLabel = clamp(String(node.label || "").length * 8.4 + 44, 0, 96);
-  return {
-    width: clamp(widthByFrequency + widthByLabel, 112, 200),
-    height: 200,
-  };
+  return { width: 160, height: 200 };
 }
 
 function computeProcessLayout(nodes, edges, options = {}) {
@@ -2233,6 +2224,20 @@ function processEdgeGeometry(edge, source, target, dimension, orientation = "ttb
   }
 
   if (sameStage) {
+    const isAdjacent = Math.abs((source.order ?? 0) - (target.order ?? 0)) === 1;
+    if (isAdjacent) {
+      const goRight = source.x < target.x;
+      const srcSideX = goRight ? source.x + source.width / 2 : source.x - source.width / 2;
+      const tgtSideX = goRight ? target.x - target.width / 2 : target.x + target.width / 2;
+      const cp = Math.abs(tgtSideX - srcSideX) / 3;
+      const bow = 12;
+      const bowY = source.y + (goRight ? -bow : bow);
+      const sign = goRight ? 1 : -1;
+      return {
+        d: `M ${srcSideX} ${source.y} C ${srcSideX + sign * cp} ${bowY}, ${tgtSideX - sign * cp} ${bowY}, ${tgtSideX} ${target.y}`,
+        points: { x0: srcSideX, y0: source.y, cx1: srcSideX + sign * cp, cy1: bowY, cx2: tgtSideX - sign * cp, cy2: bowY, x1: tgtSideX, y1: target.y },
+      };
+    }
     const loopHeight = 106 + Math.abs(source.order - target.order) * 26;
     return {
       d: `M ${source.x} ${source.y - source.height / 2}
@@ -2252,29 +2257,32 @@ function processEdgeGeometry(edge, source, target, dimension, orientation = "ttb
     };
   }
 
-  if (backward) {
-    // Exit source bottom; enter target's right side (if source is left of target)
-    // or left side (if source is right of target) so the arc wraps around the
-    // outside without crossing intervening nodes.
-    const useRight = source.x <= target.x;
-    const entryEdgeX = useRight
-      ? target.x + target.width / 2
-      : target.x - target.width / 2;
-    const outPad = 60;
-    const srcBottomY = source.y + source.height / 2;
+  // Backward edges and skip-stage forward edges (stageDiff > 1) both route through
+  // a dedicated lane outside the node cluster — a C-shaped arc that never enters
+  // the diagram interior. Lane side is chosen by source position vs diagram centre.
+  // Margin of 160px ensures the arc is wide enough that at all intermediate Y levels
+  // the interpolated X clears the rightmost/leftmost node edges.
+  const isSkipForward = !backward && (target.stage - source.stage) > 1;
+  if (backward || isSkipForward) {
+    const centerX = bounds.minNodeX !== undefined
+      ? (bounds.minNodeX + bounds.maxNodeX) / 2
+      : (source.x + target.x) / 2;
+    const useLeft = source.x < centerX;
+    const farX = useLeft
+      ? (bounds.minNodeX !== undefined ? bounds.minNodeX : source.x) - 160
+      : (bounds.maxNodeX !== undefined ? bounds.maxNodeX : source.x) + 160;
+    const srcEdgeX = useLeft ? source.x - source.width / 2 : source.x + source.width / 2;
+    const tgtEdgeX = useLeft ? target.x - target.width / 2 : target.x + target.width / 2;
     return {
-      d: `M ${source.x} ${srcBottomY}
-        C ${source.x} ${srcBottomY + outPad},
-          ${entryEdgeX + (useRight ? outPad : -outPad)} ${target.y},
-          ${entryEdgeX} ${target.y}`,
+      d: `M ${srcEdgeX} ${source.y} C ${farX} ${source.y}, ${farX} ${target.y}, ${tgtEdgeX} ${target.y}`,
       points: {
-        x0: source.x,
-        y0: srcBottomY,
-        cx1: source.x,
-        cy1: srcBottomY + outPad,
-        cx2: entryEdgeX + (useRight ? outPad : -outPad),
+        x0: srcEdgeX,
+        y0: source.y,
+        cx1: farX,
+        cy1: source.y,
+        cx2: farX,
         cy2: target.y,
-        x1: entryEdgeX,
+        x1: tgtEdgeX,
         y1: target.y,
       },
     };
@@ -2463,8 +2471,13 @@ function renderProcessMap(nodes, edges) {
   });
   const width = layout.width;
   const height = layout.height;
-  els.processMap.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  els.processMap.style.aspectRatio = `${width} / ${height}`;
+  const allPosForViewBox = [...layout.positionedNodes.values()];
+  const laneMargin = 160;
+  const svgLeft = Math.min(0, Math.min(...allPosForViewBox.map((n) => n.x - n.width / 2)) - laneMargin);
+  const svgRight = Math.max(width, Math.max(...allPosForViewBox.map((n) => n.x + n.width / 2)) + laneMargin);
+  const svgWidth = svgRight - svgLeft;
+  els.processMap.setAttribute("viewBox", `${svgLeft} 0 ${svgWidth} ${height}`);
+  els.processMap.style.aspectRatio = `${svgWidth} / ${height}`;
   const defs = svgElement("defs");
   const marker = svgElement("marker", {
     id: "process-arrowhead",
@@ -2572,6 +2585,12 @@ function renderProcessMap(nodes, edges) {
   const topStartCount = Math.max(...simplified.nodes.map((node) => Number(node.start_count || 0)), 1);
   const topEndCount = Math.max(...simplified.nodes.map((node) => Number(node.end_count || 0)), 1);
 
+  const allProcessPos = [...positionedNodes.values()];
+  const processNodeBounds = {
+    minNodeX: Math.min(...allProcessPos.map((n) => n.x - n.width / 2)),
+    maxNodeX: Math.max(...allProcessPos.map((n) => n.x + n.width / 2)),
+  };
+
   simplified.nodes
     .filter((node) => node.start_count > 0)
     .forEach((node) => {
@@ -2582,17 +2601,10 @@ function renderProcessMap(nodes, edges) {
       const strength = Math.max(Number(node.start_count || 0) / topStartCount, 0.08);
       const startConnY = layout.topAnchor.y + pillH / 2;
       const startNodeY = point.y - point.height / 2;
+      let d;
       const startCp = Math.max((startNodeY - startConnY) * 0.5, 8);
-      const path = svgElement("path", {
-        d: `M ${layout.topAnchor.x} ${startConnY}
-          C ${layout.topAnchor.x} ${startConnY + startCp},
-            ${point.x} ${startNodeY - startCp},
-            ${point.x} ${startNodeY}`,
-        fill: "none",
-        stroke: FLOW_COLORS.anchorStroke(0.42 + strength * 0.42),
-        "stroke-width": 1.4 + strength * 5.4,
-        opacity: 0.96,
-      });
+      d = `M ${layout.topAnchor.x} ${startConnY} C ${layout.topAnchor.x} ${startConnY + startCp}, ${point.x} ${startNodeY - startCp}, ${point.x} ${startNodeY}`;
+      const path = svgElement("path", { d, fill: "none", stroke: FLOW_COLORS.anchorStroke(0.42 + strength * 0.42), "stroke-width": 1.4 + strength * 5.4, opacity: 0.96 });
       appendSvgTitle(path, `Start in case: ${node.label} (${formatNumber(node.start_count)})`);
       edgesLayer.appendChild(path);
     });
@@ -2607,26 +2619,30 @@ function renderProcessMap(nodes, edges) {
       const strength = Math.max(Number(node.end_count || 0) / topEndCount, 0.08);
       const endNodeY = point.y + point.height / 2;
       const endConnY = layout.bottomAnchor.y - pillH / 2;
-      const endCp = Math.max((endConnY - endNodeY) * 0.5, 8);
-      const path = svgElement("path", {
-        d: `M ${point.x} ${endNodeY}
-          C ${point.x} ${endNodeY + endCp},
-            ${layout.bottomAnchor.x} ${endConnY - endCp},
-            ${layout.bottomAnchor.x} ${endConnY}`,
-        fill: "none",
-        stroke: FLOW_COLORS.anchorStroke(0.4 + strength * 0.42),
-        "stroke-width": 1.4 + strength * 5.4,
-        opacity: 0.96,
-      });
+      const offsetFromEnd = point.x - layout.bottomAnchor.x;
+      let d;
+      const pathXMin = Math.min(point.x, layout.bottomAnchor.x) - 60;
+      const pathXMax = Math.max(point.x, layout.bottomAnchor.x) + 60;
+      const pathBlocked = allProcessPos.some(
+        (n) => n !== point && n.x >= pathXMin && n.x <= pathXMax && n.y > endNodeY && n.y < endConnY
+      );
+      if (pathBlocked) {
+        const goRight = offsetFromEnd >= 0;
+        const farX = goRight ? processNodeBounds.maxNodeX + 160 : processNodeBounds.minNodeX - 160;
+        const srcEdgeX = goRight ? point.x + point.width / 2 : point.x - point.width / 2;
+        const r = 30;
+        const laneStartY = point.y + 2 * r;
+        const laneEndY = Math.max(laneStartY, endConnY - 2 * r);
+        const exitCpX = layout.bottomAnchor.x + (goRight ? 2 * r : -2 * r);
+        d = `M ${srcEdgeX} ${point.y} C ${farX} ${point.y}, ${farX} ${point.y + r}, ${farX} ${laneStartY} L ${farX} ${laneEndY} C ${farX} ${endConnY - r}, ${exitCpX} ${endConnY}, ${layout.bottomAnchor.x} ${endConnY}`;
+      } else {
+        const endCp = Math.max((endConnY - endNodeY) * 0.5, 8);
+        d = `M ${point.x} ${endNodeY} C ${point.x} ${endNodeY + endCp}, ${layout.bottomAnchor.x} ${endConnY - endCp}, ${layout.bottomAnchor.x} ${endConnY}`;
+      }
+      const path = svgElement("path", { d, fill: "none", stroke: FLOW_COLORS.anchorStroke(0.4 + strength * 0.42), "stroke-width": 1.4 + strength * 5.4, opacity: 0.96 });
       appendSvgTitle(path, `Last in case: ${node.label} (${formatNumber(node.end_count)})`);
       edgesLayer.appendChild(path);
     });
-
-  const allProcessPos = [...positionedNodes.values()];
-  const processNodeBounds = {
-    minNodeX: Math.min(...allProcessPos.map((n) => n.x - n.width / 2)),
-    maxNodeX: Math.max(...allProcessPos.map((n) => n.x + n.width / 2)),
-  };
   const edgeLabelItems = [];
   const sourceOutDegreeProcess = new Map();
   simplified.edges.slice(0, 260).forEach((edge) => {
@@ -2952,9 +2968,23 @@ function renderGenericNetwork(nodes, edges, options = {}) {
   });
   const width = layout.width;
   const height = layout.height;
-  els.processMap.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  els.processMap.style.aspectRatio = `${width} / ${height}`;
   const positionedNodes = layout.positionedNodes;
+  const allHandoffPosVB = [...positionedNodes.values()];
+  const svgHMargin = 160;
+  const svgLeft = Math.min(0, Math.min(...allHandoffPosVB.map((n) => n.x - n.width / 2)) - svgHMargin);
+  const svgRight = Math.max(width, Math.max(...allHandoffPosVB.map((n) => n.x + n.width / 2)) + svgHMargin);
+  const maxLoopH = simplified.edges.reduce((max, edge) => {
+    const src = positionedNodes.get(String(edge.source));
+    const tgt = positionedNodes.get(String(edge.target));
+    if (!src || !tgt || src.stage !== tgt.stage) return max;
+    return Math.max(max, 106 + Math.abs((src.order ?? 0) - (tgt.order ?? 0)) * 26);
+  }, 0);
+  const minHandoffNodeY = Math.min(...allHandoffPosVB.map((n) => n.y - n.height / 2));
+  const svgTop = Math.min(0, minHandoffNodeY - maxLoopH - 30);
+  const svgWidth = svgRight - svgLeft;
+  const svgHeight = height - svgTop;
+  els.processMap.setAttribute("viewBox", `${svgLeft} ${svgTop} ${svgWidth} ${svgHeight}`);
+  els.processMap.style.aspectRatio = `${svgWidth} / ${svgHeight}`;
   const maxNodeFrequency = Math.max(
     ...simplified.nodes.map((node) => Number(node.frequency || 0)),
     1
@@ -3171,21 +3201,29 @@ function renderGenericNetwork(nodes, edges, options = {}) {
       })
     );
 
+    const labelFontSize = isActorView ? 15 : 12;
+    const lineH = isActorView ? 20 : 17;
+    const statGap = 16;
+    const labelLines = wrapActivityLabel(String(node.label || node.id), point.width, labelFontSize);
+    const firstLabelY = Math.round(point.y - ((labelLines.length - 1) * lineH + statGap - 8) / 2);
+    const statY = firstLabelY + (labelLines.length - 1) * lineH + statGap;
     const label = svgElement("text", {
-      x: point.x,
-      y: point.y - 4,
       "text-anchor": "middle",
-      "font-size": isActorView ? 15 : 12,
+      "font-size": labelFontSize,
       "font-family": "Space Grotesk, sans-serif",
       "font-weight": 700,
       fill: textColor,
     });
-    label.textContent = truncateProcessLabel(node.label || node.id, isActorView ? 24 : 20);
+    labelLines.forEach((line, i) => {
+      const tspan = svgElement("tspan", { x: point.x, y: firstLabelY + i * lineH });
+      tspan.textContent = line;
+      label.appendChild(tspan);
+    });
     group.appendChild(label);
 
     const stat = svgElement("text", {
       x: point.x,
-      y: point.y + 13,
+      y: statY,
       "text-anchor": "middle",
       "font-size": isActorView ? 13 : 11,
       "font-family": "IBM Plex Mono, monospace",
@@ -3238,26 +3276,38 @@ function renderGenericNetwork(nodes, edges, options = {}) {
 }
 
 function bpmnOrthogonalPath(points, orientation = "ttb") {
-  // BPMN diagrams read better with elbow connectors than free-form curves.
-  // Each segment turns halfway between waypoints so branch lines remain tidy.
-  // LTR mode bends at a midpoint X (horizontal first, then vertical).
-  if (!points.length) {
-    return "";
-  }
+  if (!points.length) return "";
+  const r = 5;
   let d = `M ${points[0].x} ${points[0].y}`;
   for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const next = points[index];
-    if (Math.abs(previous.x - next.x) < 1 || Math.abs(previous.y - next.y) < 1) {
-      d += ` L ${next.x} ${next.y}`;
+    const prev = points[index - 1];
+    const curr = points[index];
+    if (Math.abs(prev.x - curr.x) < 1 || Math.abs(prev.y - curr.y) < 1) {
+      d += ` L ${curr.x} ${curr.y}`;
       continue;
     }
     if (orientation === "ltr") {
-      const midX = (previous.x + next.x) / 2;
-      d += ` L ${midX} ${previous.y} L ${midX} ${next.y} L ${next.x} ${next.y}`;
+      const midX = (prev.x + curr.x) / 2;
+      const sx = curr.x > prev.x ? 1 : -1;
+      const sy = curr.y > prev.y ? 1 : -1;
+      const r1 = Math.min(r, Math.abs(midX - prev.x) / 2, Math.abs(curr.y - prev.y) / 2);
+      const r2 = Math.min(r, Math.abs(curr.y - prev.y) / 2, Math.abs(curr.x - midX) / 2);
+      d += ` L ${midX - sx * r1} ${prev.y}`;
+      d += ` Q ${midX} ${prev.y} ${midX} ${prev.y + sy * r1}`;
+      d += ` L ${midX} ${curr.y - sy * r2}`;
+      d += ` Q ${midX} ${curr.y} ${midX + sx * r2} ${curr.y}`;
+      d += ` L ${curr.x} ${curr.y}`;
     } else {
-      const midY = (previous.y + next.y) / 2;
-      d += ` L ${previous.x} ${midY} L ${next.x} ${midY} L ${next.x} ${next.y}`;
+      const midY = (prev.y + curr.y) / 2;
+      const sx = curr.x > prev.x ? 1 : -1;
+      const sy = curr.y > prev.y ? 1 : -1;
+      const r1 = Math.min(r, Math.abs(midY - prev.y) / 2, Math.abs(curr.x - prev.x) / 2);
+      const r2 = Math.min(r, Math.abs(curr.x - prev.x) / 2, Math.abs(curr.y - midY) / 2);
+      d += ` L ${prev.x} ${midY - sy * r1}`;
+      d += ` Q ${prev.x} ${midY} ${prev.x + sx * r1} ${midY}`;
+      d += ` L ${curr.x - sx * r2} ${midY}`;
+      d += ` Q ${curr.x} ${midY} ${curr.x} ${midY + sy * r2}`;
+      d += ` L ${curr.x} ${curr.y}`;
     }
   }
   return d;
@@ -3337,29 +3387,86 @@ function computeBpmnGateways(positionedNodes, edges, orientation = "ttb") {
   return { split, merge };
 }
 
-function bpmnFlowEdgeGeometry(edge, source, target, gateways, dimension, orientation = "ttb") {
-  // Loops and backwards paths are still possible in real logs. Reuse the
-  // process-map curve for those exceptions; otherwise route through BPMN
-  // gateways with orthogonal connectors.
+function bpmnFlowEdgeGeometry(edge, source, target, gateways, dimension, orientation = "ttb", bounds = {}) {
   const isLTR = orientation === "ltr";
-  if (edge.source === edge.target || source.stage >= target.stage) {
+
+  // Self-loops: keep bezier curve
+  if (edge.source === edge.target) {
     const fallback = processEdgeGeometry(edge, source, target, dimension, orientation);
     return {
       d: fallback.d,
-      labelPoint: cubicBezierPoint(
-        0.5,
-        fallback.points.x0,
-        fallback.points.y0,
-        fallback.points.cx1,
-        fallback.points.cy1,
-        fallback.points.cx2,
-        fallback.points.cy2,
-        fallback.points.x1,
-        fallback.points.y1
-      ),
+      labelPoint: cubicBezierPoint(0.5, fallback.points.x0, fallback.points.y0, fallback.points.cx1, fallback.points.cy1, fallback.points.cx2, fallback.points.cy2, fallback.points.x1, fallback.points.y1),
     };
   }
 
+  // Same-stage in LTR: nodes share the same X column — straight vertical line between top/bottom ports
+  if (isLTR && source.stage === target.stage) {
+    const goUp = target.y < source.y;
+    const srcPortY = goUp ? source.y - source.height / 2 : source.y + source.height / 2;
+    const tgtPortY = goUp ? target.y + target.height / 2 : target.y - target.height / 2;
+    return {
+      d: `M ${source.x} ${srcPortY} L ${target.x} ${tgtPortY}`,
+      labelPoint: { x: (source.x + target.x) / 2, y: (srcPortY + tgtPortY) / 2, direction: "vertical" },
+    };
+  }
+
+  // Backward edges in LTR: orthogonal U-shape routed below all nodes with rounded corners
+  if (isLTR && source.stage > target.stage) {
+    const laneY = (bounds.maxNodeY || dimension - 80) + 60;
+    const srcX = source.x;
+    const tgtX = target.x;
+    const srcBottomY = source.y + source.height / 2;
+    const tgtBottomY = target.y + target.height / 2;
+    const r = 5;
+    const dirX = tgtX < srcX ? -1 : 1;
+    const r1 = Math.min(r, (laneY - srcBottomY) / 2, Math.abs(srcX - tgtX) / 2);
+    const r2 = Math.min(r, Math.abs(srcX - tgtX) / 2, (laneY - tgtBottomY) / 2);
+    return {
+      d: `M ${srcX} ${srcBottomY} L ${srcX} ${laneY - r1} Q ${srcX} ${laneY} ${srcX + dirX * r1} ${laneY} L ${tgtX - dirX * r2} ${laneY} Q ${tgtX} ${laneY} ${tgtX} ${laneY - r2} L ${tgtX} ${tgtBottomY}`,
+      labelPoint: { x: (srcX + tgtX) / 2, y: laneY, direction: "arc" },
+    };
+  }
+
+  // Non-LTR backward/same-stage: fall back to curved renderer
+  if (source.stage >= target.stage) {
+    const fallback = processEdgeGeometry(edge, source, target, dimension, orientation);
+    return {
+      d: fallback.d,
+      labelPoint: cubicBezierPoint(0.5, fallback.points.x0, fallback.points.y0, fallback.points.cx1, fallback.points.cy1, fallback.points.cx2, fallback.points.cy2, fallback.points.x1, fallback.points.y1),
+    };
+  }
+
+  // Skip-forward in LTR (skips ≥1 intermediate stage): travel right at source.y then descend near target
+  // Descends at mergeGw.x rather than target.x to avoid passing through nodes in the same column as target
+  if (isLTR && target.stage - source.stage > 1) {
+    const splitGw = gateways.split.get(edge.source);
+    const mergeGw = gateways.merge.get(edge.target);
+    const startX = splitGw ? splitGw.x : source.x + source.width / 2;
+    const endX = mergeGw ? mergeGw.x : target.x - target.width / 2 - 48;
+    const srcY = source.y;
+    const tgtY = target.y;
+    const r = 5;
+    const signY = tgtY > srcY ? 1 : tgtY < srcY ? -1 : 0;
+    const r1 = Math.min(r, Math.abs(endX - startX) / 2, Math.abs(tgtY - srcY) / 2);
+    const r2 = r1;
+    let d = `M ${source.x + source.width / 2} ${srcY}`;
+    if (splitGw) d += ` L ${startX} ${srcY}`;
+    if (signY === 0) {
+      d += ` L ${target.x - target.width / 2} ${tgtY}`;
+    } else {
+      d += ` L ${endX - r1} ${srcY}`;
+      d += ` Q ${endX} ${srcY} ${endX} ${srcY + signY * r1}`;
+      d += ` L ${endX} ${tgtY - signY * r2}`;
+      d += ` Q ${endX} ${tgtY} ${endX + r2} ${tgtY}`;
+      d += ` L ${target.x - target.width / 2} ${tgtY}`;
+    }
+    return {
+      d,
+      labelPoint: { x: (startX + endX) / 2, y: srcY },
+    };
+  }
+
+  // Forward edges (adjacent stage): route through split/merge gateways with orthogonal connectors
   const points = isLTR
     ? [{ x: source.x + source.width / 2, y: source.y }]
     : [{ x: source.x, y: source.y + source.height / 2 }];
@@ -3377,9 +3484,24 @@ function bpmnFlowEdgeGeometry(edge, source, target, gateways, dimension, orienta
     points.push({ x: target.x, y: target.y - target.height / 2 });
   }
 
+  // In LTR, anchor label at the source node's right edge (not the gateway) so it
+  // sits as far left as possible. textAnchor="start" means text grows rightward
+  // away from the node. y offsets of ±60/50 keep the two-line label clear of
+  // the gateway diamond (half-size 17px, spans source.y ± 17).
+  let forwardLabelPoint;
+  if (isLTR) {
+    forwardLabelPoint = {
+      x: source.x + source.width / 2 + 20,
+      y: source.y,
+      direction: target.y > source.y + 20 ? "below" : "above",
+    };
+  } else {
+    forwardLabelPoint = bpmnLabelPoint(points);
+  }
+
   return {
     d: bpmnOrthogonalPath(points, orientation),
-    labelPoint: bpmnLabelPoint(points),
+    labelPoint: forwardLabelPoint,
   };
 }
 
@@ -3576,6 +3698,20 @@ function renderBpmnFlowDiagram(flowchart) {
       );
     });
 
+  const bpmnBounds = {
+    maxNodeY: Math.max(...[...positionedNodes.values()].map((n) => n.y + n.height / 2)),
+    minNodeY: Math.min(...[...positionedNodes.values()].map((n) => n.y - n.height / 2)),
+  };
+
+  // Backward arcs descend to maxNodeY+60; their labels sit at maxNodeY+68 with a
+  // sub-line ~29px below. Expand the viewBox downward if that exceeds the layout height.
+  const arcFloor = bpmnBounds.maxNodeY + 110;
+  if (arcFloor > height) {
+    els.processMap.setAttribute("viewBox", `0 0 ${width} ${arcFloor}`);
+    els.processMap.style.aspectRatio = `${width} / ${arcFloor}`;
+  }
+
+  const bpmnEdgeLabelItems = [];
   simplified.edges.slice(0, 320).forEach((edge, index) => {
     const source = positionedNodes.get(edge.source);
     const target = positionedNodes.get(edge.target);
@@ -3590,7 +3726,7 @@ function renderBpmnFlowDiagram(flowchart) {
     const strength = state.mode === "performance" ? durationStrength : frequencyStrength;
     const isBackbone = simplified.backbone.edgeKeys.has(processEdgeKey(edge.source, edge.target));
     const isSelected = isSelectedMapPath(edge.source, edge.target, "swimlane");
-    const geometry = bpmnFlowEdgeGeometry(edge, source, target, gateways, height, "ltr");
+    const geometry = bpmnFlowEdgeGeometry(edge, source, target, gateways, height, "ltr", bpmnBounds);
     const path = svgElement("path", {
       d: geometry.d,
       fill: "none",
@@ -3628,37 +3764,65 @@ function renderBpmnFlowDiagram(flowchart) {
     edgeLayer.appendChild(path);
 
     if (index < 32) {
-      const label = svgElement("text", {
-        x: geometry.labelPoint.x,
-        y: geometry.labelPoint.y - 36,
-        "text-anchor": "middle",
-        "font-size": 22,
-        "font-family": "IBM Plex Mono, monospace",
-        fill: "#111111",
-        "data-map-selectable": "true",
+      const lp = geometry.labelPoint;
+      const isVerticalEdge = lp.direction === "vertical";
+      const isArcEdge = lp.direction === "arc";
+      const mainText = state.mode === "frequency"
+        ? formatNumber(edge.frequency)
+        : formatDuration(edge.total_duration_seconds);
+      const subText = state.mode === "frequency" ? formatPct(edge.outgoing_share) : null;
+      const isDirectional = lp.direction === "above" || lp.direction === "below";
+      const labelY = isVerticalEdge ? lp.y
+        : isArcEdge ? lp.y + 30
+        : lp.direction === "below" ? lp.y + 50
+        : lp.y - 60;
+      bpmnEdgeLabelItems.push({
+        x: isVerticalEdge ? lp.x + 28 : lp.x,
+        y: labelY,
+        text: mainText,
+        subText,
+        fontSize: 22,
+        textAnchor: isVerticalEdge || isDirectional ? "start" : "middle",
+        yOffset: 0,
+        isVerticalEdge,
+        edge,
       });
-      label.style.cursor = "pointer";
-      if (state.mode === "frequency") {
-        const line1 = svgElement("tspan", { x: geometry.labelPoint.x, dy: "0" });
-        line1.textContent = formatNumber(edge.frequency);
-        const line2 = svgElement("tspan", { x: geometry.labelPoint.x, dy: "1.3em" });
-        line2.textContent = formatPct(edge.outgoing_share);
-        label.appendChild(line1);
-        label.appendChild(line2);
-      } else {
-        label.textContent = formatDuration(edge.total_duration_seconds);
-      }
-      label.addEventListener("click", (event) => {
-        event.stopPropagation();
-        setMapSelection({
-          type: "path",
-          view: "swimlane",
-          source: String(edge.source),
-          target: String(edge.target),
-        });
-      });
-      labelLayer.appendChild(label);
     }
+  });
+
+  resolveEdgeLabelCollisions(bpmnEdgeLabelItems.filter((item) => !item.isVerticalEdge));
+  bpmnEdgeLabelItems.forEach(({ x, y, yOffset, text, subText, fontSize, textAnchor, edge }) => {
+    const ly = y + yOffset;
+    const label = svgElement("text", {
+      x,
+      y: ly,
+      "text-anchor": textAnchor,
+      "font-size": fontSize,
+      "font-family": "IBM Plex Mono, monospace",
+      fill: "#111111",
+      "data-map-selectable": "true",
+    });
+    label.style.cursor = "pointer";
+    if (subText) {
+      const line1 = svgElement("tspan", { x, dy: "0" });
+      line1.textContent = text;
+      const line2 = svgElement("tspan", { x, dy: "1.3em" });
+      line2.textContent = subText;
+      label.appendChild(line1);
+      label.appendChild(line2);
+    } else {
+      label.textContent = text;
+    }
+    label.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setMapSelection({
+        type: "path",
+        view: "swimlane",
+        source: String(edge.source),
+        target: String(edge.target),
+      });
+    });
+    labelLayer.appendChild(label);
   });
 
   [...gateways.split.values(), ...gateways.merge.values()].forEach((gateway) => {
@@ -5662,7 +5826,7 @@ els.modePerformance.addEventListener("click", () => {
 });
 
 els.zoomIn?.addEventListener("click", () => {
-  if (state.animation.overlayVisible) {
+  if (state.animation.isPlaying) {
     return;
   }
   state.mapZoom = clampMapZoom(state.mapZoom + 0.18);
@@ -5670,7 +5834,7 @@ els.zoomIn?.addEventListener("click", () => {
 });
 
 els.zoomOut?.addEventListener("click", () => {
-  if (state.animation.overlayVisible) {
+  if (state.animation.isPlaying) {
     return;
   }
   state.mapZoom = clampMapZoom(state.mapZoom - 0.18);
@@ -5678,7 +5842,7 @@ els.zoomOut?.addEventListener("click", () => {
 });
 
 els.zoomReset?.addEventListener("click", () => {
-  if (state.animation.overlayVisible) {
+  if (state.animation.isPlaying) {
     return;
   }
   state.mapZoom = DEFAULT_MAP_ZOOM;
