@@ -58,6 +58,7 @@ const FlowScope = {
 // filter changes, and animation frame updates predictable without a framework.
 const state = {
   logId: null,
+  logFilename: null,
   projectId: null,
   projectName: null,
   activities: [],
@@ -97,6 +98,7 @@ const els = {
   projectLogsList: document.getElementById("project-logs-list"),
   uploadForm: document.getElementById("upload-form"),
   uploadStatus: document.getElementById("upload-status"),
+  summaryHeading: document.getElementById("summary-heading"),
   logFile: document.getElementById("log-file"),
   caseCol: document.getElementById("case-col"),
   activityCol: document.getElementById("activity-col"),
@@ -644,6 +646,10 @@ function renderFilterStack() {
     const eventsPct = baseEvents > 0 ? ((currentEvents / baseEvents) * 100).toFixed(1) : "0.0";
     els.filterStackSummary.textContent =
       `${descriptors.length} active filters | ${casesPct}% of cases (${formatNumber(currentCases)} / ${formatNumber(baseCases)}) | ${eventsPct}% of events (${formatNumber(currentEvents)} / ${formatNumber(baseEvents)})`;
+  }
+
+  if (els.clearFilterStack) {
+    els.clearFilterStack.classList.toggle("no-filters", !descriptors.length);
   }
 
   els.filterStack.innerHTML = "";
@@ -5255,7 +5261,7 @@ function resetFiltersToDefaults() {
     els.activityDetail.value = "100";
   }
   if (els.pathDetail) {
-    els.pathDetail.value = "50";
+    els.pathDetail.value = "100";
   }
   updateProcessDetailLabels();
 
@@ -5270,6 +5276,28 @@ function resetFiltersToDefaults() {
     );
   }
 
+  state.quickFilters = [];
+  clearMapSelection();
+  renderFilterStack();
+}
+
+function clearActiveFiltersOnly() {
+  if (state.baseSummary) {
+    setFiltersFromSummary(state.baseSummary);
+  }
+  els.minActivityFrequency.value = "1";
+  els.minEdgeFrequency.value = "1";
+  els.variantTopK.value = "20";
+  els.retainTopVariants.value = "";
+  els.minCaseDuration.value = "";
+  els.maxCaseDuration.value = "";
+  clearMultiSelect(els.includeActivities);
+  clearMultiSelect(els.excludeActivities);
+  if (els.attributeFilters) {
+    Array.from(els.attributeFilters.querySelectorAll("select[data-column]")).forEach(
+      (control) => { clearMultiSelect(control); }
+    );
+  }
   state.quickFilters = [];
   clearMapSelection();
   renderFilterStack();
@@ -5422,9 +5450,11 @@ async function exportHtmlReport() {
 
 els.logFile.addEventListener("change", async () => {
   const file = els.logFile.files?.[0];
-  if (!file) {
-    return;
-  }
+  const csvDetails = document.getElementById("csv-details");
+  const loadBtn = document.getElementById("load-log-btn");
+  if (csvDetails) csvDetails.classList.toggle("hidden", !file);
+  if (loadBtn) loadBtn.classList.toggle("no-file", !file);
+  if (!file) return;
   try {
     await suggestMappingForCurrentFile();
   } catch (error) {
@@ -5473,12 +5503,20 @@ els.filterStack?.addEventListener("click", async (event) => {
 });
 
 els.clearFilterStack?.addEventListener("click", async () => {
-  resetFiltersToDefaults();
+  clearActiveFiltersOnly();
   if (!state.logId) {
     return;
   }
+  const savedFrame = state.animation.frameIndex;
+  const savedOverlay = state.animation.overlayVisible;
   try {
     await loadDashboard();
+    state.animation.frameIndex = savedFrame;
+    syncActiveAnimationView(false);
+    if (savedOverlay) {
+      state.animation.overlayVisible = true;
+      renderCurrentMap();
+    }
     els.conformanceOutput.textContent = "";
   } catch (error) {
     els.conformanceOutput.textContent = error.message || "Could not clear filters.";
@@ -5639,12 +5677,57 @@ function refreshLogRowStates() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Collapsible sections
+// ---------------------------------------------------------------------------
+
+const SECTION_STATE_KEY = "flowscope_collapsed";
+
+function saveSectionState(id, collapsed) {
+  const stored = JSON.parse(localStorage.getItem(SECTION_STATE_KEY) || "{}");
+  stored[id] = collapsed;
+  localStorage.setItem(SECTION_STATE_KEY, JSON.stringify(stored));
+}
+
+function expandAllSections() {
+  localStorage.removeItem(SECTION_STATE_KEY);
+  document.querySelectorAll(".collapsible.collapsed").forEach((s) => s.classList.remove("collapsed"));
+}
+
+const ALWAYS_EXPANDED_SECTIONS = new Set(["section-project", "section-upload"]);
+
+function initCollapsibleSections() {
+  const stored = JSON.parse(localStorage.getItem(SECTION_STATE_KEY) || "{}");
+  document.querySelectorAll(".collapsible").forEach((section) => {
+    if (!ALWAYS_EXPANDED_SECTIONS.has(section.id) && stored[section.id]) {
+      section.classList.add("collapsed");
+    }
+    section.querySelector(".collapse-toggle")?.addEventListener("click", () => {
+      const nowCollapsed = !section.classList.contains("collapsed");
+      section.classList.toggle("collapsed", nowCollapsed);
+      saveSectionState(section.id, nowCollapsed);
+    });
+  });
+}
+
+function resetUploadSection() {
+  els.logFile.value = "";
+  const csvDetails = document.getElementById("csv-details");
+  const loadBtn = document.getElementById("load-log-btn");
+  if (csvDetails) csvDetails.classList.add("hidden");
+  if (loadBtn) loadBtn.classList.add("no-file");
+}
+
 function clearActiveLog() {
   state.logId = null;
+  state.logFilename = null;
+  if (els.summaryHeading) els.summaryHeading.textContent = "2. Log Summary";
   state.dashboard = null;
   state.activities = [];
   state.baseSummary = null;
   stopAnimation({ hideOverlay: true });
+  expandAllSections();
+  resetUploadSection();
   els.dashboard.classList.add("hidden");
   renderCurrentMap();
   setStatus("Log cleared. Upload or load another log to continue.");
@@ -5661,6 +5744,8 @@ async function reloadLogFromProject(logId, filename) {
     const data = await response.json();
 
     state.logId = logId;
+    state.logFilename = filename;
+    if (els.summaryHeading) els.summaryHeading.textContent = `2. Log Summary: ${filename}`;
     state.activities = data.activities || [];
     state.baseSummary = data.summary;
     state.columnMapping = data.column_mapping || null;
@@ -5696,7 +5781,7 @@ async function reloadLogFromProject(logId, filename) {
 }
 
 els.projectSelect.addEventListener("change", async () => {
-  if (state.logId) clearActiveLog();
+  clearActiveLog();
   const projectId = els.projectSelect.value;
   if (!projectId) {
     state.projectId = null;
@@ -5734,6 +5819,7 @@ els.createProjectBtn.addEventListener("click", async () => {
     }
 
     const data = await response.json();
+    clearActiveLog();
     state.projectId = data.project_id;
     state.projectName = data.name;
     els.projectNameInput.value = "";
@@ -5857,6 +5943,8 @@ els.uploadForm.addEventListener("submit", async (event) => {
     });
 
     state.logId = data.log_id;
+    state.logFilename = els.logFile.files[0]?.name || null;
+    if (els.summaryHeading && state.logFilename) els.summaryHeading.textContent = `2. Log Summary: ${state.logFilename}`;
     state.activities = data.activities || [];
     state.baseSummary = data.summary;
     state.columnMapping = data.column_mapping || null;
@@ -6087,3 +6175,4 @@ updateProcessDetailLabels();
 renderAttributeFilterControls([], {});
 renderInformationalColumns([]);
 renderEmptyMap("Upload a log to start.");
+initCollapsibleSections();

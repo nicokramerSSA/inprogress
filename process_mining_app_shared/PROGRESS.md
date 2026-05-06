@@ -313,6 +313,48 @@ Then open: http://127.0.0.1:8001
 - **Matched button sizing**: `min-width: 158px; justify-content: center;` added to both `.btn-delete-project` and `#create-project-btn` so the two project-row buttons are the same width and height; `#create-project-btn` also gets `font-size: 0.875rem` to match delete button
 - **Create button disabled guard**: `#create-project-btn` starts with `no-name` class in `index.html`; `input` event on `#project-name-input` toggles `no-name` live; `.btn-ghost.no-name` CSS dims to 40% opacity, suppresses hover transform, and shows a "Enter a project name to enable create" tooltip — same `position: relative` + `::after` pattern as `.btn-delete-project.no-project` and `.btn-ghost.zoom-disabled`; `no-name` is re-applied after a successful project creation clears the input
 
+### UI overhaul — collapsible sections, section reorder, and import UX (2026-05-06, session 10)
+
+**CSS specificity bug fix — hidden dashboard on project switch**
+- Root cause: `.dashboard { display: grid }` was defined after `.hidden { display: none }` in the stylesheet; equal specificity → last rule won → `display: grid` overrode `display: none` when both classes were present
+- Fix: changed `.hidden { display: none !important }` so utility class always wins regardless of declaration order
+
+**Project switch / create always clears dashboard**
+- `projectSelect` change handler: removed `if (state.logId)` guard — `clearActiveLog()` now called unconditionally on every project switch
+- Create project handler: `clearActiveLog()` added immediately after the successful POST response, before updating `state.projectId`
+
+**Paths filter default: 50% → 100%**
+- `resetFiltersToDefaults()` in `app.js`: `els.pathDetail.value = "50"` → `"100"`
+- HTML `value="50"` and initial label text updated to `100` / `"100% of path volume"`
+
+**Section grouping and reorder**
+- Six analysis tables (Top Paths, Variants, Bottlenecks, Activity Statistics, Rework Insights, Informational Columns) wrapped in a new `section.card.analysis-section` with heading "5. Analysis"
+- Export Analysis and Export HTML Report buttons moved from the Explore and Filter header into a new `section.card.export-section` ("6. Export") at the bottom of the dashboard
+- Section order in `#dashboard` changed: Summary → Process Map & Animation → Explore and Filter → Analysis → Export
+
+**Collapsible sections**
+- All seven dashboard sections and the two setup sections (Select or Create a Project, Import Event Log) are now collapsible via a `#003399` chevron button next to each heading
+- Smooth slide animation via CSS `max-height` transition (0.35s ease); chevron rotates −90° when collapsed
+- `localStorage` key `flowscope_collapsed` persists which sections are collapsed across page refreshes
+- `expandAllSections()` clears localStorage and removes `.collapsed` from all sections — called from `clearActiveLog()` on log clear, project switch, and project create
+- `section-project` and `section-upload` are excluded from localStorage restore — they always start expanded on page load (can still be manually collapsed within a session)
+- Action buttons (Apply Filters / Reset for Explore and Filter; Frequency / Performance for Process Map) moved inside `.collapsible-body` so they are hidden when those sections are collapsed
+
+**Sticky header with solid backing**
+- `<header class="hero">` wrapped in `<div class="hero-strip">` which carries `position: sticky; top: 0; z-index: 200; background: #001233; padding-bottom: 10px; margin-bottom: -10px`
+- Dark navy backing fills the rounded-corner transparent areas so scrolling card content does not show through
+- Hero padding reduced `24px → 12px` (vertical) to make the header slightly less tall
+
+**Section numbering and naming**
+- Sections numbered 0–6: 0. Select or Create a Project, 1. Import Event Log, 2. Log Summary, 3. Process Map & Animation, 4. Explore and Filter, 5. Analysis, 6. Export
+- Log Summary heading updated in HTML and in all three JS assignment sites (`clearActiveLog`, `reloadLogFromProject`, upload handler)
+
+**Import Event Log — progressive disclosure**
+- On initial load (and after every `clearActiveLog()`): only the Choose File input and a grayed-out Load Log button are visible; CSV mapping fields are hidden in `#csv-details`
+- Selecting a file reveals `#csv-details` and enables the Load Log button (removes `no-file` class)
+- `no-file` CSS: `opacity: 0.45`, `cursor: not-allowed`, `pointer-events: auto` (keeps hover active); `::after` tooltip "No file has been chosen" shown on hover
+- `resetUploadSection()` helper resets file input, re-hides `#csv-details`, re-adds `no-file` — called from `clearActiveLog()`
+
 ## Next steps
 - Push all local changes to Render when ready
 - Share URL with team: https://flowscope-miner.onrender.com/
