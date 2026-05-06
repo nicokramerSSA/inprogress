@@ -7,12 +7,13 @@
 - [x] App runs locally at http://127.0.0.1:8000
 
 ## How to run the app
-```bash
+```powershell
 cd process_mining_app_shared
-venv/Scripts/activate       # Windows
-uvicorn backend.main:app --reload --app-dir .
+.\venv\Scripts\python.exe -m uvicorn backend.main:app --reload --app-dir . --port 8001
 ```
-Then open: http://127.0.0.1:8000
+Then open: http://127.0.0.1:8001
+
+> **Important — zombie server issue (Windows):** Multiple uvicorn processes can accumulate across VS Code sessions and all bind to port 8000, causing the wrong (old) server to handle requests. **Always use a port that isn't already taken** (`--port 8001`, `--port 8002`, etc.) or restart VS Code entirely before starting. To check what's on a port: `netstat -ano | findstr :8001`. To kill: `taskkill /F /PID <pid>`.
 
 ## Changes log
 
@@ -43,10 +44,10 @@ Then open: http://127.0.0.1:8000
 - Added project management CSS to `styles.css`
 - Fixed health endpoint return type annotation (`dict[str, str]` → `dict[str, Any]`) for FastAPI 0.136 compatibility
 
-### Known issue (2026-04-29)
-- Multiple zombie uvicorn processes accumulate across sessions (WSL process isolation).
-  **Workaround:** restart VS Code / WSL terminal between sessions to clear them.
-  For development, always use a new port (`--port 8002`, `--port 8003`, etc.) if the default is taken.
+### Known issue (2026-04-29, updated 2026-05-06)
+- Multiple zombie uvicorn processes accumulate across sessions on Windows.
+  **Workaround:** always start with an unused port (e.g. `--port 8001`) or restart VS Code between sessions.
+  Check: `netstat -ano | findstr :8000`. Kill: `taskkill /F /PID <pid>`.
 
 ### Deployed to Render (2026-04-30)
 - Live URL: https://flowscope-miner.onrender.com/
@@ -243,6 +244,45 @@ Then open: http://127.0.0.1:8000
 **Handoff Actor — layout and thickness**
 - `minStageGap` 120 → 200, `stageGapBase` 96 → 160 — ~130 SVG-unit gap between actor rows
 - Static stroke multiplier `× 10 → × 7`; backbone bonus `+1.2 → +1.0`
+
+### Log management and project UI polish (2026-05-06, session 7)
+
+**Log deletion**
+- New `DELETE /api/projects/{project_id}/logs/{log_id}` endpoint in `backend/main.py` — deletes log row from Postgres and evicts from `LOG_STORE` in-memory cache
+- Trash icon button added per log row in the project logs list (`frontend/app.js`)
+- Clicking trash opens a custom styled confirm modal (see below) before sending DELETE; on success removes the row from the DOM
+- If the deleted log was the currently active log, resets all dashboard state (`logId`, `dashboard`, `activities`, `baseSummary`), hides dashboard, re-renders empty map, and shows status message
+
+**Active log UI**
+- Active log row shows a green **ACTIVE** badge (`#C1EFD5` fill, `#186037` text, `rgba(24,96,55,0.35)` border)
+- Load button changes to **Clear** (solid `#003399` background, white text) when that log is active; tooltip "Clear page of loaded data" appears on hover
+- Clicking **Clear** resets page state without deleting the log from the project
+- `refreshLogRowStates()` helper syncs all row badges and buttons against `state.logId` — called after load, clear, and page init
+
+**Log timestamp**
+- Timestamp label prefixed with "Uploaded " (e.g. `Uploaded 5/6/2026, 8:43:15 AM`)
+
+**Delete button styling**
+- `.btn-delete-log`: orange-tinted ghost button (`#DE4702`) with trash-can SVG icon; hover darkens orange tint (updated from red in session 8)
+
+### Bug fix — delete log 500 error (2026-05-06, session 8)
+
+- **Root cause**: `DELETE` endpoint used `text("DELETE FROM logs WHERE id = :log_id::uuid …")` — SQLAlchemy's parameter parser found both `:log_id` AND `:uuid` (from the `::` PostgreSQL cast operator) as bind parameters; `uuid` was not in the params dict → unhandled `CompileError` → HTTP 500
+- **Fix**: Replaced raw `text()` with `delete(logs).where(logs.c.id == log_id).where(logs.c.owner == owner)` — matches the ORM pattern used everywhere else in the file; SQLAlchemy handles UUID coercion automatically
+- Added `delete` to the `from sqlalchemy import select, insert, delete` import line
+
+### Custom confirm modal (2026-05-06, session 8)
+
+- Replaced native `confirm()` dialog on log delete with a Promise-based `showConfirm(filename)` helper (`frontend/app.js`)
+- Modal renders over a dimmed/blurred backdrop (`.confirm-overlay`), animates in via existing `@keyframes enter`, dismisses on Cancel click, Delete click, backdrop click, or Escape key
+- **Orange danger color scheme** (`--danger: #DE4702`, `--danger-light: #FED8C6`) added to `:root` CSS variables
+- `.btn-danger` class added — solid orange, pill-shaped, matches button radius/weight of existing button system
+- Trash can icon color updated from red (`#b42828`) to orange (`#DE4702`) to match
+
+### Sample log files added (2026-05-06, session 8)
+
+- `sample_loan_approval_log.csv` — 12 cases (LOAN-2001–2012); actors Emma/Frank/Grace/Henry/System; paths: straight-through approval, one/two document-request loops, rejection, rejection after docs
+- `sample_onboarding_log.csv` — 10 cases (EMP-3001–3010); actors HR/IT/Manager/Employee/System; paths: standard full path, reschedule orientation loop, IT equipment delay, declined offer (early exit), extended probation (second review loop)
 
 ## Next steps
 - Push all local changes to Render when ready

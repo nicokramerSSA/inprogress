@@ -13,6 +13,8 @@
   --accent: #0A7CC1;
   --ok: #1D9A19;
   --shadow: rgba(0, 18, 60, 0.22);
+  --danger: #DE4702;
+  --danger-light: #FED8C6;
 }
 
 * {
@@ -219,6 +221,17 @@ button:hover {
 
 .btn-ghost:hover {
   background: rgba(0, 51, 153, 0.14);
+}
+
+.btn-ghost.btn-clear {
+  background: #003399;
+  color: #fff;
+  border: 1px solid #003399;
+}
+
+.btn-ghost.btn-clear:hover {
+  background: #002280;
+  border-color: #002280;
 }
 
 .btn-ghost.zoom-disabled {
@@ -722,8 +735,8 @@ th {
   align-items: center;
   justify-content: center;
   background: none;
-  border: 1px solid rgba(180, 40, 40, 0.28);
-  color: #b42828;
+  border: 1px solid rgba(222, 71, 2, 0.3);
+  color: var(--danger);
   border-radius: 999px;
   padding: 4px 7px;
   cursor: pointer;
@@ -733,8 +746,8 @@ th {
 }
 
 .btn-delete-log:hover {
-  background: rgba(180, 40, 40, 0.09);
-  border-color: rgba(180, 40, 40, 0.55);
+  background: rgba(222, 71, 2, 0.09);
+  border-color: rgba(222, 71, 2, 0.55);
   transform: translateY(-1px);
 }
 
@@ -840,4 +853,68 @@ th {
   .time-pill {
     min-height: 34px;
   }
+}
+
+/* ── Confirm dialog ─────────────────────────────────────────────────────── */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 12, 40, 0.62);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: enter 200ms ease both;
+}
+
+.confirm-overlay--out {
+  animation: confirm-fade-out 180ms ease both;
+}
+
+@keyframes confirm-fade-out {
+  to { opacity: 0; }
+}
+
+.confirm-modal {
+  width: min(400px, calc(100vw - 32px));
+  padding: 28px 28px 22px;
+  animation: enter 220ms ease both;
+}
+
+.confirm-title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.confirm-body {
+  margin: 0 0 24px;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-danger {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: var(--danger);
+  color: #fff;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
 }

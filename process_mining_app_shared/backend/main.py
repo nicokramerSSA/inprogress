@@ -51,7 +51,7 @@ from .analytics import (
     suggest_csv_mapping,
 )
 from .database import create_tables, migrate_schema, engine, logs, projects
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, delete
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -1244,22 +1244,12 @@ def assign_log_to_project(project_id: str, log_id: str, request: Request) -> dic
 @app.delete("/api/projects/{project_id}/logs/{log_id}")
 def delete_project_log(project_id: str, log_id: str, request: Request) -> dict:
     """Permanently delete a log from a project. Owner-scoped; also evicts the in-memory cache."""
-    from sqlalchemy import delete as sql_delete
     owner = _owner(request)
-    with engine.connect() as conn:
-        proj = conn.execute(
-            select(projects.c.id)
-            .where(projects.c.id == project_id)
-            .where(projects.c.owner == owner)
-        ).fetchone()
-        if not proj:
-            raise HTTPException(status_code=404, detail="Project not found")
-
+    logger.info("DELETE log %s from project %s owner=%s", log_id, project_id, owner)
     with engine.begin() as conn:
         result = conn.execute(
-            sql_delete(logs)
+            delete(logs)
             .where(logs.c.id == log_id)
-            .where(logs.c.project_id == project_id)
             .where(logs.c.owner == owner)
         )
         if result.rowcount == 0:

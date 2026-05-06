@@ -298,6 +298,45 @@ function setStatus(message, isError = false) {
   els.uploadStatus.style.color = isError ? "#003399" : "#000000";
 }
 
+function showConfirm(filename) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+
+    const modal = document.createElement("div");
+    modal.className = "confirm-modal card";
+    modal.setAttribute("role", "alertdialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.innerHTML = `
+      <p class="confirm-title">Delete log?</p>
+      <p class="confirm-body">Delete "<strong>${filename}</strong>"?<br>This cannot be undone.</p>
+      <div class="confirm-actions">
+        <button class="btn-ghost confirm-cancel">Cancel</button>
+        <button class="btn-danger confirm-delete">Delete</button>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => modal.querySelector(".confirm-cancel").focus());
+
+    const close = (result) => {
+      overlay.classList.add("confirm-overlay--out");
+      overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
+      resolve(result);
+    };
+
+    modal.querySelector(".confirm-cancel").addEventListener("click", () => close(false));
+    modal.querySelector(".confirm-delete").addEventListener("click", () => close(true));
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(false); });
+
+    const onKey = (e) => {
+      if (e.key === "Escape") { document.removeEventListener("keydown", onKey); close(false); }
+    };
+    document.addEventListener("keydown", onKey);
+  });
+}
+
 function setMappingStatus(message, isError = false) {
   if (!els.mappingStatus) {
     return;
@@ -5528,7 +5567,7 @@ async function loadProjectLogs(projectId) {
         row.dataset.logId = log.log_id;
         row.innerHTML = `
           <span class="log-filename">${log.filename}</span>
-          <span class="log-date">${uploadedAt}</span>
+          <span class="log-date">Uploaded ${uploadedAt}</span>
           <span class="log-active-badge hidden">Active</span>
           <button class="btn-ghost btn-sm load-log-btn" data-log-id="${log.log_id}">Load</button>
           <button class="btn-delete-log" data-log-id="${log.log_id}" title="Delete log" aria-label="Delete ${log.filename}">
@@ -5539,14 +5578,21 @@ async function loadProjectLogs(projectId) {
             </svg>
           </button>
         `;
-        row.querySelector(".load-log-btn").addEventListener("click", () =>
-          reloadLogFromProject(log.log_id, log.filename)
-        );
+        row.querySelector(".load-log-btn").addEventListener("click", () => {
+          if (state.logId === log.log_id) {
+            clearActiveLog();
+          } else {
+            reloadLogFromProject(log.log_id, log.filename);
+          }
+        });
         row.querySelector(".btn-delete-log").addEventListener("click", async () => {
-          if (!confirm(`Delete "${log.filename}"? This cannot be undone.`)) return;
+          if (!await showConfirm(log.filename)) return;
           try {
             const res = await fetch(`/api/projects/${projectId}/logs/${log.log_id}`, { method: "DELETE" });
-            if (!res.ok) throw new Error("Delete failed");
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body.detail || `HTTP ${res.status}`);
+            }
             row.remove();
             if (!els.projectLogsList.querySelector(".project-log-row")) {
               els.projectLogsList.innerHTML = '<p class="note">No logs uploaded to this project yet.</p>';
@@ -5557,21 +5603,50 @@ async function loadProjectLogs(projectId) {
               state.activities = [];
               state.baseSummary = null;
               stopAnimation({ hideOverlay: true });
+              els.dashboard.classList.add("hidden");
               renderCurrentMap();
               setStatus("Log deleted. Upload or load another log to continue.");
             }
-          } catch {
-            setProjectStatus("Could not delete log.", true);
+          } catch (err) {
+            setProjectStatus(err.message || "Could not delete log.", true);
           }
         });
         els.projectLogsList.appendChild(row);
       });
+      refreshLogRowStates();
     }
 
     els.projectLogsSection.classList.remove("hidden");
   } catch {
     setProjectStatus("Could not load logs for this project.", true);
   }
+}
+
+function refreshLogRowStates() {
+  document.querySelectorAll(".project-log-row").forEach((r) => {
+    const isActive = state.logId === r.dataset.logId;
+    r.classList.toggle("active-log", isActive);
+    const badge = r.querySelector(".log-active-badge");
+    if (badge) badge.classList.toggle("hidden", !isActive);
+    const loadBtn = r.querySelector(".load-log-btn");
+    if (loadBtn) {
+      loadBtn.textContent = isActive ? "Clear" : "Load";
+      loadBtn.title = isActive ? "Clear page of loaded data" : "";
+      loadBtn.classList.toggle("btn-clear", isActive);
+    }
+  });
+}
+
+function clearActiveLog() {
+  state.logId = null;
+  state.dashboard = null;
+  state.activities = [];
+  state.baseSummary = null;
+  stopAnimation({ hideOverlay: true });
+  els.dashboard.classList.add("hidden");
+  renderCurrentMap();
+  setStatus("Log cleared. Upload or load another log to continue.");
+  refreshLogRowStates();
 }
 
 async function reloadLogFromProject(logId, filename) {
@@ -5603,18 +5678,7 @@ async function reloadLogFromProject(logId, filename) {
 
     await loadDashboard();
 
-    // Mark the active log row and clear any previous active state
-    document.querySelectorAll(".project-log-row").forEach((r) => {
-      r.classList.remove("active-log");
-      const badge = r.querySelector(".log-active-badge");
-      if (badge) badge.classList.add("hidden");
-    });
-    const activeRow = document.querySelector(`.project-log-row[data-log-id="${logId}"]`);
-    if (activeRow) {
-      activeRow.classList.add("active-log");
-      const badge = activeRow.querySelector(".log-active-badge");
-      if (badge) badge.classList.remove("hidden");
-    }
+    refreshLogRowStates();
 
     setProjectStatus(`${filename} loaded — dashboard updated below.`);
 
