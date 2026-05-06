@@ -91,6 +91,7 @@ const els = {
   projectSelect: document.getElementById("project-select"),
   projectNameInput: document.getElementById("project-name-input"),
   createProjectBtn: document.getElementById("create-project-btn"),
+  deleteProjectBtn: document.getElementById("delete-project-btn"),
   projectStatus: document.getElementById("project-status"),
   projectLogsSection: document.getElementById("project-logs-section"),
   projectLogsList: document.getElementById("project-logs-list"),
@@ -298,7 +299,8 @@ function setStatus(message, isError = false) {
   els.uploadStatus.style.color = isError ? "#003399" : "#000000";
 }
 
-function showConfirm(filename) {
+function showConfirm(subject, { title = "Delete log?", body = null } = {}) {
+  const bodyHtml = body ?? `Delete "<strong>${subject}</strong>"?<br>This cannot be undone.`;
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     overlay.className = "confirm-overlay";
@@ -308,8 +310,8 @@ function showConfirm(filename) {
     modal.setAttribute("role", "alertdialog");
     modal.setAttribute("aria-modal", "true");
     modal.innerHTML = `
-      <p class="confirm-title">Delete log?</p>
-      <p class="confirm-body">Delete "<strong>${filename}</strong>"?<br>This cannot be undone.</p>
+      <p class="confirm-title">${title}</p>
+      <p class="confirm-body">${bodyHtml}</p>
       <div class="confirm-actions">
         <button class="btn-ghost confirm-cancel">Cancel</button>
         <button class="btn-danger confirm-delete">Delete</button>
@@ -5694,17 +5696,20 @@ async function reloadLogFromProject(logId, filename) {
 }
 
 els.projectSelect.addEventListener("change", async () => {
+  if (state.logId) clearActiveLog();
   const projectId = els.projectSelect.value;
   if (!projectId) {
     state.projectId = null;
     state.projectName = null;
     els.projectLogsSection.classList.add("hidden");
+    els.deleteProjectBtn.classList.add("no-project");
     setProjectStatus("");
     return;
   }
   const selectedOption = els.projectSelect.options[els.projectSelect.selectedIndex];
   state.projectId = projectId;
   state.projectName = selectedOption.textContent;
+  els.deleteProjectBtn.classList.remove("no-project");
   setProjectStatus(`Project selected: ${state.projectName}`);
   await loadProjectLogs(projectId);
 });
@@ -5732,15 +5737,55 @@ els.createProjectBtn.addEventListener("click", async () => {
     state.projectId = data.project_id;
     state.projectName = data.name;
     els.projectNameInput.value = "";
+    els.createProjectBtn.classList.add("no-name");
 
     await loadProjects();
     els.projectSelect.value = data.project_id;
+    els.deleteProjectBtn.classList.remove("no-project");
     setProjectStatus(`Project "${data.name}" created and selected.`);
     els.projectLogsList.innerHTML = '<p class="note">No logs uploaded to this project yet.</p>';
     els.projectLogsSection.classList.remove("hidden");
   } catch (error) {
     setProjectStatus(error.message || "Could not create project.", true);
   }
+});
+
+els.deleteProjectBtn.addEventListener("click", async () => {
+  if (!state.projectId) return;
+  const confirmed = await showConfirm(state.projectName, {
+    title: "Delete project?",
+    body: `Delete "<strong>${state.projectName}</strong>" and all its logs?<br>This cannot be undone.`,
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/projects/${state.projectId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const deletedName = state.projectName;
+
+    if (state.logId) {
+      clearActiveLog();
+    }
+
+    state.projectId = null;
+    state.projectName = null;
+    els.projectLogsSection.classList.add("hidden");
+    els.deleteProjectBtn.classList.add("no-project");
+
+    await loadProjects();
+    els.projectSelect.value = "";
+    setProjectStatus(`Project "${deletedName}" and all its logs deleted.`);
+  } catch (err) {
+    setProjectStatus(err.message || "Could not delete project.", true);
+  }
+});
+
+els.projectNameInput.addEventListener("input", () => {
+  els.createProjectBtn.classList.toggle("no-name", !els.projectNameInput.value.trim());
 });
 
 // Load projects on page start

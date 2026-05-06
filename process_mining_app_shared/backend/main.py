@@ -1179,6 +1179,46 @@ def list_projects(request: Request) -> dict:
     }
 
 
+@app.delete("/api/projects/{project_id}")
+def delete_project(project_id: str, request: Request) -> dict:
+    """Delete a project and all its logs. Owner-scoped."""
+    owner = _owner(request)
+    logger.info("DELETE project %s owner=%s", project_id, owner)
+    with engine.begin() as conn:
+        proj = conn.execute(
+            select(projects.c.id)
+            .where(projects.c.id == project_id)
+            .where(projects.c.owner == owner)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        log_ids = [
+            str(r.id) for r in conn.execute(
+                select(logs.c.id)
+                .where(logs.c.project_id == project_id)
+                .where(logs.c.owner == owner)
+            ).fetchall()
+        ]
+
+        conn.execute(
+            delete(logs)
+            .where(logs.c.project_id == project_id)
+            .where(logs.c.owner == owner)
+        )
+        conn.execute(
+            delete(projects)
+            .where(projects.c.id == project_id)
+            .where(projects.c.owner == owner)
+        )
+
+    for log_id in log_ids:
+        LOG_STORE.pop(log_id, None)
+
+    logger.info("Deleted project %s with %d log(s)", project_id, len(log_ids))
+    return {"deleted": project_id, "logs_deleted": len(log_ids)}
+
+
 @app.get("/api/projects/{project_id}/logs")
 def list_project_logs(project_id: str, request: Request) -> dict:
     """Return all logs in a project owned by the current user, newest first."""

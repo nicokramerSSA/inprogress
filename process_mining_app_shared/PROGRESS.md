@@ -44,10 +44,11 @@ Then open: http://127.0.0.1:8001
 - Added project management CSS to `styles.css`
 - Fixed health endpoint return type annotation (`dict[str, str]` → `dict[str, Any]`) for FastAPI 0.136 compatibility
 
-### Known issue (2026-04-29, updated 2026-05-06)
-- Multiple zombie uvicorn processes accumulate across sessions on Windows.
-  **Workaround:** always start with an unused port (e.g. `--port 8001`) or restart VS Code between sessions.
-  Check: `netstat -ano | findstr :8000`. Kill: `taskkill /F /PID <pid>`.
+### Known issue — zombie uvicorn workers (2026-04-29, updated 2026-05-06)
+- Windows `uvicorn --reload` spawns multiprocessing worker children. Killing the parent leaves orphan workers alive, holding the port. A new server launch silently dies (port already bound), so all requests continue to be served by the stale workers — **including routes that don't exist in the new code**. Symptom: a freshly added endpoint returns 404.
+- **Diagnosis**: `Get-WmiObject Win32_Process | Where-Object { $_.Name -eq "python.exe" }` lists all Python PIDs. If more than one exists, they are likely zombie workers. Confirm by importing the app object in a fresh Python shell (`from backend.main import app; [r.path for r in app.routes]`) — if the route exists in code but the running server 404s, stale workers are serving requests.
+- **Fix**: `taskkill /F /PID <pid>` for every orphan PID; then start a fresh server.
+- **Prevention**: always start with an unused port (`--port 8001`, `--port 8002`, etc.); confirm startup with a `GET /health` check before testing new routes.
 
 ### Deployed to Render (2026-04-30)
 - Live URL: https://flowscope-miner.onrender.com/
@@ -283,6 +284,34 @@ Then open: http://127.0.0.1:8001
 
 - `sample_loan_approval_log.csv` — 12 cases (LOAN-2001–2012); actors Emma/Frank/Grace/Henry/System; paths: straight-through approval, one/two document-request loops, rejection, rejection after docs
 - `sample_onboarding_log.csv` — 10 cases (EMP-3001–3010); actors HR/IT/Manager/Employee/System; paths: standard full path, reschedule orientation loop, IT equipment delay, declined offer (early exit), extended probation (second review loop)
+
+### Delete Project feature (2026-05-06, session 9)
+
+**Backend**
+- New `DELETE /api/projects/{project_id}` endpoint in `backend/main.py`
+- Cascades: fetches all log IDs for the project first, deletes all project logs via `delete(logs).where(logs.c.project_id == project_id)`, then deletes the project — all in one `engine.begin()` transaction
+- Evicts deleted log IDs from `LOG_STORE` in-memory cache after the transaction commits
+- Returns `{ "deleted": project_id, "logs_deleted": N }`
+
+**Frontend**
+- Delete Project button added next to the project dropdown in `index.html` — orange pill style (`.btn-delete-project`) with trash-can SVG; starts grayed out (`.no-project`) until a project is selected
+- `deleteProjectBtn` added to `els` cache in `app.js`; `projectSelect` change handler and create-project handler toggle `.no-project` accordingly
+- On click: opens `showConfirm()` modal with a custom title ("Delete project?") and body that names the project and warns about log cascade
+- On confirm: DELETE fetch → `clearActiveLog()` if a log from that project was active → reset project state → `loadProjects()` → reset dropdown to blank
+
+### Bug fix — DELETE project 404 (zombie uvicorn workers) (2026-05-06, session 9)
+
+- **Symptom**: `DELETE /api/projects/{project_id}` returned 404 even though the route existed in `main.py`
+- **Root cause**: 8 orphan Python/uvicorn worker processes from previous sessions were holding port 8001; each new server launch silently died (port already bound), so stale workers — which had no knowledge of the new route — continued serving all requests
+- **Diagnosis**: `Get-WmiObject Win32_Process | Where-Object { $_.Name -eq "python.exe" }` revealed 8 PIDs; confirming with a fresh Python shell import (`from backend.main import app`) showed the route existed in code — divergence proved the running process was stale
+- **Fix**: `taskkill /F /PID` for all 7 orphan PIDs; fresh server start resolved the 404 immediately
+- See updated "Known issue" section above for full diagnosis steps and prevention
+
+### UI polish (2026-05-06, session 9)
+
+- **Project switch clears active log**: `projectSelect` change handler now calls `clearActiveLog()` at the top when `state.logId` is set — switching projects resets the dashboard, data fields, and process map to blank immediately
+- **Matched button sizing**: `min-width: 158px; justify-content: center;` added to both `.btn-delete-project` and `#create-project-btn` so the two project-row buttons are the same width and height; `#create-project-btn` also gets `font-size: 0.875rem` to match delete button
+- **Create button disabled guard**: `#create-project-btn` starts with `no-name` class in `index.html`; `input` event on `#project-name-input` toggles `no-name` live; `.btn-ghost.no-name` CSS dims to 40% opacity, suppresses hover transform, and shows a "Enter a project name to enable create" tooltip — same `position: relative` + `::after` pattern as `.btn-delete-project.no-project` and `.btn-ghost.zoom-disabled`; `no-name` is re-applied after a successful project creation clears the input
 
 ## Next steps
 - Push all local changes to Render when ready
