@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FlowScope Miner</title>
+    <title>FlowScope Miner (BETA)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/assets/styles.css?v=10" />
+    <link rel="stylesheet" href="/assets/styles.css?v=13" />
   </head>
   <body>
     <!-- Decorative page texture. It is hidden from assistive technology. -->
@@ -26,7 +26,7 @@
       <header class="hero" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
         <div>
           <p class="eyebrow">PM4PY-POWERED PROCESS MINING</p>
-          <h1>FlowScope Miner</h1>
+          <h1>FlowScope Miner (BETA)</h1>
           <p class="subtitle">
             Disco-style process exploration with interactive filters, variant analysis,
             bottlenecks, and conformance checks.
@@ -207,42 +207,40 @@
               </div>
             </div>
             <div class="collapsible-body">
+            <!-- Tab clusters: Animated Views on left, Analysis Views on right. -->
+            <div class="view-tab-clusters">
+              <div class="tab-cluster">
+                <span class="tab-cluster-label">Animated Views</span>
+                <div class="view-controls" role="group" aria-label="Animated diagram views">
+                  <button id="view-process" class="mode-btn active" type="button" data-tooltip="Activities and paths weighted by frequency or time">Process</button>
+                  <button id="view-handoff-actor" class="mode-btn" type="button" data-tooltip="Work passed between people or roles">Handoff (Actor)</button>
+                  <button id="view-handoff-activity" class="mode-btn" type="button" data-tooltip="Which activities hand off to which">Handoff (Activity)</button>
+                </div>
+              </div>
+              <div class="tab-cluster-divider"></div>
+              <div class="tab-cluster">
+                <span class="tab-cluster-label">Analysis Views</span>
+                <div class="view-controls" role="group" aria-label="Analysis diagram views">
+                  <button id="view-swimlane" class="mode-btn" type="button" data-tooltip="Swimlane diagram grouping activities by actor">BPMN Flow</button>
+                  <button id="view-sankey" class="mode-btn" type="button" data-tooltip="Flow volume through activities as proportional bands">Sankey</button>
+                  <button id="view-rework" class="mode-btn" type="button" data-tooltip="Activities revisited more than once within a case">Rework</button>
+                  <button id="view-queue-heatmap" class="mode-btn" type="button" data-tooltip="Waiting time heatmap between activity pairs">Queue Heatmap</button>
+                  <button id="view-rework-treemap" class="mode-btn" type="button" data-tooltip="Rework volume per activity as nested blocks">Rework Treemap</button>
+                  <button id="view-variant-boxplot" class="mode-btn" type="button" data-tooltip="Case duration spread across top variants">Variant Boxplot</button>
+                </div>
+              </div>
+            </div>
+            <!-- Frequency / Performance: active for Animated Views + BPMN Flow. -->
             <div class="mode-toggle" role="group" aria-label="Edge label mode" style="margin-bottom:10px;">
-              <button id="mode-frequency" class="mode-btn active" type="button">
-                Frequency
-              </button>
-              <button id="mode-performance" class="mode-btn" type="button">
-                Performance
-              </button>
+              <button id="mode-frequency" class="mode-btn active" type="button">Frequency</button>
+              <button id="mode-performance" class="mode-btn" type="button">Performance</button>
             </div>
-            <!-- Diagram tabs. Availability is controlled by frontend/app.js. -->
-            <div class="view-controls" role="group" aria-label="Diagram view">
-              <button id="view-process" class="mode-btn active" type="button">Process</button>
-              <button id="view-handoff-actor" class="mode-btn" type="button">
-                Handoff (Actor)
-              </button>
-              <button id="view-handoff-activity" class="mode-btn" type="button">
-                Handoff (Activity)
-              </button>
-              <button id="view-swimlane" class="mode-btn" type="button">BPMN Flow</button>
-              <button id="view-sankey" class="mode-btn" type="button">Sankey</button>
-              <button id="view-rework" class="mode-btn" type="button">Rework</button>
-              <button id="view-queue-heatmap" class="mode-btn" type="button">
-                Queue Heatmap
-              </button>
-              <button id="view-rework-treemap" class="mode-btn" type="button">
-                Rework Treemap
-              </button>
-              <button id="view-variant-boxplot" class="mode-btn" type="button">
-                Variant Boxplot
-              </button>
-            </div>
-            <!-- Animation controls are active only for process and handoff views. -->
+            <!-- Animation bar: always visible, grayed when non-animated view active. -->
             <div class="animation-controls">
               <button id="toggle-animation" class="btn-ghost" type="button">
                 <svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg>Play Animation
               </button>
-<button id="restart-animation" class="btn-ghost" type="button">Restart</button>
+              <button id="restart-animation" class="btn-ghost" type="button">Restart</button>
               <label class="inline-control">
                 Speed
                 <select id="animation-speed">
@@ -252,47 +250,39 @@
                   <option value="3">3x</option>
                 </select>
               </label>
-              <button id="step-back-animation" class="btn-ghost" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="8,1 1,5 8,9" fill="currentColor"/></svg></button>
-              <label class="inline-control grow">
-                Frame
-                <input id="animation-frame" type="range" min="0" max="0" value="0" />
-              </label>
-              <button id="step-forward-animation" class="btn-ghost" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg></button>
+              <div class="frame-slider-group">
+                <button id="step-back-animation" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="8,1 1,5 8,9" fill="currentColor"/></svg></button>
+                <button id="step-forward-animation" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg></button>
+                <label class="inline-control grow">
+                  Frame
+                  <input id="animation-frame" type="range" min="0" max="0" value="0" />
+                </label>
+              </div>
               <span id="animation-time" class="time-pill">No animation data</span>
             </div>
-            <!-- Detail sliders simplify dense maps without changing backend filters. -->
+            <!-- Map Detail sliders: step-arrow + range, side by side, above canvas. -->
             <div class="diagram-detail-controls" role="group" aria-label="Process detail">
-              <label class="inline-control grow">
-                Activities
-                <input
-                  id="activity-detail"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value="100"
-                />
-              </label>
-              <span id="activity-detail-value" class="time-pill">100% of activity volume</span>
-              <label class="inline-control grow">
-                Paths
-                <input
-                  id="path-detail"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value="100"
-                />
-              </label>
-              <span id="path-detail-value" class="time-pill">100% of path volume</span>
-            </div>
-            <!-- Zoom applies to static diagrams; animations intentionally keep fixed scale. -->
-            <div class="diagram-zoom-controls" role="group" aria-label="Diagram zoom">
-              <button id="zoom-out" class="btn-ghost" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><rect x="1" y="4.5" width="8" height="1.5" rx="0.75" fill="currentColor"/></svg>Zoom Out</button>
-              <button id="zoom-reset" class="btn-ghost" type="button"><svg width="12" height="12" viewBox="0 0 12 12" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="7.5" y1="7.5" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Reset Zoom</button>
-              <button id="zoom-in" class="btn-ghost" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:4px" aria-hidden="true"><rect x="1" y="4.5" width="8" height="1.5" rx="0.75" fill="currentColor"/><rect x="4.5" y="1" width="1.5" height="8" rx="0.75" fill="currentColor"/></svg>Zoom In</button>
-              <span id="zoom-value" class="time-pill">100%</span>
+              <p class="map-detail-label">Map Detail</p>
+              <div class="detail-sliders-row">
+                <div class="detail-slider-group">
+                  <button id="step-back-activity" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="8,1 1,5 8,9" fill="currentColor"/></svg></button>
+                  <button id="step-forward-activity" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg></button>
+                  <label class="inline-control grow">
+                    Activities
+                    <input id="activity-detail" type="range" min="0" max="100" step="5" value="100" />
+                  </label>
+                  <span id="activity-detail-value" class="time-pill">100% of activity volume</span>
+                </div>
+                <div class="detail-slider-group">
+                  <button id="step-back-path" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="8,1 1,5 8,9" fill="currentColor"/></svg></button>
+                  <button id="step-forward-path" class="btn-ghost step-btn" type="button"><svg width="11" height="11" viewBox="0 0 10 10" style="vertical-align:-1px" aria-hidden="true"><polygon points="2,1 9,5 2,9" fill="currentColor"/></svg></button>
+                  <label class="inline-control grow">
+                    Paths
+                    <input id="path-detail" type="range" min="0" max="100" step="5" value="100" />
+                  </label>
+                  <span id="path-detail-value" class="time-pill">100% of path volume</span>
+                </div>
+              </div>
             </div>
             <p id="view-description" class="note"></p>
             <p id="process-map-summary" class="note process-map-summary"></p>
@@ -307,9 +297,18 @@
               </div>
               <div id="map-selection-actions" class="selection-actions"></div>
             </section>
-            <div id="process-map-viewport" class="process-map-viewport">
-              <!-- All diagram views render into this one SVG element. -->
-              <svg id="process-map" viewBox="0 0 1200 760" aria-label="Process map"></svg>
+            <!-- Zoom overlay pinned to upper-right corner of canvas; does not scroll. -->
+            <div class="map-canvas-wrapper">
+              <div class="zoom-overlay">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.4"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                <button id="zoom-out" class="zoom-btn" type="button" aria-label="Zoom out">−</button>
+                <span id="zoom-value" class="zoom-pill-value">100%</span>
+                <button id="zoom-in" class="zoom-btn" type="button" aria-label="Zoom in">+</button>
+              </div>
+              <div id="process-map-viewport" class="process-map-viewport">
+                <!-- All diagram views render into this one SVG element. -->
+                <svg id="process-map" viewBox="0 0 1200 760" aria-label="Process map"></svg>
+              </div>
             </div>
             </div><!-- /.collapsible-body -->
           </section>
@@ -333,47 +332,74 @@
           <div class="filter-workspace">
             <div>
               <!-- Static filters are always present; dynamic filters are injected below. -->
-              <div class="filters-grid">
-                <label>
-                  Start Time
-                  <input id="start-time" type="datetime-local" />
-                </label>
-                <label>
-                  End Time
-                  <input id="end-time" type="datetime-local" />
-                </label>
-                <label>
-                  Min Activity Frequency
-                  <input id="min-activity-frequency" type="number" min="1" value="1" />
-                </label>
-                <label>
-                  Min Path Frequency
-                  <input id="min-edge-frequency" type="number" min="1" value="1" />
-                </label>
-                <label>
-                  Variant Rows
-                  <input id="variant-top-k" type="number" min="1" value="20" />
-                </label>
-                <label>
-                  Keep Top Variants (optional)
-                  <input id="retain-top-variants" type="number" min="1" placeholder="all" />
-                </label>
-                <label>
-                  Min Case Duration (hours)
-                  <input id="min-case-duration" type="number" step="0.1" min="0" />
-                </label>
-                <label>
-                  Max Case Duration (hours)
-                  <input id="max-case-duration" type="number" step="0.1" min="0" />
-                </label>
-                <label>
-                  Keep Cases Containing Activities (all selected)
-                  <select id="include-activities" multiple></select>
-                </label>
-                <label>
-                  Exclude Cases Containing Activities (any selected)
-                  <select id="exclude-activities" multiple></select>
-                </label>
+              <div class="filter-groups">
+                <div class="filter-group">
+                  <p class="filter-group-label">Time Range</p>
+                  <div class="filter-group-grid">
+                    <label data-tooltip="Include only events after this time">
+                      Start Time
+                      <input id="start-time" type="datetime-local" />
+                    </label>
+                    <label data-tooltip="Include only events before this time">
+                      End Time
+                      <input id="end-time" type="datetime-local" />
+                    </label>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <p class="filter-group-label">Frequency Thresholds</p>
+                  <div class="filter-group-grid">
+                    <label data-tooltip="Hide activities below this occurrence count">
+                      Min Activity Frequency
+                      <input id="min-activity-frequency" type="number" min="1" value="1" />
+                    </label>
+                    <label data-tooltip="Hide paths traversed fewer times than this">
+                      Min Path Frequency
+                      <input id="min-edge-frequency" type="number" min="1" value="1" />
+                    </label>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <p class="filter-group-label">Variant Controls</p>
+                  <div class="filter-group-grid">
+                    <label data-tooltip="Number of variant rows shown in the table">
+                      Variant Rows
+                      <input id="variant-top-k" type="number" min="1" value="20" />
+                    </label>
+                    <label data-tooltip="Keep only the N most common case variants">
+                      Keep Top Variants (optional)
+                      <input id="retain-top-variants" type="number" min="1" placeholder="all" />
+                    </label>
+                  </div>
+                </div>
+                <div class="filter-group">
+                  <p class="filter-group-label">Case Duration</p>
+                  <div class="filter-group-grid">
+                    <label data-tooltip="Exclude cases shorter than this many hours">
+                      Min Case Duration (hours)
+                      <input id="min-case-duration" type="number" step="0.1" min="0" />
+                    </label>
+                    <label data-tooltip="Exclude cases longer than this many hours">
+                      Max Case Duration (hours)
+                      <input id="max-case-duration" type="number" step="0.1" min="0" />
+                    </label>
+                  </div>
+                </div>
+                <div class="filter-group filter-group--full">
+                  <p class="filter-group-label">Activity Filters</p>
+                  <div class="filter-group-grid">
+                    <label data-tooltip="Keep only cases containing all selected activities">
+                      Keep Cases Containing Activities (all selected)
+                      <input type="search" class="activity-search" placeholder="Search activities…" data-target="include-activities" autocomplete="off" />
+                      <select id="include-activities" multiple></select>
+                    </label>
+                    <label data-tooltip="Drop any case containing a selected activity">
+                      Exclude Cases Containing Activities (any selected)
+                      <input type="search" class="activity-search" placeholder="Search activities…" data-target="exclude-activities" autocomplete="off" />
+                      <select id="exclude-activities" multiple></select>
+                    </label>
+                  </div>
+                </div>
               </div>
               <!-- Populated from user-selected filter-only columns. -->
               <div id="attribute-filters" class="filters-grid dynamic-filters"></div>
@@ -549,6 +575,6 @@
       </section>
     </main>
 
-    <script src="/assets/app.js?v=10"></script>
+    <script src="/assets/app.js?v=13"></script>
   </body>
 </html>

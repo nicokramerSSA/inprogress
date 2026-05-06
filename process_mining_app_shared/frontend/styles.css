@@ -201,6 +201,12 @@ select[multiple] {
   min-height: 120px;
 }
 
+.activity-search {
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  padding: 4px 8px;
+}
+
 button {
   border: none;
   border-radius: 999px;
@@ -402,6 +408,39 @@ button:hover {
   gap: 10px;
 }
 
+/* Grouped filter clusters */
+.filter-groups {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.filter-group {
+  background: rgba(0, 51, 153, 0.05);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.filter-group--full {
+  grid-column: 1 / -1;
+}
+
+.filter-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #003399;
+  margin: 0 0 8px;
+}
+
+.filter-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+
 .filter-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(240px, 0.7fr);
@@ -598,9 +637,8 @@ button:hover {
 
 .diagram-detail-controls {
   display: flex;
-  align-items: end;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -610,6 +648,161 @@ button:hover {
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+/* View tab clusters */
+.view-tab-clusters {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-bottom: 10px;
+}
+
+.tab-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tab-cluster-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-left: 2px;
+}
+
+.tab-cluster-divider {
+  width: 1px;
+  background: var(--line);
+  align-self: stretch;
+  margin: 18px 12px 0;
+}
+
+/* Frame slider: step arrows left, track extends right */
+.frame-slider-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.step-btn {
+  padding: 0 8px;
+  min-height: 38px;
+  flex-shrink: 0;
+}
+
+/* Map Detail section */
+.map-detail-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #003399;
+  margin: 0 0 6px;
+}
+
+.detail-sliders-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.detail-slider-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+/* Zoom overlay: absolute in upper-right of map canvas wrapper */
+.map-canvas-wrapper {
+  position: relative;
+}
+
+.zoom-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 10px;
+  color: var(--muted);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+.zoom-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #003399;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0 3px;
+  line-height: 1;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  color: #0A7CC1;
+}
+
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.zoom-pill-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  color: var(--body);
+  min-width: 36px;
+  text-align: center;
+}
+
+/* Inactive states for mode toggle and animation controls */
+.mode-toggle-inactive {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mode-toggle-inactive .mode-btn {
+  pointer-events: none;
+}
+
+.anim-controls-inactive {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Tooltip for inactive mode toggle (reuses data-tooltip pattern) */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: #001233;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 400;
+  padding: 5px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 300;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 .inline-control {
@@ -1054,6 +1247,14 @@ th {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .filter-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-group--full {
+    grid-column: 1;
+  }
+
   .filter-workspace {
     grid-template-columns: 1fr;
   }
@@ -1077,6 +1278,10 @@ th {
 
   .diagram-zoom-controls {
     align-items: stretch;
+  }
+
+  .detail-sliders-row {
+    grid-template-columns: 1fr;
   }
 
   .inline-control,
@@ -1103,6 +1308,10 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .filter-group-grid {
+    grid-template-columns: 1fr;
+  }
+
   .map-selection {
     grid-template-columns: 1fr;
   }
@@ -1116,6 +1325,10 @@ th {
     align-items: stretch;
   }
 
+  .frame-slider-group {
+    flex-direction: row;
+  }
+
   .diagram-detail-controls {
     flex-direction: column;
     align-items: stretch;
@@ -1124,6 +1337,14 @@ th {
   .diagram-zoom-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .detail-sliders-row {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-slider-group {
+    flex-wrap: wrap;
   }
 
   .time-pill {

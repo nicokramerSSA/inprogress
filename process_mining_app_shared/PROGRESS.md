@@ -355,6 +355,58 @@ Then open: http://127.0.0.1:8001
 - `no-file` CSS: `opacity: 0.45`, `cursor: not-allowed`, `pointer-events: auto` (keeps hover active); `::after` tooltip "No file has been chosen" shown on hover
 - `resetUploadSection()` helper resets file input, re-hides `#csv-details`, re-adds `no-file` — called from `clearActiveLog()`
 
+### Filter group clusters and tooltips (2026-05-06, session 11)
+
+**Grouped filter clusters in Explore and Filter**
+- Replaced flat `filters-grid` with `filter-groups` — 5 labeled clusters in a 2-column layout:
+  - **Time Range**: Start Time, End Time
+  - **Frequency Thresholds**: Min Activity Frequency, Min Path Frequency
+  - **Variant Controls**: Variant Rows, Keep Top Variants
+  - **Case Duration**: Min Case Duration, Max Case Duration
+  - **Activity Filters**: Keep/Exclude Cases (spans full width, `grid-column: 1 / -1`)
+- Each cluster has a small uppercase navy heading (`.filter-group-label`) and subtle blue-tinted background (`rgba(0,51,153,0.05)`)
+- `data-tooltip` attribute on every filter `<label>` shows ≤10-word definition on hover
+- Unified `[data-tooltip]` CSS rule (was `label[data-tooltip]`) so the same pattern works on any element — covers both filter labels and the mode-toggle inactive state
+- Responsive: groups collapse to 1-column at ≤1280px; inner grids collapse to 1-column at ≤900px
+
+### Process Map & Animation panel redesign (2026-05-06, session 11)
+
+**View tab clusters**
+- Tab row split into two labeled groups separated by a subtle vertical divider:
+  - **Animated Views**: Process, Handoff (Actor), Handoff (Activity)
+  - **Analysis Views**: BPMN Flow, Sankey, Rework, Queue Heatmap, Rework Treemap, Variant Boxplot
+- BPMN Flow moved from Animated Views to Analysis Views (no animation support)
+- Each tab has a `data-tooltip` ≤10-word description on hover
+- Group labels are small, muted, uppercase — low visual weight so they inform without competing
+
+**Frequency / Performance toggle**
+- Order changed: tabs first, then Frequency/Performance toggle below
+- Grays out (`opacity: 0.45`, `pointer-events: none` on buttons) for pure analysis views (Sankey, Rework, Queue Heatmap, Rework Treemap, Variant Boxplot)
+- Tooltip "Not applicable to this view" shown on hover when inactive (via `data-tooltip` on `.mode-toggle` wrapper)
+- Remains active for BPMN Flow despite being in Analysis Views group
+- `viewSupportsFreqPerf()` helper added to `app.js`; `renderCurrentMap()` toggles `.mode-toggle-inactive` class and sets/removes `data-tooltip`
+
+**Animation controls bar**
+- Always visible; grays out entirely (`.anim-controls-inactive`: `opacity: 0.45`, `pointer-events: none`) when a non-animated view is active
+- Step-back (◀) and step-forward (▶) buttons moved to sit **side-by-side at the left end** of the frame slider (`.frame-slider-group` wrapper); slider extends to the right
+- Timestamp label sits flush right of the group
+
+**Map Detail sliders**
+- "Map Detail" uppercase navy label added above both sliders (`.map-detail-label`)
+- Both sliders now in a two-column side-by-side layout (`.detail-sliders-row` / `.detail-slider-group`)
+- Each slider has ◀▶ step buttons at left end; clicking steps ±5% via `stepDown()` / `stepUp()` on the range input + synthetic `"input"` event dispatch
+- New element refs: `stepBackActivity`, `stepForwardActivity`, `stepBackPath`, `stepForwardPath`
+
+**Zoom controls**
+- Removed from main control bar entirely (no more `diagram-zoom-controls` row)
+- Reset Zoom button removed
+- New compact `zoom-overlay` div pinned `position: absolute; top: 8px; right: 8px` inside `.map-canvas-wrapper` (`position: relative`)
+- Format: 🔍 (SVG magnifying glass) `−` `78%` `+` — subtle pill with `rgba(255,255,255,0.88)` background and backdrop blur
+- Does not scroll with the map; always visible in upper-right corner of canvas
+- `zoomReset` element ref and event listener removed; `updateMapZoomControls` simplified
+
+**Asset versions**: `styles.css?v=13`, `app.js?v=13`
+
 ## Next steps
 - Push all local changes to Render when ready
 - Share URL with team: https://flowscope-miner.onrender.com/

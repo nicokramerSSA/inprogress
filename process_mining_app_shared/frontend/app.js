@@ -161,10 +161,13 @@ const els = {
   animationTime: document.getElementById("animation-time"),
   activityDetail: document.getElementById("activity-detail"),
   activityDetailValue: document.getElementById("activity-detail-value"),
+  stepBackActivity: document.getElementById("step-back-activity"),
+  stepForwardActivity: document.getElementById("step-forward-activity"),
   pathDetail: document.getElementById("path-detail"),
   pathDetailValue: document.getElementById("path-detail-value"),
+  stepBackPath: document.getElementById("step-back-path"),
+  stepForwardPath: document.getElementById("step-forward-path"),
   zoomOut: document.getElementById("zoom-out"),
-  zoomReset: document.getElementById("zoom-reset"),
   zoomIn: document.getElementById("zoom-in"),
   zoomValue: document.getElementById("zoom-value"),
   processMapSummary: document.getElementById("process-map-summary"),
@@ -268,6 +271,10 @@ function usesStructuredFlowView(viewKey = state.currentView) {
 
 function viewSupportsAnimation(viewKey = state.currentView) {
   return ["process", "handoff_actor", "handoff_activity"].includes(viewKey);
+}
+
+function viewSupportsFreqPerf(viewKey = state.currentView) {
+  return ["process", "handoff_actor", "handoff_activity", "swimlane"].includes(viewKey);
 }
 
 function updateViewButtons() {
@@ -1260,7 +1267,21 @@ function populateActivityFilters(activities) {
   els.excludeActivities.innerHTML = "";
   els.includeActivities.appendChild(includeFragment);
   els.excludeActivities.appendChild(excludeFragment);
+
+  document.querySelectorAll(".activity-search").forEach((input) => {
+    input.value = "";
+  });
 }
+
+document.querySelectorAll(".activity-search").forEach((input) => {
+  input.addEventListener("input", () => {
+    const term = input.value.toLowerCase();
+    const select = document.getElementById(input.dataset.target);
+    select.querySelectorAll("option").forEach((opt) => {
+      opt.hidden = term.length > 0 && !opt.textContent.toLowerCase().includes(term);
+    });
+  });
+});
 
 function renderMetrics(summary) {
   const metrics = [
@@ -1605,10 +1626,9 @@ function updateMapZoomControls() {
   }
   const animPlaying = state.animation.isPlaying;
   const fullyDisabled = !state.dashboard;
-  [els.zoomOut, els.zoomReset, els.zoomIn].forEach((btn) => {
+  [els.zoomOut, els.zoomIn].forEach((btn) => {
     if (!btn) return;
-    btn.disabled = fullyDisabled;
-    btn.classList.toggle("zoom-disabled", !fullyDisabled && animPlaying);
+    btn.disabled = fullyDisabled || animPlaying;
   });
 }
 
@@ -4932,6 +4952,24 @@ function renderCurrentMap() {
     els.pathDetail.disabled = !structuredView;
   }
 
+  // Gray out animation controls bar when view doesn't support animation.
+  const animControlsEl = document.querySelector(".animation-controls");
+  if (animControlsEl) {
+    animControlsEl.classList.toggle("anim-controls-inactive", !animatedView);
+  }
+
+  // Gray out Frequency/Performance toggle for pure analysis views (not BPMN Flow).
+  const modeToggleEl = document.querySelector(".mode-toggle");
+  if (modeToggleEl) {
+    const freqPerfActive = viewSupportsFreqPerf(state.currentView);
+    modeToggleEl.classList.toggle("mode-toggle-inactive", !freqPerfActive);
+    if (!freqPerfActive) {
+      modeToggleEl.setAttribute("data-tooltip", "Not applicable to this view");
+    } else {
+      modeToggleEl.removeAttribute("data-tooltip");
+    }
+  }
+
   if (!structuredView) {
     setProcessMapSummary("");
   }
@@ -6067,13 +6105,6 @@ els.zoomOut?.addEventListener("click", () => {
   applyMapZoom();
 });
 
-els.zoomReset?.addEventListener("click", () => {
-  if (state.animation.isPlaying) {
-    return;
-  }
-  state.mapZoom = DEFAULT_MAP_ZOOM;
-  applyMapZoom();
-});
 
 els.viewProcess.addEventListener("click", () => setDiagramView("process"));
 els.viewHandoffActor.addEventListener("click", () => setDiagramView("handoff_actor"));
@@ -6156,6 +6187,26 @@ els.pathDetail?.addEventListener("input", () => {
   if (usesStructuredFlowView() && state.dashboard) {
     renderCurrentMap();
   }
+});
+
+els.stepBackActivity?.addEventListener("click", () => {
+  els.activityDetail.stepDown();
+  els.activityDetail.dispatchEvent(new Event("input"));
+});
+
+els.stepForwardActivity?.addEventListener("click", () => {
+  els.activityDetail.stepUp();
+  els.activityDetail.dispatchEvent(new Event("input"));
+});
+
+els.stepBackPath?.addEventListener("click", () => {
+  els.pathDetail.stepDown();
+  els.pathDetail.dispatchEvent(new Event("input"));
+});
+
+els.stepForwardPath?.addEventListener("click", () => {
+  els.pathDetail.stepUp();
+  els.pathDetail.dispatchEvent(new Event("input"));
 });
 
 // ---------------------------------------------------------------------------
