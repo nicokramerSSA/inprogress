@@ -1241,6 +1241,35 @@ def assign_log_to_project(project_id: str, log_id: str, request: Request) -> dic
     return {"log_id": log_id, "project_id": project_id}
 
 
+@app.delete("/api/projects/{project_id}/logs/{log_id}")
+def delete_project_log(project_id: str, log_id: str, request: Request) -> dict:
+    """Permanently delete a log from a project. Owner-scoped; also evicts the in-memory cache."""
+    from sqlalchemy import delete as sql_delete
+    owner = _owner(request)
+    with engine.connect() as conn:
+        proj = conn.execute(
+            select(projects.c.id)
+            .where(projects.c.id == project_id)
+            .where(projects.c.owner == owner)
+        ).fetchone()
+        if not proj:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    with engine.begin() as conn:
+        result = conn.execute(
+            sql_delete(logs)
+            .where(logs.c.id == log_id)
+            .where(logs.c.project_id == project_id)
+            .where(logs.c.owner == owner)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Log not found")
+
+    LOG_STORE.pop(log_id, None)
+    logger.info("Deleted log %s from project %s", log_id, project_id)
+    return {"deleted": log_id}
+
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     log_count = len(LOG_STORE)

@@ -709,12 +709,33 @@ th {
   font-family: "IBM Plex Mono", monospace;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #003399;
-  background: rgba(0, 51, 153, 0.1);
-  border: 1px solid rgba(0, 51, 153, 0.3);
+  color: #186037;
+  background: #C1EFD5;
+  border: 1px solid rgba(24, 96, 55, 0.35);
   border-radius: 999px;
   padding: 2px 8px;
   white-space: nowrap;
+}
+
+.btn-delete-log {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid rgba(180, 40, 40, 0.28);
+  color: #b42828;
+  border-radius: 999px;
+  padding: 4px 7px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, transform 150ms ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-delete-log:hover {
+  background: rgba(180, 40, 40, 0.09);
+  border-color: rgba(180, 40, 40, 0.55);
+  transform: translateY(-1px);
 }
 
 .log-filename {

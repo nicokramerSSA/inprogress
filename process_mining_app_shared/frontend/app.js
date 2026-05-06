@@ -5530,11 +5530,40 @@ async function loadProjectLogs(projectId) {
           <span class="log-filename">${log.filename}</span>
           <span class="log-date">${uploadedAt}</span>
           <span class="log-active-badge hidden">Active</span>
-          <button class="btn-ghost btn-sm" data-log-id="${log.log_id}">Load</button>
+          <button class="btn-ghost btn-sm load-log-btn" data-log-id="${log.log_id}">Load</button>
+          <button class="btn-delete-log" data-log-id="${log.log_id}" title="Delete log" aria-label="Delete ${log.filename}">
+            <svg width="13" height="14" viewBox="0 0 13 14" fill="none" aria-hidden="true">
+              <path d="M1 3.5h11M4.5 3.5V2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1M2 3.5l.75 8a.5.5 0 0 0 .5.5h6.5a.5.5 0 0 0 .5-.5l.75-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="5" y1="6" x2="5" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <line x1="8" y1="6" x2="8" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
         `;
-        row.querySelector("button").addEventListener("click", () =>
+        row.querySelector(".load-log-btn").addEventListener("click", () =>
           reloadLogFromProject(log.log_id, log.filename)
         );
+        row.querySelector(".btn-delete-log").addEventListener("click", async () => {
+          if (!confirm(`Delete "${log.filename}"? This cannot be undone.`)) return;
+          try {
+            const res = await fetch(`/api/projects/${projectId}/logs/${log.log_id}`, { method: "DELETE" });
+            if (!res.ok) throw new Error("Delete failed");
+            row.remove();
+            if (!els.projectLogsList.querySelector(".project-log-row")) {
+              els.projectLogsList.innerHTML = '<p class="note">No logs uploaded to this project yet.</p>';
+            }
+            if (state.logId === log.log_id) {
+              state.logId = null;
+              state.dashboard = null;
+              state.activities = [];
+              state.baseSummary = null;
+              stopAnimation({ hideOverlay: true });
+              renderCurrentMap();
+              setStatus("Log deleted. Upload or load another log to continue.");
+            }
+          } catch {
+            setProjectStatus("Could not delete log.", true);
+          }
+        });
         els.projectLogsList.appendChild(row);
       });
     }
