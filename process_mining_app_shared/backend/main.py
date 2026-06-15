@@ -213,30 +213,11 @@ app.add_middleware(
 _LOGIN_PUBLIC_PATHS = {"/login", "/logout"}
 
 
-@app.middleware("http")
-async def security_headers_middleware(request: Request, call_next):
-    response = await call_next(request)
-    response.headers["Content-Security-Policy"] = (
-        "frame-ancestors 'self' https://processreengineering.onrender.com http://localhost:8080"
-    )
-    return response
-
-
-# Flowscope's own origins added so direct (non-iframe) login form POSTs aren't blocked.
-_ALLOWED_ORIGINS = _POET_ORIGINS | {
-    "https://flowscope-miner-qo3x.onrender.com",
-    "http://localhost:8000",
-}
-
-
-@app.middleware("http")
-async def csrf_origin_middleware(request: Request, call_next):
-    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
-        origin = request.headers.get("origin")
-        if origin and origin not in _ALLOWED_ORIGINS:
-            return Response("Forbidden", status_code=403)
-    return await call_next(request)
-
+# Middleware registration order note (Starlette stack — last registered = outermost = first to run):
+#   request_logging_middleware  ← outermost: wraps everything for accurate timing
+#   security_headers_middleware ← runs before auth so CSP is always applied
+#   csrf_origin_middleware      ← rejects bad origins before auth is consulted
+#   session_auth_middleware     ← innermost: auth gate, only reached after security checks pass
 
 @app.middleware("http")
 async def session_auth_middleware(request: Request, call_next):
@@ -260,6 +241,31 @@ async def session_auth_middleware(request: Request, call_next):
 
     request.state.username = username
     return await call_next(request)
+
+
+# Flowscope's own origins added so direct (non-iframe) login form POSTs aren't blocked.
+_ALLOWED_ORIGINS = _POET_ORIGINS | {
+    "https://flowscope-miner-qo3x.onrender.com",
+    "http://localhost:8000",
+}
+
+
+@app.middleware("http")
+async def csrf_origin_middleware(request: Request, call_next):
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        origin = request.headers.get("origin")
+        if origin and origin not in _ALLOWED_ORIGINS:
+            return Response("Forbidden", status_code=403)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "frame-ancestors 'self' https://processreengineering.onrender.com http://localhost:8080"
+    )
+    return response
 
 
 @app.middleware("http")
