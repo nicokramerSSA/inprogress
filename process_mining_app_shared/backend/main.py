@@ -1896,7 +1896,7 @@ async def login_submit(
         SESSION_STORE[token] = username
         logger.info("Login success: %s", username)
         response = RedirectResponse(url="/", status_code=302)
-        response.set_cookie(_SESSION_COOKIE, token, httponly=True, samesite="lax")
+        response.set_cookie(_SESSION_COOKIE, token, httponly=True, samesite="none", secure=True)
         return response
     logger.warning("Login failed for username: %s", username)
     return RedirectResponse(url="/login?error=1", status_code=302)
@@ -1908,7 +1908,7 @@ def logout(request: Request) -> RedirectResponse:
     if token:
         SESSION_STORE.pop(token, None)
     response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie(_SESSION_COOKIE)
+    response.delete_cookie(_SESSION_COOKIE, httponly=True, samesite="none", secure=True)
     return response
 
 
