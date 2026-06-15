@@ -28,7 +28,7 @@ import zipfile
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -194,11 +194,16 @@ def on_startup() -> None:
     migrate_schema()
     logger.info("Database tables verified/migrated on startup")
 
-# The app is normally run locally from VS Code, but CORS is kept open so the
-# static frontend can be served either by FastAPI or by a simple dev server.
+# Origins allowed to embed or call Flowscope cross-origin. Update here when adding environments.
+# localhost:8080 is intentionally included for local dev (not a security risk — browsers enforce origin).
+_POET_ORIGINS = {
+    "https://processreengineering.onrender.com",
+    "http://localhost:8080",
+}
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=list(_POET_ORIGINS),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -206,6 +211,31 @@ app.add_middleware(
 
 
 _LOGIN_PUBLIC_PATHS = {"/login", "/logout"}
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = (
+        "frame-ancestors 'self' https://processreengineering.onrender.com http://localhost:8080"
+    )
+    return response
+
+
+# Flowscope's own origins added so direct (non-iframe) login form POSTs aren't blocked.
+_ALLOWED_ORIGINS = _POET_ORIGINS | {
+    "https://flowscope-miner-qo3x.onrender.com",
+    "http://localhost:8000",
+}
+
+
+@app.middleware("http")
+async def csrf_origin_middleware(request: Request, call_next):
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        origin = request.headers.get("origin")
+        if origin and origin not in _ALLOWED_ORIGINS:
+            return Response("Forbidden", status_code=403)
+    return await call_next(request)
 
 
 @app.middleware("http")
