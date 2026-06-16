@@ -512,3 +512,18 @@ Then open: http://127.0.0.1:8001
 - Decision: implement common-case source-side routing first; document opposite-sides as known limitation
 
 **Not ready to build** — need to decide: what threshold defines "same side" vs "opposite sides", and what fallback to use for the opposite-sides case before writing code.
+
+## Open Items (post iframe-login fix)
+
+**Safari compatibility — iframe login not supported**
+The `SameSite=None; Secure` cookie fix works in Chrome and Firefox. Safari blocks all
+unpartitioned third-party cookies via ITP regardless of SameSite attribute; the iframe
+login will still fail silently for Safari users. Fix requires the Storage Access API:
+the iframe must call `document.requestStorageAccess()`, which prompts the user once and
+then allows the session cookie through. Not addressed in this PR.
+
+**localhost in production CORS/CSRF allowlist**
+`_POET_ORIGINS` includes `http://localhost:8080` for local dev convenience. This is not
+a security risk (browsers enforce origin; localhost cannot be spoofed cross-origin), but
+it is unusual for a production service. Future cleanup: make localhost opt-in via an
+env var (e.g. `CORS_EXTRA_ORIGINS`) so production deploys have a minimal allowlist.
