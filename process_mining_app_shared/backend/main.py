@@ -195,10 +195,12 @@ def on_startup() -> None:
     logger.info("Database tables verified/migrated on startup")
 
 # Origins allowed to embed or call Flowscope cross-origin. Update here when adding environments.
-# localhost:8080 is intentionally included for local dev (not a security risk — browsers enforce origin).
+# localhost variants are intentionally included for local dev (not a security risk — browsers enforce origin).
 _POET_ORIGINS = {
     "https://processreengineering.onrender.com",
     "http://localhost:8080",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 }
 
 app.add_middleware(
@@ -263,7 +265,8 @@ async def csrf_origin_middleware(request: Request, call_next):
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["Content-Security-Policy"] = (
-        "frame-ancestors 'self' https://processreengineering.onrender.com http://localhost:8080"
+        "frame-ancestors 'self' https://processreengineering.onrender.com "
+        "http://localhost:8080 http://localhost:8000 http://127.0.0.1:8000"
     )
     return response
 
