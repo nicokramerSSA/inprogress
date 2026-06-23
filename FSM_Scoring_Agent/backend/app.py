@@ -111,6 +111,8 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sa
     return result
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 # In-memory results store: vendor name -> evaluation dict. Seeded from disk on boot.
 _RESULTS: dict[str, dict] = {}
@@ -284,6 +286,14 @@ def chat():
     with _RESULTS_LOCK:
         snapshot = list(_RESULTS.values())
     return jsonify(chat_answer(question, results=snapshot, model_id=model_id, history=history))
+
+
+# --------------------------------------------------------------------------- #
+# Error handlers                                                              #
+# --------------------------------------------------------------------------- #
+@app.errorhandler(413)
+def _too_large(_e):
+    return jsonify({"error": f"Upload exceeds the {MAX_UPLOAD_MB} MB limit."}), 413
 
 
 if __name__ == "__main__":
