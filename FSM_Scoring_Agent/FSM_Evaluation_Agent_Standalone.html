@@ -656,8 +656,15 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
       fd.append("vendor",vendor); fd.append("scoring_model",model);
       if(voteMode==="dual") fd.append("vote_dual",JSON.stringify(voteDual)); else fd.append("vote_model",voteModel);
       fd.append("urls",urls); files.forEach(f=>fd.append("files",f));
-      const r=await fetch("/api/evaluate_upload",{method:"POST",body:fd});
-      const res=await r.json();
+      let res;
+      try {
+        const r=await fetch("/api/evaluate_upload",{method:"POST",body:fd});
+        res=await r.json();  // a 413/oversized upload may return non-JSON; the catch keeps the spinner from hanging
+      } catch(e) {
+        setBusy(false); setProg(null);
+        setMsg({ok:false,text:"Upload failed - the files may exceed the size limit, or the server is unreachable."});
+        return;
+      }
       if(res.error){ setBusy(false); setProg(null); setMsg({ok:false,text:"Error: "+res.error}); return; }
       jid=res.job_id;
     }
