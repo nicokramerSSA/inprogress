@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import json
 import re
+import time
 from typing import Dict, Any, Tuple, Optional
 
 from .knowledge import get_kb
@@ -90,6 +91,16 @@ def extract_json(text: str) -> Any:
     raise ValueError("No parseable JSON found in model response.")
 
 
+def _is_transient(e: Exception) -> bool:
+    """True for errors worth retrying (timeouts, rate limits, 5xx, connection drops)."""
+    name = type(e).__name__.lower()
+    if any(k in name for k in ("timeout", "connection", "ratelimit", "apiconnection",
+                               "internalserver", "serviceunavailable", "overloaded")):
+        return True
+    status = getattr(e, "status_code", None) or getattr(e, "status", None)
+    return status in (408, 409, 429, 500, 502, 503, 504, 529)
+
+
 # --------------------------------------------------------------------------- #
 # The client                                                                  #
 # --------------------------------------------------------------------------- #
@@ -111,16 +122,22 @@ class LLMClient:
 
         provider, model = resolve_model(model_id)
         sdk = provider["sdk"]
-        try:
-            if sdk == "anthropic":
-                return self._anthropic(provider, model, system, user, expect_json, max_tokens, temperature)
-            if sdk in ("openai", "openai_azure"):
-                return self._openai(provider, model, system, user, expect_json, max_tokens, temperature, azure=(sdk == "openai_azure"))
-            return {"text": "", "provider": provider["id"], "model": model_id,
-                    "ok": False, "error": f"Unsupported sdk {sdk!r}"}
-        except Exception as e:  # fail soft — never take the server down over an API error
-            return {"text": "", "provider": provider["id"], "model": model_id,
-                    "ok": False, "error": f"{type(e).__name__}: {e}"}
+        last = None
+        for attempt in range(3):  # 1 try + 2 retries
+            try:
+                if sdk == "anthropic":
+                    return self._anthropic(provider, model, system, user, expect_json, max_tokens, temperature)
+                if sdk in ("openai", "openai_azure"):
+                    return self._openai(provider, model, system, user, expect_json, max_tokens, temperature, azure=(sdk == "openai_azure"))
+                return {"text": "", "provider": provider["id"], "model": model_id,
+                        "ok": False, "error": f"Unsupported sdk {sdk!r}"}
+            except Exception as e:  # fail soft — never take the server down over an API error
+                last = e
+                if not _is_transient(e) or attempt == 2:
+                    break
+                time.sleep(0.8 * (2 ** attempt))  # 0.8s, 1.6s
+        return {"text": "", "provider": provider["id"], "model": model_id,
+                "ok": False, "error": f"{type(last).__name__}: {last}"}
 
     # ---- Anthropic ---------------------------------------------------------- #
     def _anthropic(self, provider, model, system, user, expect_json, max_tokens, temperature):
