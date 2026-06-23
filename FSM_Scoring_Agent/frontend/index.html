@@ -601,6 +601,7 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   const [msg,setMsg]=useState(null);            // {ok, text, ingest?}
   const [prog,setProg]=useState(null);
   const [jobId,setJobId]=useState(null);
+  const cancelledRef=useRef(false);
   const fileRef=useRef(null);
   useEffect(()=>{ if(vendors.length && !vendor) setVendor(vendors[0].name); },[vendors]);
 
@@ -613,8 +614,9 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   }
   async function poll(jid){
     setJobId(jid);
-    while(true){
+    while(!cancelledRef.current){
       await new Promise(r=>setTimeout(r,900));
+      if(cancelledRef.current) return;
       const s=await jget("/api/evaluate/status/"+jid);
       if(s.error){ setBusy(false); setProg(null); setJobId(null); setMsg({ok:false,text:"Error: "+s.error}); return; }
       setProg(s.total? `${s.stage} (${s.scored}/${s.total})` : s.stage);
@@ -633,9 +635,11 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   }
   async function run(useSample){
     if(!vendor) return;
+    cancelledRef.current = false;
     setBusy(true); setProg("Starting…");
     setMsg({ok:true, text:`Evaluating ${vendor}…`});
     if(STATIC){
+      // Offline standalone build: no server to poll. Ignores scoring_model/voteMode (dual mode is intentionally inert here) and returns the precomputed result.
       const res=await jpost("/api/evaluate",{vendor}); setBusy(false); setProg(null);
       if(res.error) setMsg({ok:false,text:"Error: "+res.error});
       else { setMsg({ok:true,text:`${vendor}: ${res.vote.recommendation} (${fmt(res.weighted_total)}/100).`}); onDone(); }
@@ -658,7 +662,12 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
     }
     poll(jid);
   }
-  async function cancel(){ if(jobId) await jpost("/api/evaluate/cancel/"+jobId,{}); }
+  async function cancel(){
+    cancelledRef.current = true;
+    if(jobId) await jpost("/api/evaluate/cancel/"+jobId,{});
+    setBusy(false); setProg(null); setJobId(null);
+    setMsg({ok:true, text:"Evaluation cancelled."});
+  }
 
   const isMock = model==="mock";
   const hasSources = files.length>0 || urls.trim().length>0;
@@ -676,7 +685,7 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
                  onChange={e=>{addFiles(e.target.files); e.target.value="";}}/>
           <button className="btn ghost" onClick={()=>fileRef.current?.click()}>+ Upload proposal files</button>
           <button className="btn" onClick={()=>run(false)} disabled={busy || !hasSources}>
-            {busy? <span className="spin"/> : "Run on uploaded sources"}</button>
+            Run on uploaded sources</button>
           <button className="btn ghost" onClick={()=>run(true)} disabled={busy}>Run on sample</button>
         </>}
         {STATIC && <button className="btn" onClick={()=>run(true)} disabled={busy}>Show evaluation</button>}
