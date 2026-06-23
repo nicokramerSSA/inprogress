@@ -11,3 +11,7 @@ graphify-out/
 # OS / editor junk
 .DS_Store
 *:Zone.Identifier
+
+# Local secrets — never commit (also asserted in Task 2)
+backend/.env
+.env
