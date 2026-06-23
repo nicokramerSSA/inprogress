@@ -122,7 +122,7 @@ class LLMClient:
 
         provider, model = resolve_model(model_id)
         sdk = provider["sdk"]
-        last = None
+        last = RuntimeError("generate: no attempt completed")  # defensive: never report NoneType
         for attempt in range(3):  # 1 try + 2 retries
             try:
                 if sdk == "anthropic":
@@ -136,7 +136,7 @@ class LLMClient:
                 if not _is_transient(e) or attempt == 2:
                     break
                 time.sleep(0.8 * (2 ** attempt))  # 0.8s, 1.6s
-        return {"text": "", "provider": provider["id"], "model": model_id,
+        return {"text": "", "provider": provider["id"], "model": model.get("id", model_id),
                 "ok": False, "error": f"{type(last).__name__}: {last}"}
 
     # ---- Anthropic ---------------------------------------------------------- #
