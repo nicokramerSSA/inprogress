@@ -132,14 +132,22 @@ class LLMClient:
         client = anthropic.Anthropic(api_key=key)
         if expect_json:
             user = user + "\n\nReturn ONLY valid JSON. No prose, no code fences."
-        resp = client.messages.create(
+        kwargs = dict(
             model=model["id"],
             system=system,
             max_tokens=min(max_tokens, model.get("max_output_tokens", max_tokens)),
-            temperature=temperature,
             messages=[{"role": "user", "content": user}],
         )
-        text = "".join(block.text for block in resp.content if getattr(block, "type", "") == "text")
+        # Opus 4.7/4.8 removed sampling params (temperature/top_p/top_k) — sending them 400s.
+        # Models flagged sampling_params:false omit temperature and use adaptive thinking so
+        # reasoning doesn't leak into the (often JSON) response.
+        if model.get("sampling_params", True):
+            kwargs["temperature"] = temperature
+        else:
+            kwargs["thinking"] = {"type": "adaptive"}
+        resp = client.messages.create(**kwargs)
+        text = "".join(block.text for block in resp.content
+                       if getattr(block, "type", "") == "text")
         return {"text": text, "provider": "anthropic", "model": model["id"], "ok": True, "error": None}
 
     # ---- OpenAI / Azure OpenAI --------------------------------------------- #
