@@ -150,9 +150,8 @@ def _job_progress(jid):
             j = _JOBS.get(jid)
             if j:
                 j["stage"] = msg
-                # messages look like "Scored 120/422 requirements…"
-                import re as _re
-                m = _re.search(r"(\d+)\s*/\s*(\d+)", msg)
+                # messages look like "Scored 120/422 requirements…"  (re imported at module top)
+                m = re.search(r"(\d+)\s*/\s*(\d+)", msg)
                 if m:
                     j["scored"], j["total"] = int(m.group(1)), int(m.group(2))
     return cb
@@ -170,10 +169,11 @@ def _run_job(jid, **kw):
     try:
         result = _run_and_cache(progress=_job_progress(jid),
                                 should_cancel=_job_should_cancel(jid), **kw)
+        # Single lock block: attach ingest metadata and publish the result atomically,
+        # so a status poll never sees a half-updated job and there's no ordering fragility.
         with _JOBS_LOCK:
             if "ingest" in _JOBS[jid]:
                 result["_ingest"] = _JOBS[jid]["ingest"]
-        with _JOBS_LOCK:
             _JOBS[jid].update(stage="done", done=True, result=result)
     except EvaluationCancelled:
         with _JOBS_LOCK:
@@ -350,6 +350,8 @@ def evaluate_upload():
         "urls": urls, "rejected": rejected, "chars_extracted": len(proposal_text),
     }
     jid = _new_job()
+    # Attach ingest metadata BEFORE the worker is spawned below — the thread (and thus any
+    # reader of _JOBS[jid]["ingest"]) only starts after this line, so no lock race exists.
     with _JOBS_LOCK:
         _JOBS[jid]["ingest"] = ingest_meta
     threading.Thread(target=_run_job, kwargs=dict(
