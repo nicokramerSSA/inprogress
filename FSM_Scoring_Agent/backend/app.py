@@ -61,7 +61,7 @@ def _load_dotenv():
         pass
 
 
-_load_dotenv()
+_load_dotenv()  # must run before the agent imports below so provider keys are set at import time
 
 from agent.knowledge import get_kb
 from agent.providers import available_models, resolve_model
