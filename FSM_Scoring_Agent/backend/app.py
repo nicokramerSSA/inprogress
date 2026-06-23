@@ -31,6 +31,38 @@ import threading
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
 
+
+def _load_dotenv():
+    """Load backend/.env into os.environ if present. Uses python-dotenv when available,
+    else a tiny built-in parser. Never overwrites a variable already set in the real
+    environment (real env wins). Keys are read from env at call time by providers.py —
+    this only makes a local .env convenient; the app never writes keys to disk."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path, override=False)
+        return
+    except Exception:
+        pass
+    # Fallback parser (no python-dotenv installed)
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_dotenv()
+
 from agent.knowledge import get_kb
 from agent.providers import available_models, resolve_model
 from agent.scoring import evaluate_vendor
