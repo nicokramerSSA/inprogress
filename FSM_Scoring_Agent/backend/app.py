@@ -28,6 +28,7 @@ import os
 import re
 import json
 import threading
+import uuid
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
 
@@ -65,7 +66,7 @@ _load_dotenv()  # must run before the agent imports below so provider keys are s
 
 from agent.knowledge import get_kb
 from agent.providers import available_models, resolve_model
-from agent.scoring import evaluate_vendor
+from agent.scoring import evaluate_vendor, EvaluationCancelled
 from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources
@@ -105,7 +106,7 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
     """Shared evaluate -> vote -> cache path used by both evaluate endpoints."""
     ev = evaluate_vendor(vendor, product, proposal_text,
                          scoring_model=scoring_model, requirement_sample=sample_n,
-                         progress=progress)
+                         progress=progress, should_cancel=should_cancel)
     # Drop empty/null slots so a vote_dual of all-blank values (e.g. the UI's default
     # {openai:"", anthropic:"", ...}) doesn't activate the dual engine on placeholders.
     if vote_dual:
@@ -129,6 +130,57 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 # In-memory results store: vendor name -> evaluation dict. Seeded from disk on boot.
 _RESULTS: dict[str, dict] = {}
 _RESULTS_LOCK = threading.Lock()
+
+# Job registry for background evaluations: job_id -> job state dict.
+_JOBS: dict[str, dict] = {}
+_JOBS_LOCK = threading.Lock()
+
+
+def _new_job():
+    jid = uuid.uuid4().hex[:12]
+    with _JOBS_LOCK:
+        _JOBS[jid] = {"stage": "queued", "scored": 0, "total": 0,
+                      "done": False, "error": None, "result": None, "cancel": False}
+    return jid
+
+
+def _job_progress(jid):
+    def cb(msg, frac):
+        with _JOBS_LOCK:
+            j = _JOBS.get(jid)
+            if j:
+                j["stage"] = msg
+                # messages look like "Scored 120/422 requirements…"
+                import re as _re
+                m = _re.search(r"(\d+)\s*/\s*(\d+)", msg)
+                if m:
+                    j["scored"], j["total"] = int(m.group(1)), int(m.group(2))
+    return cb
+
+
+def _job_should_cancel(jid):
+    def chk():
+        with _JOBS_LOCK:
+            j = _JOBS.get(jid)
+            return bool(j and j["cancel"])
+    return chk
+
+
+def _run_job(jid, **kw):
+    try:
+        result = _run_and_cache(progress=_job_progress(jid),
+                                should_cancel=_job_should_cancel(jid), **kw)
+        with _JOBS_LOCK:
+            if "ingest" in _JOBS[jid]:
+                result["_ingest"] = _JOBS[jid]["ingest"]
+        with _JOBS_LOCK:
+            _JOBS[jid].update(stage="done", done=True, result=result)
+    except EvaluationCancelled:
+        with _JOBS_LOCK:
+            _JOBS[jid].update(stage="cancelled", done=True, error="cancelled")
+    except Exception as e:
+        with _JOBS_LOCK:
+            _JOBS[jid].update(stage="error", done=True, error=f"{type(e).__name__}: {e}")
 
 
 def _seed_results():
@@ -229,8 +281,12 @@ def evaluate():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No proposal content could be extracted from the provided sources."}), 400
 
-    return jsonify(_run_and_cache(vendor, product, proposal_text, scoring_model,
-                                  vote_model, sample_n, vote_dual=vote_dual))
+    jid = _new_job()
+    threading.Thread(target=_run_job, kwargs=dict(
+        jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
+        scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
+        vote_dual=vote_dual), daemon=True).start()
+    return jsonify({"job_id": jid}), 202
 
 
 @app.route("/api/evaluate_upload", methods=["POST"])
@@ -289,15 +345,37 @@ def evaluate_upload():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No readable text could be extracted from the uploads/URLs."}), 400
 
-    result = _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
-                            sample_n, vote_dual=vote_dual)
-    result["_ingest"] = {
+    ingest_meta = {
         "files": [os.path.basename(p) for p in saved_paths],
-        "urls": urls,
-        "rejected": rejected,
-        "chars_extracted": len(proposal_text),
+        "urls": urls, "rejected": rejected, "chars_extracted": len(proposal_text),
     }
-    return jsonify(result)
+    jid = _new_job()
+    with _JOBS_LOCK:
+        _JOBS[jid]["ingest"] = ingest_meta
+    threading.Thread(target=_run_job, kwargs=dict(
+        jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
+        scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
+        vote_dual=vote_dual), daemon=True).start()
+    return jsonify({"job_id": jid}), 202
+
+
+@app.route("/api/evaluate/status/<job_id>")
+def evaluate_status(job_id):
+    with _JOBS_LOCK:
+        j = _JOBS.get(job_id)
+        if not j:
+            return jsonify({"error": "unknown job"}), 404
+        return jsonify({k: j[k] for k in ("stage", "scored", "total", "done", "error", "result")})
+
+
+@app.route("/api/evaluate/cancel/<job_id>", methods=["POST"])
+def evaluate_cancel(job_id):
+    with _JOBS_LOCK:
+        j = _JOBS.get(job_id)
+        if not j:
+            return jsonify({"error": "unknown job"}), 404
+        j["cancel"] = True
+    return jsonify({"ok": True})
 
 
 @app.route("/api/chat", methods=["POST"])
