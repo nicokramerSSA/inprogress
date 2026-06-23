@@ -70,8 +70,8 @@ def fetch_url(url: str, timeout: int = 30) -> str:
             ip = ipaddress.ip_address(sockaddr[0])
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
                 return f"[refused: {url} resolves to a non-public address ({ip})]"
-    except Exception:
-        return f"[refused: could not resolve host for {url}]"
+    except Exception as e:
+        return f"[refused: could not resolve host for {url}: {type(e).__name__}: {e}]"
 
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "FSM-RFP-Eval-Agent/1.0"})
