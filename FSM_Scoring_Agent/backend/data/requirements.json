@@ -1,0 +1,4227 @@
+{
+ "source": "Service Logic FSM RFP - Vendor Scorecard v1.xlsx, tab '5. Requirement Alignment' (Version E RFP).",
+ "count": 422,
+ "note": "Authentic requirement set. capability_raw preserves the source tag; capability is normalized to the 8-capability scheme (OS->ACQ, DAVG->EVG, FC->RLC).",
+ "requirements": [
+  {
+   "rid": "FSM-001",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to create work orders from inbound calls, emails, customer portal, and IoT alerts with auto-populated customer/site/equipment context",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Work orders must support gated completion: time, materials, scope, signature \u2014 sequential, non-skippable"
+  },
+  {
+   "rid": "FSM-003",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to support configurable work order types (demand/T&M, PM, inspection, warranty, project-linked) with type-specific field requirements",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-016",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to validate authorized callers during service request intake against customer-maintained contact lists",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Prevents unauthorized service requests and billing disputes"
+  },
+  {
+   "rid": "FSM-017",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to enforce credit hold and safety hold blocks at WO creation \u2014 system prevents dispatch, not just displays a warning",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Current systems display warnings that dispatchers override"
+  },
+  {
+   "rid": "FSM-019",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to support new customer credit check workflow (D&B integration) before dispatching first service call",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Prevents bad-debt exposure on new accounts"
+  },
+  {
+   "rid": "FSM-010",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to support parent-child work order hierarchies (master contract with sub-jobs rolled into master single billing)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-011",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to support multi-visit work orders (e.g., 10 visits making up one job) with per-visit task tracking",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-013",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.1: Work Order Creation & Intake",
+   "requirement": "Ability to support project work orders with different granularity than service WOs (project dailies for 20+ workers vs individual tech detail)",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-002",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to enforce configurable work order lifecycle stages (Open \u2192 Dispatched \u2192 In Progress \u2192 Completed \u2192 Closed) with required-field gates at each transition",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Only ~5% compliance on signatures today; gated workflow is critical"
+  },
+  {
+   "rid": "FSM-004",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to prevent work order closure without time entry \u2014 time entry and WO completion must be a single exercise",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "time and WO completion cannot be disconnected"
+  },
+  {
+   "rid": "FSM-006",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to trigger automated status cascade on WO completion (Open \u2192 Complete \u2192 Ready to Bill)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Billing velocity directly tied to WO completion speed"
+  },
+  {
+   "rid": "FSM-009",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to support configurable requirement levels per OpCo (signature required Y/N, equipment data Y/N) that can be tightened over time",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Some OpCos not ready for full enforcement on day one"
+  },
+  {
+   "rid": "FSM-014",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to support work order close-out stop-gaps: cannot close if unbilled amounts exist, committed POs open, or remaining budget not cleared",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-015",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to enforce NTE (not-to-exceed) threshold alerts at configurable percentages (50%, 75%, 90%) with auto-notification to dispatch and customer before exceeding authorized amount",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Multiple OpCos cited missed NTE limits as revenue leakage risk"
+  },
+  {
+   "rid": "FSM-018",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.2: Work Order Lifecycle & Gated Completion",
+   "requirement": "Ability to establish and validate GL coding at point of dispatch with configurable rules by work type, entity, and cost center",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "GL coding errors are a top 3 billing delay root cause"
+  },
+  {
+   "rid": "FSM-005",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.3: Work Order Communication & Delivery",
+   "requirement": "Ability to support talk-to-text with AI cleanup for work order descriptions on mobile",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Tech culture strongly resists typing; voice-to-text critical for adoption"
+  },
+  {
+   "rid": "FSM-007",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.3: Work Order Communication & Delivery",
+   "requirement": "Ability to support 'return visit needed' workflow that auto-schedules follow-up or triggers dispatch notification",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-012",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A1: Work Order & Service Management  \u203a  US-A1.3: Work Order Communication & Delivery",
+   "requirement": "Ability to auto-deliver completed work orders to customers via email upon completion",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Strategic accounts require automated delivery"
+  },
+  {
+   "rid": "FSM-020",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to provide drag-and-drop visual dispatch board with day/week/multi-day views showing tech availability, GPS location, skills, and certifications",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-021",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to support both dispatch-controlled (one-job-at-a-time) and tech self-scheduling models, configurable per OpCo",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "~95% use dispatch-controlled; but some allow tech self-scheduling"
+  },
+  {
+   "rid": "FSM-022",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to support assigned mechanic model with primary/secondary tech assignments per customer/location",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Customer retention issue: different techs showing up repeatedly"
+  },
+  {
+   "rid": "FSM-023",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to support multi-trade dispatching (HVAC, plumbing, controls, electrical) with skill-matching filters",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-024",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to provide real-time map view of technician locations relative to open work orders",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-025",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to support territory/zone-based dispatch rules configurable per OpCo",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-026",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability for dispatch to override tech self-scheduled maintenance for higher-priority service calls",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-027",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to support neutral queue for unassigned work requiring human intervention",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-101",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to optimize schedules, automate assigning work to a technician(s)",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-102",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.1: Dispatch Board & Visual Scheduling",
+   "requirement": "Ability to optimize dispatch routes by providing automated routes to minimize travel time",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-028",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.2: After-Hours & Emergency Dispatch",
+   "requirement": "Ability to support after-hours/on-call workflow: cascading notification to primary tech \u2192 backup \u2192 foreman \u2192 manager with configurable intervals",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "All OpCos use answering services; escalation processes vary"
+  },
+  {
+   "rid": "FSM-029",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.2: After-Hours & Emergency Dispatch",
+   "requirement": "Ability to provide safety accountability workflow: lone-tech after-hours calls trigger supervisor notification",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Safety requirement \u2014 non-negotiable"
+  },
+  {
+   "rid": "FSM-030",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.2: After-Hours & Emergency Dispatch",
+   "requirement": "Ability to support high-volume call intake (200-350 calls/day at peak for residential) with streamlined creation workflow",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-031",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.2: After-Hours & Emergency Dispatch",
+   "requirement": "Ability to integrate with phone/answering service systems for auto-identification and call routing",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-032",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.3: Schedule Optimization & Customer Communication",
+   "requirement": "Ability to offer schedule optimization factoring drive time, skill match, SLA urgency, and geo-routing",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-033",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A2: Dispatch & Scheduling  \u203a  US-A2.3: Schedule Optimization & Customer Communication",
+   "requirement": "Ability to calculate and display ETA for customer communication; automated text/email notifications for residential",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-040",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to operate mobile application in fully offline mode with automatic sync upon reconnection",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "NON-NEGOTIABLE"
+  },
+  {
+   "rid": "FSM-041",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to display full WO details including equipment history, past tech notes, active agreements, and customer credit/safety holds",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-048",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to guide techs through gated mobile workflows preventing skip of required steps",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "'Do not pass go' enforcement"
+  },
+  {
+   "rid": "FSM-049",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to support configurable mobile forms with conditional logic (if/then), picture/video fields, and smart field auto-fill",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-053",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to handle large price books without performance degradation on mobile",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-057",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to present simplified mobile interface for residential service with streamlined intake, flat-rate pricing display, and customer-facing summary",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Residential workflow fundamentally different from commercial"
+  },
+  {
+   "rid": "FSM-090",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to deliver the field technician experience as a native iOS application published to the Apple App Store, supporting iOS 16 and above (enterprise MDM distribution acceptable). PWA/web-wrapper implementations are not acceptable as the primary mobile delivery mechanism.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Refines NFR-13; native app required for offline, camera, GPS, push"
+  },
+  {
+   "rid": "FSM-091",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to deliver the field technician experience as a native Android application published to Google Play, supporting Android 12 and above.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-092",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to enroll the mobile app under enterprise Mobile Device Management (e.g., Microsoft Intune) with remote-wipe capability for lost or stolen devices.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Required for PE-backed portfolio device policy"
+  },
+  {
+   "rid": "FSM-093",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to enforce biometric authentication (Face ID, Touch ID, fingerprint) for app access on supported devices, in addition to SSO.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Reduces login friction while preserving security"
+  },
+  {
+   "rid": "FSM-094",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to deliver push notifications for work order assignment, status changes, dispatch updates, and customer communications.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-095",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to enforce certificate pinning in the mobile application to prevent man-in-the-middle attacks on field connections.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Mobile-specific security control"
+  },
+  {
+   "rid": "FSM-096",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to deterministically resolve offline sync conflicts on reconnection using documented, configurable conflict resolution rules.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Extends FSM-040; conflict logic must be transparent"
+  },
+  {
+   "rid": "FSM-097",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to complete mobile offline sync on reconnection within 60 seconds for up to 500 pending transactions per device.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Performance target for sync"
+  },
+  {
+   "rid": "FSM-098",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to capture GPS location with configurable tracking intervals and a documented privacy policy and technician consent mechanism.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Privacy compliance for location tracking"
+  },
+  {
+   "rid": "FSM-099",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to operate fully in airplane mode and resume sync automatically when connectivity is restored.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Reinforces FSM-040 offline architecture"
+  },
+  {
+   "rid": "FSM-100",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.1: Mobile App Core & Offline Capability",
+   "requirement": "Ability to support dark mode in the mobile application for low-light field environments (mechanical rooms, basements, after-hours work).",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-042",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to capture time entries (clock-in/out, travel, on-site, break) with GPS-stamped timestamps",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-043",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to add materials consumed from truck stock or field purchase with barcode/QR scanning",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-044",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to capture before/after photos, annotated diagrams, and video attachments geo-tagged and time-stamped",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-045",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to support electronic customer signature capture",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-008",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to capture equipment make/model/serial via OCR photo of data plate",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Only 7% of installed base has equipment data captured today"
+  },
+  {
+   "rid": "FSM-050",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.2: Field Data Capture & Documentation",
+   "requirement": "Ability to auto-generate PDF reports from completed checklists for customer delivery",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-051",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.3: Field Quoting, Sales & Payment",
+   "requirement": "Ability to support field quoting with templatized scopes (template auto-populates scope, cost, and estimated time)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "field quoting drives revenue for many OpCos"
+  },
+  {
+   "rid": "FSM-055",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.3: Field Quoting, Sales & Payment",
+   "requirement": "Ability to collect on-site credit card payments via mobile (integrated payment processing) for residential and small commercial COD work",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Residential OpCos require field payment collection; current process is manual"
+  },
+  {
+   "rid": "FSM-056",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.3: Field Quoting, Sales & Payment",
+   "requirement": "Ability to capture and route sales leads from field technicians to sales team with equipment context, photos, and estimated opportunity value",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Tech-to-sales lead handoff is a major revenue opportunity cited by multiple OpCos"
+  },
+  {
+   "rid": "FSM-046",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.4: Union/CBA-Aware Mobile Experience",
+   "requirement": "Ability to enforce CBA-mandated time capture rules: minimum call durations, mandatory break intervals, shift-boundary OT triggers",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Union compliance"
+  },
+  {
+   "rid": "FSM-047",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.4: Union/CBA-Aware Mobile Experience",
+   "requirement": "Ability to support crew lead time entry for multiple crew members from a single device",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": "Critical for project field work"
+  },
+  {
+   "rid": "FSM-054",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.4: Union/CBA-Aware Mobile Experience",
+   "requirement": "Ability to display technician's applicable wage classification and CBA identifier on mobile WO",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-052",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A3: Mobile Field Technician Experience  \u203a  US-A3.4: Union/CBA-Aware Mobile Experience",
+   "requirement": "Ability to support refrigerant reporting workflow auto-launching when refrigerant is used on a service call",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "EPA compliance"
+  },
+  {
+   "rid": "FSM-060",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to create service agreements with defined equipment coverage, visit frequency, labor/material inclusion, and pricing tiers",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-062",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to support evergreen contracts with auto-renewal at configurable escalator rates (3-5%)",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-063",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to support parent-child contract relationships (e.g., school district master with 38 individual school locations)",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-064",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to track agreement profitability at the account level including pull-through revenue (10:1 ratio target)",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-065",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to support mass renewal of contracts at standard escalator rates with exception handling for outliers",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-066",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to flag contract renewals when equipment has been replaced so parts lists and scopes are updated",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Universal problem across OpCos"
+  },
+  {
+   "rid": "FSM-069",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.1: Service Agreement Management",
+   "requirement": "Ability to support varying contract detail levels (from 'to the minute' estimation to 'up to 2 hours' ranges)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Standardization will come, but day-one flexibility needed"
+  },
+  {
+   "rid": "FSM-061",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.2: PM Work Order Generation & Tracking",
+   "requirement": "Ability to auto-generate PM work orders based on agreement schedules with pre-assigned tech, scope, and auto-generated POs for materials (filters, belts)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Only 20% of OpCos have automated PM job creation today"
+  },
+  {
+   "rid": "FSM-067",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.2: PM Work Order Generation & Tracking",
+   "requirement": "Ability to provide PM completion dashboard showing scheduled/completed/overdue by customer, site, and OpCo",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-068",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.2: PM Work Order Generation & Tracking",
+   "requirement": "Ability to link equipment inspection findings to follow-up quotes and deficiency repair work orders",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Seamless PM-to-quote pull-through is key revenue driver"
+  },
+  {
+   "rid": "FSM-070",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A4: Preventive & Planned Maintenance  \u203a  US-A4.2: PM Work Order Generation & Tracking",
+   "requirement": "Ability to support residential maintenance scheduling months in advance with automated customer contact (postcards, calls, emails)",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Residential PM scheduling fundamentally different from commercial"
+  },
+  {
+   "rid": "FSM-080",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to tag each employee with labor classification (union/non-union/mixed) and applicable CBA identifier",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-081",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to support hierarchical CBA rate library: national agreement \u2192 state/regional addendum \u2192 local/trade-specific supplement",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Multi-tier CBA hierarchy is critical"
+  },
+  {
+   "rid": "FSM-082",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to apply correct wage scale, fringe, and OT rules from applicable CBA based on WORK LOCATION, not home OpCo",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-083",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to support prevailing wage flag at WO/project level, auto-applying jurisdiction-specific Davis-Bacon or state rates",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-085",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to accommodate CBA-mandated pay rules: shift differentials, show-up minimums, double-time, travel/subsistence, holiday premiums",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-086",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.1: CBA Rate Library & Wage Determination",
+   "requirement": "Ability to support CBA rate table versioning with effective dates for mid-year increases and contract renewals",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-084",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.2: Blended Crews & Compliance Enforcement",
+   "requirement": "Ability to handle blended crews (union + non-union) on the same WO with independent rate/burden calculations",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FSM-087",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.2: Blended Crews & Compliance Enforcement",
+   "requirement": "Ability to respect union manpower ratios in scheduling (journeyman: apprentice, foreperson per 10 workers)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Entity separation needed for union considerations"
+  },
+  {
+   "rid": "FSM-088",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.2: Blended Crews & Compliance Enforcement",
+   "requirement": "Ability to enforce apprentice unsupervised rate rules: when apprentice is dispatched alone, apply correct standalone rate per CBA rather than supervised rate",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "CBA compliance risk when apprentices dispatched without journeyman"
+  },
+  {
+   "rid": "FSM-089",
+   "domain": "Domain A: Field Service Management",
+   "epic": "Epic A5: Labor Classification & Union/CBA  \u203a  US-A5.2: Blended Crews & Compliance Enforcement",
+   "requirement": "Ability to support jurisdictional reciprocity rules for union labor crossing local boundaries within the same national agreement",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Common in metro areas spanning multiple locals"
+  },
+  {
+   "rid": "PJM-001",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to create projects with multi-phase WBS and cost code hierarchies",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-002",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to define project budgets by labor, material, subcontractor, equipment, and overhead categories",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-006",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to auto-flow CRM deal data into project setup without re-keying (currently takes 24-48 hours)",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-007",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to enforce authorization controls on job setup (configurable by role and amount threshold)",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-010",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to support configurable project/service classification taxonomy standardized enterprise-wide",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-012",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.1: Project Creation & Configuration",
+   "requirement": "Ability to NOT require items to exist in inventory to be included in project cost forecast",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-003",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to manage change orders with approval workflow, cost and schedule impact tracking, and dual approval",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-004",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to import estimates from external tools (FastEST, Trimble, Accubid) or spreadsheets",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-005",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to support project booking portal with approval workflows and automated stakeholder notifications",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-008",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to auto-create standardized project folder structures with role-based permission controls",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-009",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to track bonds (performance and payment) at project intake with surety notification at completion",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-011",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B1: Project Setup & Budgeting  \u203a  US-B1.2: Estimation, Change Orders & Bonds",
+   "requirement": "Ability to support go/no-go qualification matrix for project bids",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-020",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to enforce percentage-of-completion revenue recognition per ASC 606 at the project level",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-021",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to track real-time project costs: actual vs. budget by cost code and phase",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-022",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to support WIP schedule management with cost spreading, variance tracking, and margin analysis",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-023",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to support over/under billing tracking and reporting",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-027",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to support WIP thresholds configurable per OpCo (dollar amount and/or accounting period span)",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-030",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.1: Real-Time Cost Tracking & Revenue Recognition",
+   "requirement": "Ability to distinguish project revenue by sub-discipline (mechanical, sheet metal, piping, controls, plumbing)",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-024",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.2: Reforecasting & WIP Reviews",
+   "requirement": "Ability to support monthly reforecasting with PM-owned forecasts and finance approval workflow before ERP posting",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-025",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.2: Reforecasting & WIP Reviews",
+   "requirement": "Ability to support standardized notes/reason codes for reforecasts (unidentified risk, labor shortage, scope change, etc.)",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-026",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.2: Reforecasting & WIP Reviews",
+   "requirement": "Ability to forecast through the life of the job, not just one month out",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-028",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.2: Reforecasting & WIP Reviews",
+   "requirement": "Ability to generate WIP reports compatible with ERP revenue recognition requirements",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-029",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B2: Project Cost Tracking & WIP  \u203a  US-B2.2: Reforecasting & WIP Reviews",
+   "requirement": "Ability to capture decisions from WIP meetings (close requests, billing holds, PO clearance) within the system",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": "all processes must be in-system, no email"
+  },
+  {
+   "rid": "PJM-040",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability to generate AIA-format pay applications (G702/G703) natively from project cost data",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": "Must be native \u2014 antiquated separate software today"
+  },
+  {
+   "rid": "PJM-041",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability to support draft/pencil billing workflow: PM creates draft \u2192 construction admin reviews \u2192 customer preview \u2192 committed/posted",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-042",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability to support multiple billing models: percentage complete, milestone, deposit/progress/completion, T&M",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-044",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability to generate lien waivers with state-specific requirements (e.g., AZ preliminary lien filing within one month)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "State-by-state legal requirements"
+  },
+  {
+   "rid": "PJM-046",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability to support both summarized and fully itemized T&M invoices per customer requirements",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-047",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.1: AIA Pay Applications & Construction Billing",
+   "requirement": "Ability for all billing, reforecasting, and close requests to be submitted within the system \u2014 no email-based processes",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": "explicit requirement"
+  },
+  {
+   "rid": "PJM-043",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.2: Certified Payroll & Compliance Documents",
+   "requirement": "Ability to generate certified payroll reports (WH-347) submitted with progress billing where required",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-045",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B3: Project Billing & AIA  \u203a  US-B3.2: Certified Payroll & Compliance Documents",
+   "requirement": "Ability to generate warranty letters at job completion (1-year labor/parts warranty)",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-050",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B4: Prevailing Wage & Certified Payroll  \u203a  US-B4.1: Prevailing Wage Rate Application",
+   "requirement": "Ability to flag projects as prevailing wage and auto-apply jurisdiction-specific Davis-Bacon or state rates by trade classification",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-051",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B4: Prevailing Wage & Certified Payroll  \u203a  US-B4.1: Prevailing Wage Rate Application",
+   "requirement": "Ability to support multi-tier CBA application on same project: national \u2192 state \u2192 local, resolved by work location and trade",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-052",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B4: Prevailing Wage & Certified Payroll  \u203a  US-B4.1: Prevailing Wage Rate Application",
+   "requirement": "Ability to track apprentice-to-journeyman ratios on prevailing wage projects",
+   "priority": "Could",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-053",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B4: Prevailing Wage & Certified Payroll  \u203a  US-B4.1: Prevailing Wage Rate Application",
+   "requirement": "Ability to maintain auditable CBA version/wage determination records per labor entry",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-054",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B4: Prevailing Wage & Certified Payroll  \u203a  US-B4.1: Prevailing Wage Rate Application",
+   "requirement": "Ability to alert PMs when labor is assigned to prevailing wage project without matching wage determination",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-060",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.1: Project Close-Out Process",
+   "requirement": "Ability to enforce project closure checklist: final billing verification, retention release, warranty activation, lien waiver collection, and financial reconciliation must complete before project status can be set to Closed",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-061",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.1: Project Close-Out Process",
+   "requirement": "Ability to generate project completion summary report including final cost vs. budget, margin analysis, change order log, and punch-list resolution status",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-062",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.2: Warranty Tracking & Claim Management",
+   "requirement": "Ability to track warranty periods by equipment and project with automated expiration alerts and warranty claim workflow (initiation \u2192 vendor submission \u2192 credit tracking)",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-063",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.2: Warranty Tracking & Claim Management",
+   "requirement": "Ability to process warranty claims against OEM/vendor warranties with cost recovery tracking and vendor credit management",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-064",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.2: Warranty Tracking & Claim Management",
+   "requirement": "Ability to trigger warranty start date automatically from project substantial completion or equipment commissioning date",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-065",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.2: Warranty Tracking & Claim Management",
+   "requirement": "Ability to generate warranty letters with configurable terms (1-year labor/parts standard, extended options) auto-populated from project and equipment data",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-066",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B5: Project Closure & Warranty  \u203a  US-B5.2: Warranty Tracking & Claim Management",
+   "requirement": "Ability to link warranty service calls back to original project for cost tracking and vendor recovery",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-070",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B6: Expense Management  \u203a  US-B6.1: Project Expense Capture & Approval",
+   "requirement": "Ability to capture and route project expenses (per diem, mileage, field purchases, subcontractor costs) with receipt photo capture and multi-level approval workflows",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-071",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B6: Expense Management  \u203a  US-B6.1: Project Expense Capture & Approval",
+   "requirement": "Ability to enforce expense policy rules by OpCo including per diem rates, mileage rates, meal limits, and spending thresholds requiring manager approval",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-072",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B6: Expense Management  \u203a  US-B6.1: Project Expense Capture & Approval",
+   "requirement": "Ability to auto-allocate expenses to project cost codes and work orders based on configurable rules",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-073",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B6: Expense Management  \u203a  US-B6.1: Project Expense Capture & Approval",
+   "requirement": "Ability to integrate with expense management platforms (Expensify, Concur, SAP) or provide native expense capture with receipt OCR",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-074",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B6: Expense Management  \u203a  US-B6.1: Project Expense Capture & Approval",
+   "requirement": "Ability to support field purchase card reconciliation with auto-matching to POs and project cost codes",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-080",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B7: Resource Management & Capacity Planning  \u203a  US-B7.1: Resource Allocation & Utilization",
+   "requirement": "Ability to manage project resource allocation with capacity planning, skill matching, and utilization tracking across OpCos",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-081",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B7: Resource Management & Capacity Planning  \u203a  US-B7.1: Resource Allocation & Utilization",
+   "requirement": "Ability to forecast labor demand by trade, certification, and location for upcoming project pipeline",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-082",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B7: Resource Management & Capacity Planning  \u203a  US-B7.1: Resource Allocation & Utilization",
+   "requirement": "Ability to track resource utilization rates (billable vs. non-billable hours) by technician, trade, and OpCo",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-083",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B7: Resource Management & Capacity Planning  \u203a  US-B7.1: Resource Allocation & Utilization",
+   "requirement": "Ability to support cross-OpCo resource sharing for projects with automated intercompany cost allocation and billing",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "PJM-084",
+   "domain": "Domain B: Project & Job Management",
+   "epic": "Epic B7: Resource Management & Capacity Planning  \u203a  US-B7.1: Resource Allocation & Utilization",
+   "requirement": "Ability to provide project pipeline visibility showing committed, probable, and potential projects with resource demand overlay",
+   "priority": "Could",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-001",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to support hierarchical customer structure (parent > billing entity > service site > building/floor/zone)",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-002",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to provide unified 360-degree customer view aggregating FSM, financials, contracts, and equipment across all OpCos",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-003",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to store multiple contacts per customer with role designations",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-005",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to flag VIP/priority customers and enforce SLA escalation rules",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-006",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to support cross-OpCo customer management (national accounts serviced by multiple entities)",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-007",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to support separate bill-to and service-location addresses per customer with configurable invoice routing rules",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Fundamental invoicing need"
+  },
+  {
+   "rid": "CRM-008",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to configure customer-specific pricing rules, payment terms, and service level tiers that auto-apply to work orders and invoices",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-009",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.1: Customer Hierarchy & 360\u00b0 View",
+   "requirement": "Ability to display customer AR aging, credit status, and collection notes within the work order and dispatch interface for field-level credit decisions",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Must have unless Treasury solution identified"
+  },
+  {
+   "rid": "CRM-004",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.2: Customer Self-Service & Engagement",
+   "requirement": "Ability to support customer self-service portal for requesting service, viewing WO status, accessing invoices and paying invoices",
+   "priority": "Could",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-016",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.2: Customer Self-Service & Engagement",
+   "requirement": "Ability to calculate customer lifetime value and churn risk scores with automated flagging of high-attrition-risk accounts",
+   "priority": "Could",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-017",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C1: Customer & Site Management  \u203a  US-C1.2: Customer Self-Service & Engagement",
+   "requirement": "Ability to support residential customer portfolio model with zone-based routing, seasonal contact campaigns, and on-site contract renewal workflows",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Residential CRM fundamentally different from commercial account management"
+  },
+  {
+   "rid": "CRM-010",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to maintain equipment records with make, model, serial, install date, warranty status, building location",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-011",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to provide full equipment service history (all WOs, parts replaced, inspection findings)",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-012",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to support QR code/barcode tagging for field-based equipment identification",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-013",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to track refrigerant usage by equipment for EPA compliance",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-014",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to track equipment lifecycle with replacement/retirement recommendations based on age and repair cost history",
+   "priority": "Could",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CRM-015",
+   "domain": "Domain C: Customer & Equipment Management",
+   "epic": "Epic C2: Equipment & Asset Management  \u203a  US-C2.1: Equipment Records & Service History",
+   "requirement": "Ability to enforce equipment capture on work orders with compliance tracking",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Only 7% of installed base captured today; must drive improvement"
+  },
+  {
+   "rid": "QTE-001",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to create quotes from WOs, inspections, or independently with labor/material/subcontractor line items",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-002",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to support configurable flat-rate pricing books (good/better/best repair options)",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-003",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to apply markup and margin rules by OpCo, customer tier, or service type",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-004",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to generate customer-facing quote PDFs with configurable branding/terms per OpCo",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-005",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability for technicians to create and submit quotes from mobile while on-site using templatized scopes",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Field quoting with templates drives revenue velocity"
+  },
+  {
+   "rid": "QTE-006",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to support configurable quote routing: auto-send to customer or route to manager for review and approve (with tracking)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-007",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to integrate with estimation tool via API for enterprise-level project estimation with bi-directional data flow",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-008",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D1: Quote Creation & Pricing  \u203a  US-D1.1: Quote Generation & Pricing Engine",
+   "requirement": "Ability to support good/better/best quote presentation with tiered options displayed on a single customer-facing document",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Residential and light commercial quoting best practice"
+  },
+  {
+   "rid": "QTE-010",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D2: Quote Approval & Tracking  \u203a  US-D2.1: Quote Pipeline & Conversion",
+   "requirement": "Ability to support configurable approval workflows based on quote value, margin, or service type",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-011",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D2: Quote Approval & Tracking  \u203a  US-D2.1: Quote Pipeline & Conversion",
+   "requirement": "Ability to track quote pipeline (draft \u2192 pending \u2192 sent \u2192 accepted \u2192 declined \u2192 expired)",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-012",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D2: Quote Approval & Tracking  \u203a  US-D2.1: Quote Pipeline & Conversion",
+   "requirement": "Ability to support electronic quote acceptance (e-signature or portal)",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "QTE-013",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D2: Quote Approval & Tracking  \u203a  US-D2.1: Quote Pipeline & Conversion",
+   "requirement": "Ability to auto-convert accepted quote to work order without re-keying",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Currently requires manual re-keying at some OpCos"
+  },
+  {
+   "rid": "QTE-014",
+   "domain": "Domain D: Quoting & Estimating",
+   "epic": "Epic D2: Quote Approval & Tracking  \u203a  US-D2.1: Quote Pipeline & Conversion",
+   "requirement": "Ability to support project estimation delegation of authority (configurable thresholds: self, manager, executive review)",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-001",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to track inventory across warehouse, branch, and truck stock locations",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-002",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to support inventory transfers between locations with approval workflows",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-003",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to support barcode/QR scanning for receiving, issuing, and counting",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-004",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to support mass filter/parts ordering with auto-application to PM jobs",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Non-negotiable"
+  },
+  {
+   "rid": "INV-005",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to accommodate a parts-house distribution model (not centralized inventory)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "SL does NOT carry significant inventory; parts houses are their warehouse"
+  },
+  {
+   "rid": "INV-006",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to provide cross-OpCo inventory visibility enabling enterprise-wide search for parts across all 40+ warehouse and truck stock locations",
+   "priority": "Won't",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Not applicable currently"
+  },
+  {
+   "rid": "INV-007",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to set automated reorder points by part, location, and seasonal demand pattern with auto-generated PO recommendations",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-008",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to enforce PO-before-pickup rule: system prevents recording parts consumption against a work order without an associated purchase order",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Financial control gap cited by multiple OpCos"
+  },
+  {
+   "rid": "INV-009",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E1: Warehouse & Truck Stock  \u203a  US-E1.1: Inventory Tracking & Transfers",
+   "requirement": "Ability to support inter-location inventory transfer workflows with approval routing and cost reallocation",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-010",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to create purchase orders linked to work orders or project cost codes",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-011",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to support lump-sum POs for projects (Qty 1 \u2014 fittings \u2014 $12,000)",
+   "priority": "Must",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": "How SL actually operates, Non-negotiable"
+  },
+  {
+   "rid": "INV-012",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to support three-way match: PO, receipt, and vendor invoice",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-013",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to support vendor price book management and preferred vendor designations",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-014",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to track materials on order vs. received vs. consumed per WO",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-015",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to support AI/OCR-powered PO processing for invoice matching",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-026",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to maintain vendor approved catalog in system with negotiated price",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "For all lines of business"
+  },
+  {
+   "rid": "INV-027",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to direct user to preferred vendor item and location",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "For all lines of business"
+  },
+  {
+   "rid": "INV-028",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to support estimation process by directing user to review and select preferred vendors / products within platform",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-029",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E2: Purchasing & Procurement  \u203a  US-E2.1: Purchase Orders & Invoice Matching",
+   "requirement": "Ability to users to search current inventory and select preferred vendor during PO or estimation process",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-020",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to maintain vendor qualification records including insurance certificates, licenses, safety ratings, and W-9 documentation with expiration alerts",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-021",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to support consolidated vendor negotiations and enterprise-level pricing agreements across 40+ OpCos with OpCo-specific receiving",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-022",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to track and report vendor performance (on-time delivery, quality, pricing compliance) by OpCo and enterprise-wide",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-023",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to manage preferred vendor lists by OpCo and product category with automated PO routing to preferred vendors",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INV-024",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to enforce vendor insurance compliance: block PO creation to vendors with expired insurance certificates",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Risk management requirement"
+  },
+  {
+   "rid": "INV-025",
+   "domain": "Domain E: Inventory & Parts Management",
+   "epic": "Epic E3: Vendor Management  \u203a  US-E3.1: Vendor Qualification & Compliance",
+   "requirement": "Ability to support subcontractor management including qualification, rate agreements, insurance tracking, and performance evaluation",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-001",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to auto-generate invoices from completed WOs based on configurable billing rules",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-002",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to support multiple billing methods per OpCo: T&M, flat-rate, fixed-price, NTE, progress, AIA",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-003",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to batch invoice for service agreements (monthly, quarterly) with automatic calculations",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-004",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to support configurable invoice templates branded per OpCo",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-007",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to support residential vs. commercial billing models (fundamentally different processes)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-008",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.1: Automated Invoice Creation & Billing Models",
+   "requirement": "Ability to support customer-specific billing cutoff dates and billing cycles (weekly, bi-weekly, monthly, milestone) that vary across the customer portfolio",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Variable billing cycles are standard in project billing"
+  },
+  {
+   "rid": "BIL-005",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.2: Union/CBA Billing & Revenue Recognition",
+   "requirement": "Ability to support union vs. non-union blended billing rates on the same invoice",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-006",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.2: Union/CBA Billing & Revenue Recognition",
+   "requirement": "Ability to support prevailing wage T&M billing with fringe breakdowns per government contract standards",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-009",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.2: Union/CBA Billing & Revenue Recognition",
+   "requirement": "Ability to track deferred revenue for maintenance contracts billed in advance of service delivery with automated revenue schedule generation",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "ASC 606 compliance for pre-billed maintenance"
+  },
+  {
+   "rid": "BIL-014",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F1: Invoice Generation  \u203a  US-F1.2: Union/CBA Billing & Revenue Recognition",
+   "requirement": "Ability to support multiple concurrent revenue recognition models within the same OpCo (e.g., standard service rev rec vs. full-coverage maintenance contract rev rec)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Different contract types require different rev rec treatment"
+  },
+  {
+   "rid": "BIL-010",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to push approved invoices to ERP with proper GL coding, dimensions, and entity mapping",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-011",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to support multi-entity billing (work by OpCo A billed through OpCo B)",
+   "priority": "Won't",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Not Applicable currently"
+  },
+  {
+   "rid": "BIL-012",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to sync payment/collections status back from ERP for customer 360 visibility",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-013",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to generate system-generated documents: invoices, lien waivers, warranty letters, completion certificates",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "must auto-pull all job data, not template-based"
+  },
+  {
+   "rid": "BIL-015",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to manage invoice disputes and credit memo workflows with tracking from dispute initiation through resolution and adjustment posting",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIL-016",
+   "domain": "Domain F: Billing & Invoicing",
+   "epic": "Epic F2: ERP Integration & AR  \u203a  US-F2.1: ERP Sync & Document Generation",
+   "requirement": "Ability to support commissions tracking on service agreements, project bookings, and field-generated quotes with configurable commission rules by OpCo, role, and service type",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-001",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to provide real-time executive dashboards with drill-down from enterprise \u2192 OpCo \u2192 branch \u2192 work order",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "3 clicks from consolidated revenue to source WO"
+  },
+  {
+   "rid": "BIR-002",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to support the 60+ metric framework defined by Service Logic (see Appendix)",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-003",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to configure alert thresholds that trigger notifications when metric breach targets",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-004",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to report gross margin by work type (service, project, PM, T&M) at OpCo and enterprise levels with trend analysis \u2014 explicitly tied to IPO/exit readiness metrics",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Board-level requirement for exit readiness"
+  },
+  {
+   "rid": "BIR-005",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to track and report earned value metrics (CPI, SPI, EAC) at the project level with automated weekly recalculation",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-006",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to provide standard out-of-the-box operational dashboards for technician utilization, first-time fix rate, SLA compliance, and backlog aging without custom configuration.",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Day-one operational visibility, not just executive views"
+  },
+  {
+   "rid": "BIR-007",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to generate SOX ITGC audit reports",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Required for SOX evidence packages"
+  },
+  {
+   "rid": "BIR-023",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to generate user access reviews on demand and on schedule",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-024",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to generate privileged action logs on demand and on schedule",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-025",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G1: Operational Dashboards  \u203a  US-G1.1: Executive Dashboards & KPI Framework",
+   "requirement": "Ability to generate configuration change log on demand and on schedule",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-010",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to support self-service report builder with drag-and-drop field selection",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Non-technical user creates custom report in 30 minutes"
+  },
+  {
+   "rid": "BIR-011",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to deliver scheduled reports (email, SFTP) in PDF, Excel, CSV",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-012",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to provide API or data warehouse access for Power BI (or other data visualization or cloud-based BI tools)",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-013",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to enforce row-level security: OpCo users see only their data; corporate sees all",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-014",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to generate board-ready financial and operational reporting packages automatically",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Monthly board package within 2 business days of close"
+  },
+  {
+   "rid": "BIR-015",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to provide PM-specific dashboards showing project portfolio: backlog, burn rate, margin forecast, resource utilization, and at-risk projects",
+   "priority": "Should",
+   "capability_raw": "PJE",
+   "capability": "PJE",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-016",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to enforce role-scoped reporting: users see only data within their access scope across all reports, dashboards, and exports, with row-level security extending to every reporting surface.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Reinforces BIR-013 across all report surfaces"
+  },
+  {
+   "rid": "BIR-017",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to refresh real-time operational dashboards",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-018",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G2: Custom Reporting & Data Access  \u203a  US-G2.1: Self-Service Reporting & BI Integration",
+   "requirement": "Ability to provide financial reporting (revenue by customer, job type, region, technician) exportable in formats suitable for ERP reconciliation and external audit.",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Required for SEC-style reporting support at exit readiness"
+  },
+  {
+   "rid": "BIR-020",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G3: Cross-OpCo Benchmarking  \u203a  US-G3.1: OpCo Performance Comparison",
+   "requirement": "Ability to provide standardized cross-OpCo comparison views (first-time fix rate, revenue per tech, margin, SLA compliance)",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-021",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G3: Cross-OpCo Benchmarking  \u203a  US-G3.1: OpCo Performance Comparison",
+   "requirement": "Ability to support trend analysis across configurable time periods",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "BIR-022",
+   "domain": "Domain G: Reporting, Analytics & KPIs",
+   "epic": "Epic G3: Cross-OpCo Benchmarking  \u203a  US-G3.1: OpCo Performance Comparison",
+   "requirement": "Ability to benchmark OpCo performance on standardized KPIs with outlier flagging",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-001",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to support 40+ legal entities within a single platform instance with entity-specific configurations",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-002",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to support entity-specific configurations (branding, addresses, pricing, workflows, forms) without code forking",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-003",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to provide cross-entity visibility for corporate users with consolidated reporting",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-004",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to add new entities (Acquisitions) without platform downtime or major reconfiguration",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-005",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to support shared customers across OpCos (national accounts)",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-006",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to enforce entity-level data segregation preventing unauthorized cross-entity access",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-009",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to scale to 100+ entities without architectural re-design to support Service Logic's Acquisition growth trajectory over 3-5 years",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-020",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to deploy the platform in a single-tenant configuration with dedicated compute, storage, and network resources; multi-tenant SaaS deployments where customer data co-mingles at the infrastructure layer are not acceptable.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "PE-backed portfolio data isolation requirement"
+  },
+  {
+   "rid": "ENT-021",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to logically and physically isolate Service Logic data from all other vendor customers with documented audit evidence available on request.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-022",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to select a dedicated cloud region (e.g., US-East, US-West) with written data residency guarantees that data does not leave the specified geography.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "US data residency required"
+  },
+  {
+   "rid": "ENT-023",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability for the vendor to provide written contractual confirmation of single-tenant topology, supported by SOC 2 Type II third-party attestation.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Contractual + audit evidence"
+  },
+  {
+   "rid": "ENT-024",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to schedule platform updates and maintenance windows independently per tenant, without forced impact from other vendor customers.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Uptime SLA dependency"
+  },
+  {
+   "rid": "ENT-025",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability for vendor to provide a dedicated support tier with named resources (e.g., Technical Account Manager, named support engineers) appropriate to Service Logic\u2019s enterprise scale.",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Enterprise SLA requirement"
+  },
+  {
+   "rid": "ENT-026",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.1: Entity Management & Scalability",
+   "requirement": "Ability to version-control tenant-specific configuration and restore it independently of platform code releases.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Config management dependency"
+  },
+  {
+   "rid": "ENT-007",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.2: Process Overlays & Cross-OpCo Operations",
+   "requirement": "Ability to support 'standard vs. flex' framework: core workflows mandated enterprise-wide, OpCo variations permitted in defined areas",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Critical design principle"
+  },
+  {
+   "rid": "ENT-008",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.2: Process Overlays & Cross-OpCo Operations",
+   "requirement": "Ability to support multiple roles performing a single process (not one single role for a process)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-016",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.2: Process Overlays & Cross-OpCo Operations",
+   "requirement": "Ability to support cross-OpCo resource sharing (technicians, equipment, inventory) with automated intercompany cost allocation and billing",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-017",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.2: Process Overlays & Cross-OpCo Operations",
+   "requirement": "Ability to support enterprise-level procurement with corporate-negotiated POs and OpCo-specific receiving and cost allocation by delivery location",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-018",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H1: Multi-Entity Design  \u203a  US-H1.2: Process Overlays & Cross-OpCo Operations",
+   "requirement": "Ability to support OpCo divestiture including data extraction in standard formats and system access deprovisioning within 90 days",
+   "priority": "Could",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "PE exit scenario planning"
+  },
+  {
+   "rid": "ENT-010",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to provide global configuration layer for shared standards that cascades to all entities",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-011",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to provide entity-level override for parameters that legitimately vary (labor rates, tax, markup)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-012",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to maintain audit log for configuration changes at global and entity levels",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-013",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to provide template-based onboarding: clone baseline config for new Acquisitions (4-6 week target)",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-014",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to support entity-level union/non-union/mixed designation with CBA bindings at national, state, and local levels",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-015",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to maintain centralized CBA library shared across entities with local scoping",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-030",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to provide a minimum of four distinct environments (Sandbox, Staging, Training, Production), each independently accessible, with additional environments available if recommended by the solution design.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Stricter than baseline NFR-09; required for SOX change management"
+  },
+  {
+   "rid": "ENT-031",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to enforce a documented configuration promotion workflow (Sandbox \u2192 Staging \u2192 Production) consistent with SOX IT General Controls.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-032",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to version-control all configuration changes with before/after state, changed-by user, timestamp, and approval record.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Extends ENT-012; required for SOX evidence"
+  },
+  {
+   "rid": "ENT-033",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to export and import configuration in a structured format (JSON, YAML, or XML) for backup, migration, and disaster recovery.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-034",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to compare configuration between environments and identify drift, with reportable variance.",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-035",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to roll back configuration to any prior version without requiring a full environment restore.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Critical for safe iterative configuration"
+  },
+  {
+   "rid": "ENT-036",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to publish release notes and change logs for every platform update that may affect customer configuration.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-037",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to isolate customer configuration from platform code releases: a platform update must not alter customer configuration without an explicit, opt-in migration step.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "ENT-038",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to provision Sandbox and Training environments with production-representative data using documented masking capability; PII must not be copied unmasked to non-production environments.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Privacy compliance for non-production environments"
+  },
+  {
+   "rid": "ENT-039",
+   "domain": "Domain H: Multi-Entity Platform Architecture",
+   "epic": "Epic H2: Configuration & Governance  \u203a  US-H2.1: Global vs. Entity Configuration & Onboarding Templates",
+   "requirement": "Ability to manage configuration via API to enable CI/CD pipelines for configuration deployment.",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-001",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I1: ERP/Accounting Integration  \u203a  US-I1.1: ERP Integration & Multi-ERP Support",
+   "requirement": "Ability to provide pre-built or certified integration with ERP systems (customers, vendors, invoices, GL entries)",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-002",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I1: ERP/Accounting Integration  \u203a  US-I1.1: ERP Integration & Multi-ERP Support",
+   "requirement": "Ability to support ERP dimensions (entity, department, project, class, location) in transaction mapping",
+   "priority": "Must",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-003",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I1: ERP/Accounting Integration  \u203a  US-I1.1: ERP Integration & Multi-ERP Support",
+   "requirement": "Ability to provide real-time or near-real-time sync for critical transactions",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-004",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I1: ERP/Accounting Integration  \u203a  US-I1.1: ERP Integration & Multi-ERP Support",
+   "requirement": "Ability to provide error handling and reconciliation dashboard for failed integration transactions",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-005",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I1: ERP/Accounting Integration  \u203a  US-I1.1: ERP Integration & Multi-ERP Support",
+   "requirement": "Ability to support concurrent integration with multiple ERP backends during phased migration (legacy systems + ERP running in parallel by OpCo)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "12-18 month migration window requires dual-ERP support"
+  },
+  {
+   "rid": "INT-010",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to provide documented, versioned REST API covering all core business objects",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Response time <500ms at 95th percentile"
+  },
+  {
+   "rid": "INT-011",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to support event-driven integration (webhooks/message bus) for dispatch, payment, inventory",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Event delivered within 5 seconds"
+  },
+  {
+   "rid": "INT-012",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to support integration middleware (Workato, MuleSoft, Boomi, or native iPaaS)",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-013",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to enforce API rate limiting, OAuth 2.0, and TLS 1.2+ encryption",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-017",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to provide integration health monitoring with automated alerting",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Dashboard, 5-minute alerting, MTTR tracking"
+  },
+  {
+   "rid": "INT-023",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to support API versioning with minimum 12-month backward compatibility guarantee and 6-month deprecation notice for major version changes",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-025",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to publish and maintain a current OpenAPI (Swagger) specification for all supported API versions, accessible to Service Logic engineering and integration partners.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-026",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to provide webhook retry logic with exponential back-off and explicit delivery confirmation, with replay capability for failed deliveries.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Extends INT-011 event reliability"
+  },
+  {
+   "rid": "INT-027",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to log every API call with request ID, caller identity, endpoint, response code, and latency, and to expose these logs to Service Logic for audit and troubleshooting.",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-028",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to configure API rate limits at the tenant level with documented per-endpoint defaults.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-029",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.1: API Platform & Event-Driven Integration",
+   "requirement": "Ability to extend API backward compatibility for a minimum of 18 months after deprecation notice for any major version change.",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Stricter than baseline INT-023 (12 months)"
+  },
+  {
+   "rid": "INT-014",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate with payroll systems (Paylocity) for employee master data and labor cost sync",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-015",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to export union fringe benefit remittance data for trust fund reporting",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-016",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate with tax calculation engines (Avalara, Vertex) for real-time sales tax",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-018",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate bi-directionally with Salesforce CRM for customer data synchronization with conflict resolution rules and no duplicate creation",
+   "priority": "Should",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-019",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate with e-signature platforms (DocuSign, Adobe Sign) for contract execution, change order approval, and lien waiver processing",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-020",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate with document management systems for storage and retrieval of contracts, lien waivers, insurance certificates, and permits with version control",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "INT-021",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to support batch file integration via SFTP for legacy systems that cannot support real-time API connections, with configurable scheduling and error quarantine",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Critical during 12-18 month migration transition period"
+  },
+  {
+   "rid": "INT-022",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to determine correct tax withholding jurisdiction based on work location for technicians working across state lines, and transmit jurisdiction data to payroll system",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Multi-state payroll tax compliance requirement"
+  },
+  {
+   "rid": "INT-024",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to provide pre-built or certified connectors and integration patterns for additional ERP systems beyond Great Plains, to support OpCos retaining legacy ERPs during transition.",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "12-18 month migration window may require ERP coexistence"
+  },
+  {
+   "rid": "INT-030",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to support EDI for customers requiring structured data exchange with their procurement systems.",
+   "priority": "Could",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": "Strategic accounts increasingly require EDI"
+  },
+  {
+   "rid": "INT-031",
+   "domain": "Domain I: Integration Framework",
+   "epic": "Epic I2: API & Middleware  \u203a  US-I2.2: Payroll, Tax & Third-Party System Integration",
+   "requirement": "Ability to integrate with XOI",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": "Estimator tool that allows video and photo capture, capability must be matched"
+  },
+  {
+   "rid": "DIM-001",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to define and enforce enterprise-wide data quality thresholds before migration (>=95% for critical fields)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-002",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to execute automated data profiling across 40 OpCo source systems",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-003",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to establish golden records using configurable survivorship rules to view product data lineage and relationship between substitutions",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Source of truth for data will reside outside FSM platform"
+  },
+  {
+   "rid": "DIM-011",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to define and enforce a master data governance model with data ownership, stewardship roles, and change approval workflows for customer, vendor, and equipment master data",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "DIM-006 from existing doc \u2014 ongoing governance, not just migration"
+  },
+  {
+   "rid": "DIM-012",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to support unified chart of accounts mapping with entity-specific legacy COA crosswalk, reviewed and approved per entity before migration",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Need to manage CoA mapping during ERP implementation phases"
+  },
+  {
+   "rid": "DIM-013",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to identify and merge duplicate customer records across OpCos using fuzzy matching (name, address, phone) with configurable merge rules and full audit trail",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Same customer often exists in multiple OpCo systems"
+  },
+  {
+   "rid": "DIM-014",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to perform automated data format conversions during migration including date standardization, address normalization (USPS), and unit-of-measure harmonization",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-030",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability for Service Logic to export all platform data in a standard format (CSV, JSON, or XML) at any time without vendor assistance or fees, as a non-negotiable exit right.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Data portability is a non-negotiable PE exit right"
+  },
+  {
+   "rid": "DIM-031",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to complete a full data export within 72 hours of request for datasets up to 10 million records, with documented performance characteristics for larger volumes.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-032",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to configure data retention policies per data type with automated enforcement aligned to statutory and contractual obligations.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-033",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Upon contract termination, ability for the vendor to provide a complete data export within 30 days and certify destruction of customer data within 90 days, with written audit evidence.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Exit-readiness contractual requirement"
+  },
+  {
+   "rid": "DIM-034",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to support soft delete for all primary objects with configurable retention period before hard delete, enabling recovery from accidental deletion.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-035",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to archive records older than a configurable threshold to a lower-cost storage tier while preserving query ability for audit and historical reporting.",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Cost optimization at scale"
+  },
+  {
+   "rid": "DIM-036",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to identify PII fields and apply role-based masking in reports, exports, and API responses to satisfy CCPA, GDPR, and state privacy obligations.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-037",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.1: Data Profiling, Quality & Governance",
+   "requirement": "Ability to encrypt database backups, store them in a geographically separate region, and test restorability at least quarterly with documented results.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Disaster recovery validation"
+  },
+  {
+   "rid": "DIM-004",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to support phased migration by OpCo wave (2-3 per wave) with independent rollback",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-005",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to validate migrated data against source with zero tolerance for financial variances",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-006",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to support migration tooling for major legacy systems (ServiceTrade, FieldEdge, SM-1, BuildOps, spreadsheets)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-007",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to migrate open transactions (AR, AP, WIP, open WOs) with full integrity",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-008",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to maintain data lineage audit trail (source \u2192 transformation \u2192 target)",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-009",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to support trial migrations in sandbox with automated comparison",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-010",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to migrate historical data (min 3 years financial, 5 years customer/equipment)",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-015",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to archive legacy system data in a quarriable format for historical reference with minimum 7-year retention beyond the migration window",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-016",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J1: Data Migration  \u203a  US-J1.2: Migration Execution & Validation",
+   "requirement": "Ability to monitor data quality KPIs post-migration with daily dashboard updates and automated alerting when any domain quality score drops below 95%",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-020",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J2: Repeatable OpCo Onboarding  \u203a  US-J2.1: Onboarding Playbook & Provisioning",
+   "requirement": "Ability to provide self-service or guided entity provisioning (clone baseline config)",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-021",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J2: Repeatable OpCo Onboarding  \u203a  US-J2.1: Onboarding Playbook & Provisioning",
+   "requirement": "Ability to provide pre-built data import templates for common legacy exports",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-022",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J2: Repeatable OpCo Onboarding  \u203a  US-J2.1: Onboarding Playbook & Provisioning",
+   "requirement": "Ability to support incremental/delta migration for extended parallel-run periods",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "DIM-023",
+   "domain": "Domain J: Data Migration & Onboarding",
+   "epic": "Epic J2: Repeatable OpCo Onboarding  \u203a  US-J2.1: Onboarding Playbook & Provisioning",
+   "requirement": "Ability to define and enforce data validation rules at entry point to prevent post-migration degradation",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Required fields, format validation, duplicate check on save"
+  },
+  {
+   "rid": "SOX-001",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to enforce role-based access control with predefined and custom roles",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-002",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to enforce segregation of duties preventing conflicting permissions (e.g., create PO + approve invoice + release payment)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-003",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support SSO (SAML 2.0 / OAuth 2.0) with corporate identity provider",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-004",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support MFA enforcement",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-005",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support automated user provisioning/deprovisioning via SCIM or AD sync",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-006",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support field-level security separating ops from finance access",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-030",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to provision and deprovision users automatically via SCIM 2.0 from Service Logic\u2019s enterprise IdP, with deprovisioning occurring in near real time (<15 minutes from IdP event).",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Extends SOX-005; deprovisioning latency is a SOX control concern"
+  },
+  {
+   "rid": "SOX-031",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to configure session timeout per role with both idle and absolute session limits.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-032",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to log all authentication events with timestamp, user ID, source IP, device ID, and authentication result for SOX audit evidence.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-033",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support conditional access policies (e.g., block access from non-managed devices, geo-restriction) enforced at sign-in.",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-034",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to rotate service account credentials and API keys without platform downtime, on a documented schedule.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-035",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to provide a minimum of 20 configurable system roles out of the box (e.g., System Admin, Dispatcher, Technician, Customer, Supervisor, Read-Only, Billing, Integration) applicable at enterprise, group, or single operating entity level.",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Foundation for delegated administration"
+  },
+  {
+   "rid": "SOX-036",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to create custom roles with field-level and object-level permission granularity, with explicit override of inherited permissions.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Extends SOX-006"
+  },
+  {
+   "rid": "SOX-037",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to delegate administration so that corporate administrators define scope boundaries within which regional or OpCo administrators operate (centralized + decentralized governance coexistence).",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": "Critical for 40+ OpCo operating model"
+  },
+  {
+   "rid": "SOX-038",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to enforce Attribute-Based Access Control (ABAC) for data-level filtering by geography, business unit, customer segment, or account.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Required for entity-level data segregation"
+  },
+  {
+   "rid": "SOX-039",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support time-bounded role elevation (e.g., temporary supervisor access) with automatic expiration and full audit logging.",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Reduces standing privileged access"
+  },
+  {
+   "rid": "SOX-040",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to simulate effective permissions for any user (access preview tool) before role assignment is committed.",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-041",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to support external user roles (customer portal, subcontractor access) with scope-limited permissions enforced by the same RBAC/ABAC framework.",
+   "priority": "Must",
+   "capability_raw": "CXR",
+   "capability": "CXR",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-042",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Ability to detect segregation-of-duties conflicts for sensitive role combinations (e.g., create PO + approve invoice + release payment) and to surface conflicts at the time of role assignment.",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Extends SOX-002; preventive vs. detective control"
+  },
+  {
+   "rid": "SOX-076",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K1: User Management & Authentication  \u203a  US-K1.1: RBAC, SoD & Identity Management",
+   "requirement": "Data Level security corresponds to users role in all reporting views and queries.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-010",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to maintain immutable audit trail for all data changes (user, timestamp, before/after values, approval chain)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-011",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to support audit log retention for minimum 7 years",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-012",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to encrypt data at rest and in transit (AES-256 / TLS 1.2+)",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-013",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to maintain SOC 2 Type II certification (current and ongoing)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-016",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to restrict direct database access; all changes via application layer with logging",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-050",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to enforce TLS 1.3 for all data in transit, with TLS 1.0 and TLS 1.1 disabled.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Refines SOX-012 (RFP baseline TLS 1.2+)"
+  },
+  {
+   "rid": "SOX-051",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to support customer-managed encryption keys (CMEK) allowing Service Logic to own and rotate master keys via a dedicated key management service (AWS KMS, Azure Key Vault, or equivalent).",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "PE-backed data sovereignty"
+  },
+  {
+   "rid": "SOX-052",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to rotate encryption keys without application downtime, with key-access events logged separately from data-access events.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-053",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to encrypt internal service-to-service communication using mTLS or equivalent.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-054",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to deploy the platform within a dedicated VPC or equivalent private network segment, fronted by a Web Application Firewall (WAF) on all customer-facing endpoints.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-055",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to enable DDoS protection at the network perimeter for all production traffic.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-056",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to offer private connectivity (AWS PrivateLink, Azure Private Endpoint, site-to-site VPN) for Service Logic enterprise integration traffic.",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-057",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to monitor production network segments with intrusion detection and prevention (IDS/IPS) and to surface relevant alerts to Service Logic on request.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-058",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to perform infrastructure vulnerability scanning no less than monthly (weekly preferred), with results and remediation evidence provided to Service Logic on request.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-059",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability for the vendor to conduct penetration testing at least semi-annually by a qualified third party, with executive summaries and remediation evidence provided to Service Logic under NDA.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-060",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to maintain a comprehensive audit trail capturing create, read (for sensitive fields), update, and delete events with timestamp, user, IP, before/after values, and explicit data delta \u2014 with logs immutable to all administrators.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Extends SOX-010 with read-event capture and immutability"
+  },
+  {
+   "rid": "SOX-061",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to retain audit logs for a minimum of 7 years with online access to the most recent 2 years, matching SEC and SOX retention requirements.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Refines SOX-011 with online-access tier"
+  },
+  {
+   "rid": "SOX-062",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.1: Audit Trail & Data Protection",
+   "requirement": "Ability to export audit logs in machine-readable format (JSON, CSV) and to stream them to enterprise SIEM platforms (Splunk, Microsoft Sentinel, or equivalent) via syslog or API.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Required for enterprise security monitoring"
+  },
+  {
+   "rid": "SOX-014",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to generate SOX compliance reports (control effectiveness, exceptions, remediation)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-015",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to enforce multi-level approval workflows for financial transactions above thresholds",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-017",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to support user access reviews with automated reports, workflows, approvals, and tracking",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Monthly reviews; 90-day inactive flagging"
+  },
+  {
+   "rid": "SOX-018",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to provide ITGC compliance dashboard tracking change management, logical access reviews, and computer operations controls",
+   "priority": "Should",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-019",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to generate statutory compliance reports including EPA refrigerant tracking (Section 608), OSHA incident reporting, and state-specific contractor licensing documentation",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-020",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to manage tax exemption certificates by customer with expiration tracking and support multi-jurisdictional sales/use tax rules including contractor-specific exemptions",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-070",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to support GDPR and CCPA data subject rights including right to access, right to erasure, and data portability, with documented workflows and response timelines.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Privacy regime coverage was implicit only"
+  },
+  {
+   "rid": "SOX-071",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability to execute a Data Processing Agreement (DPA) at contract signing addressing data ownership, processing scope, sub-processors, and breach notification.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Aligns with Section 29 contractual terms"
+  },
+  {
+   "rid": "SOX-072",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability for the vendor to disclose all sub-processors and to notify Service Logic of any sub-processor changes a minimum of 30 days in advance.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Standard PE-backed procurement requirement"
+  },
+  {
+   "rid": "SOX-073",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability for the vendor to maintain a documented information security policy and to make it available to Service Logic under NDA on request.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "SOX-074",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability for the vendor to maintain an information security incident response plan and to notify Service Logic within 72 hours of any security incident affecting Service Logic data, aligning with SEC cybersecurity disclosure expectations.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Notification window is contractual"
+  },
+  {
+   "rid": "SOX-075",
+   "domain": "Domain K: Security, Compliance & SOX Readiness",
+   "epic": "Epic K2: Audit, Compliance & SOX  \u203a  US-K2.2: SOX Controls & Statutory Compliance",
+   "requirement": "Ability for the vendor to provide a documented business continuity and disaster recovery (BCDR) plan, tested at least annually, with test results available to Service Logic.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-001",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.1: Operational AI (Dispatch, Maintenance, Fraud Detection)",
+   "requirement": "Ability to provide predictive maintenance recommendations based on equipment age, history, and failure patterns",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-002",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.1: Operational AI (Dispatch, Maintenance, Fraud Detection)",
+   "requirement": "Ability to optimize dispatch using AI-driven routing (skills, location, parts, SLA, traffic)",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "15% response time reduction target"
+  },
+  {
+   "rid": "AIA-003",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.1: Operational AI (Dispatch, Maintenance, Fraud Detection)",
+   "requirement": "Ability to generate automated service quotes based on historical job data",
+   "priority": "Should",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-004",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.1: Operational AI (Dispatch, Maintenance, Fraud Detection)",
+   "requirement": "Ability to detect anomalous financial transactions (duplicate invoices, unusual amounts)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-005",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.1: Operational AI (Dispatch, Maintenance, Fraud Detection)",
+   "requirement": "Ability to support intelligent document extraction (OCR + NLP) for invoices, POs, lien waivers, insurance certs",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ">95% accuracy target"
+  },
+  {
+   "rid": "AIA-006",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to support natural language querying of business data",
+   "priority": "Could",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-007",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to support GenAI-assisted work order summarization for tech handoff and customer communication",
+   "priority": "Could",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-008",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to forecast cash flow at enterprise and OpCo levels using historical patterns, seasonality, and committed project backlog with 30/60/90-day horizons",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-009",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to optimize inventory stocking levels using AI-driven demand forecasting accounting for seasonality, project pipeline, and equipment failure patterns",
+   "priority": "Should",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-010",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to surface cross-sell and upsell opportunity recommendations to account managers and field technicians based on customer equipment profile and service history",
+   "priority": "Could",
+   "capability_raw": "W2C",
+   "capability": "W2C",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-011",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to provide AI-powered contract risk scoring identifying unfavorable terms, missing clauses, and compliance gaps in service agreements and project contracts",
+   "priority": "Could",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "AIA-012",
+   "domain": "Domain L: AI & Intelligent Automation",
+   "epic": "Epic L1: AI Capabilities  \u203a  US-L1.2: Advanced AI & Extensibility",
+   "requirement": "Ability to provide ML-ready data APIs enabling deployment of custom predictive models against platform operational data without vendor professional services",
+   "priority": "Could",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Extensible AI/ML framework for future custom models"
+  },
+  {
+   "rid": "FIN-001",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to support multi-entity financial consolidation with automated intercompany eliminations for 40+ entities",
+   "priority": "Must",
+   "capability_raw": "FC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FIN-002",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to support automated close checklist and status dashboard",
+   "priority": "Must",
+   "capability_raw": "FC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FIN-003",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to support ASC 842 lease accounting",
+   "priority": "Should",
+   "capability_raw": "FC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FIN-004",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to support automated reconciliation controls between subledgers and GL",
+   "priority": "Must",
+   "capability_raw": "FC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FIN-005",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to enforce document retention policies (7-year minimum for financial records)",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "FIN-006",
+   "domain": "Domain M: Financial Management",
+   "epic": "Epic M1: Financial Controls  \u203a  US-M1.1: Multi-Entity Financial Consolidation & Close",
+   "requirement": "Ability to support multi-currency (Canada)",
+   "priority": "Must",
+   "capability_raw": "FC",
+   "capability": "RLC",
+   "rfp_notes": "Need to understand platform\u2019s ability to support multi-currency and potential workarounds if not possible"
+  },
+  {
+   "rid": "CHG-001",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.1: Training & Adoption Tracking",
+   "requirement": "Ability to provide role-based in-application training guides and contextual help",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CHG-002",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.1: Training & Adoption Tracking",
+   "requirement": "Ability to track user adoption metrics (login frequency, feature utilization) by OpCo and role",
+   "priority": "Must",
+   "capability_raw": "DAVG",
+   "capability": "EVG",
+   "rfp_notes": "Utilization <60% triggers intervention"
+  },
+  {
+   "rid": "CHG-003",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.1: Training & Adoption Tracking",
+   "requirement": "Ability to provide sandbox/training environments mirroring production",
+   "priority": "Should",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CHG-004",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.2: Platform Configurability & User Experience",
+   "requirement": "Ability to capture and route user feedback and enhancement requests from within the application",
+   "priority": "Could",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CHG-005",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.2: Platform Configurability & User Experience",
+   "requirement": "Ability to support role-adaptive user interfaces where field technicians see simplified mobile views while back-office users access full-detail screens, configurable without custom code",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CHG-006",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.2: Platform Configurability & User Experience",
+   "requirement": "Ability to provide a business rules engine enabling configuration of conditional logic, automated actions, approval routing, and scheduled jobs without custom code development",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "19 system configuration requirements from existing doc need platform foundation"
+  },
+  {
+   "rid": "CHG-007",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.2: Platform Configurability & User Experience",
+   "requirement": "Ability to configure UI layouts per role so that field technicians, dispatchers, project managers, billing specialists, and back-office users each see views tailored to their workflow, without custom code.",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "CHG-008",
+   "domain": "Domain N: Change Management & Adoption",
+   "epic": "Epic N1: Training, Adoption & Rollout  \u203a  US-N1.2: Platform Configurability & User Experience",
+   "requirement": "Ability to support speech-to-text for notes and field data entry in both the desktop and mobile experiences.",
+   "priority": "Should",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Reinforces FSM-005 across surfaces"
+  },
+  {
+   "rid": "NFR-01",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Page load times < 2 seconds under normal load",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-02",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Support 2,000+ concurrent users without degradation",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-03",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Mobile responsive under 3G and intermittent connectivity",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-04",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Horizontal scalability for 2x growth in 3 years",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-05",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "99.9% uptime SLA",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-06",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "RPO < 1 hour, RTO < 4 hours",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-07",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Geographically redundant US hosting",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-08",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "All data hosted within continental US or Canada, depending on company  operations / customer",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Several OpCos have Canada government operations"
+  },
+  {
+   "rid": "NFR-09",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Sandboxed dev/staging environment",
+   "priority": "Must",
+   "capability_raw": "OS",
+   "capability": "ACQ",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-10",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Low-code/no-code customization tools",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-11",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Responsive web design (Chrome, Edge, Safari)",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-12",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "API response time < 500ms at 95th percentile under production load",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-13",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Support iOS 15+ and Android 12+ for mobile application",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-14",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Automated backup with RPO < 15 minutes for transactional data",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-15",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Support for WCAG 2.1 AA accessibility standards",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-16",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "TLS 1.3 enforced for all data in transit; TLS 1.0 and TLS 1.1 disabled across all endpoints.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Refines NFR-baseline (TLS 1.2+)"
+  },
+  {
+   "rid": "NFR-17",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Scheduled maintenance should not affect user performance, confirmation that maintenance does not impact application availability",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Critical for cross-time-zone operations"
+  },
+  {
+   "rid": "NFR-18",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Platform load-tested to support 3x peak concurrent users without degradation; test results must be available on request.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Extends NFR-02 (2,000+ baseline)"
+  },
+  {
+   "rid": "NFR-19",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Real-time system status page accessible to all Service Logic tenant administrators, surfacing platform health and incident status.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-20",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Automated failover to a secondary region tested at least annually, with test results provided to Service Logic.",
+   "priority": "Should",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": "Validates NFR-06/RTO/RPO commitments"
+  },
+  {
+   "rid": "NFR-21",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Mobile offline sync on reconnection must complete within 60 seconds for up to 500 pending transactions per device.",
+   "priority": "Must",
+   "capability_raw": "TPA",
+   "capability": "TPA",
+   "rfp_notes": "Mobile-specific performance SLA"
+  },
+  {
+   "rid": "NFR-22",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Customer-managed encryption keys (CMEK) supported with key rotation requiring no application downtime.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": "Data sovereignty for PE-backed portfolio"
+  },
+  {
+   "rid": "NFR-23",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Web Application Firewall (WAF) deployed in front of all customer-facing endpoints, with DDoS protection enabled at the perimeter.",
+   "priority": "Must",
+   "capability_raw": "SCL",
+   "capability": "SCL",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-24",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "Penetration testing conducted by qualified third party at least semi-annually, with executive summary and remediation evidence available under NDA.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  },
+  {
+   "rid": "NFR-25",
+   "domain": "NFR: Non-Functional Requirements (Sec 24)",
+   "epic": "Performance / Availability / Security",
+   "requirement": "SCIM 2.0 user provisioning and deprovisioning with deprovisioning latency under 15 minutes from IdP event.",
+   "priority": "Must",
+   "capability_raw": "RLC",
+   "capability": "RLC",
+   "rfp_notes": ""
+  }
+ ]
+}

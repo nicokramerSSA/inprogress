@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect width="1600" height="900" fill="#F6F8FA"/>
+<text x="72" y="63" font-family="Aptos, Arial, sans-serif" font-size="20" fill="#0F766E" font-weight="700">SERVICE LOGIC · PROGRAM WORKBACK</text>
+<text x="72" y="113" font-family="Aptos Display, Aptos, Arial, sans-serif" font-size="42" fill="#132236" font-weight="800">First Deployment Bubble</text>
+<text x="74" y="145" font-family="Aptos, Arial, sans-serif" font-size="18" fill="#5D6B7C">Non-negotiables that must move together for the first pilot deployment</text>
+<ellipse cx="590" cy="500" rx="530" ry="340" fill="#EAF5F4" stroke="#0F766E" stroke-width="3"/>
+<ellipse cx="590" cy="500" rx="470" ry="288" fill="none" stroke="#B7DAD5" stroke-width="1.5" stroke-dasharray="7 8"/>
+<text x="590" y="202" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="17" fill="#0F766E" font-weight="700">single program bubble, not separate phase-two plans</text>
+<ellipse cx="590" cy="472" rx="185" ry="82" fill="#12355B" stroke="#12355B" stroke-width="2"/>
+<text x="590" y="451" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="25" fill="#fff" font-weight="800">Pilot Go-Live Outcome</text>
+<text x="590" y="482" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="16" fill="#D8E7F3">FSM/ERP ecosystem ready as one release</text>
+<text x="590" y="511" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="15" fill="#D8E7F3">Q1 2027 target · work backward to owners and decisions</text>
+<line x1="590" y1="472" x2="287" y2="287" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="587" y2="294" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="895" y2="315" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="942.5" y2="500" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="860" y2="701" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="560" y2="709" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="267" y2="654" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<line x1="590" y1="472" x2="248" y2="468" stroke="#AAB7C4" stroke-width="1.3" opacity=".55"/>
+<ellipse cx="287" cy="287" rx="125" ry="67" fill="#FFF1D6" stroke="#C9891C" stroke-width="2.2"/>
+<text x="287" y="262" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">FSM + ERP Core</text>
+<text x="287" y="293" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Pilot-scope workflows,</text>
+<text x="287" y="311" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">single-tenant gates, no data</text>
+<text x="287" y="329" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">layer as phase two</text>
+<ellipse cx="587" cy="294" rx="125" ry="68" fill="#DCEBFF" stroke="#4D79B6" stroke-width="2.2"/>
+<text x="587" y="268" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">iPaaS / Exchange</text>
+<text x="587" y="299" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Event + API integration;</text>
+<text x="587" y="317" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">publish once, reuse everywhere;</text>
+<text x="587" y="335" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">no point-to-point</text>
+<ellipse cx="895" cy="315" rx="130" ry="71" fill="#E4F4E7" stroke="#4C9155" stroke-width="2.2"/>
+<text x="895" y="286" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">MDM + Golden Records</text>
+<text x="895" y="317" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Customer, site, asset, vendor,</text>
+<text x="895" y="335" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">product domains; ownership and</text>
+<text x="895" y="353" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">lifecycle rules</text>
+<ellipse cx="942.5" cy="500" rx="127.5" ry="70" fill="#DDF5F2" stroke="#0F766E" stroke-width="2.2"/>
+<text x="942.5" y="472" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">Lakehouse + Catalog</text>
+<text x="942.5" y="503" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Bronze mirror, silver/gold</text>
+<text x="942.5" y="521" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">persona layers, lineage,</text>
+<text x="942.5" y="539" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">metadata, Unity Catalog</text>
+<ellipse cx="860" cy="701" rx="135" ry="69" fill="#FFE4DE" stroke="#CF634E" stroke-width="2.2"/>
+<text x="860" y="674" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">KPI + Reporting</text>
+<text x="860" y="705" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Golden KPI tree, work-type</text>
+<text x="860" y="723" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">definitions, persona</text>
+<text x="860" y="741" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">dashboards, enterprise views</text>
+<ellipse cx="560" cy="709" rx="135" ry="69" fill="#FFFFFF" stroke="#758195" stroke-width="2.2"/>
+<text x="560" y="682" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">CRM / Payroll / Sources</text>
+<text x="560" y="713" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">Salesforce, payroll,</text>
+<text x="560" y="731" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">procurement, legacy OpCo feeds</text>
+<text x="560" y="749" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">connected through exchange</text>
+<ellipse cx="267" cy="654" rx="129" ry="70" fill="#F0E8FF" stroke="#7C5AC0" stroke-width="2.2"/>
+<text x="267" y="626" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">AI Sandboxes</text>
+<text x="267" y="657" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">LLM gateway, governed pilots,</text>
+<text x="267" y="675" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">reusable models; prove before</text>
+<text x="267" y="693" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">production attach</text>
+<ellipse cx="248" cy="468" rx="130" ry="70" fill="#F2F0D8" stroke="#8E8036" stroke-width="2.2"/>
+<text x="248" y="440" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="19" fill="#132236" font-weight="800">Operating Model</text>
+<text x="248" y="471" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">COE hub + OpCo spokes; build,</text>
+<text x="248" y="489" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">deploy, sustain, govern, and</text>
+<text x="248" y="507" text-anchor="middle" font-family="Aptos, Arial, sans-serif" font-size="14.5" fill="#132236">change roles</text>
+<rect x="1126" y="138" width="406" height="700" rx="14" fill="#FDFEFE" stroke="#CBD5E1" stroke-width="1.2"/>
+<text x="1156" y="185" font-family="Aptos, Arial, sans-serif" font-size="24" fill="#132236" font-weight="800">Work Backward From It</text>
+<text x="1156" y="214" font-family="Aptos, Arial, sans-serif" font-size="15" fill="#5D6B7C">The bubble becomes a dependency map.</text>
+<rect x="1160" y="265" width="338" height="96" rx="9" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1160" y="265" width="7" height="96" rx="3" fill="#4D79B6"/>
+<text x="1180" y="295" font-family="Aptos, Arial, sans-serif" font-size="16.5" fill="#132236" font-weight="800">Decisions To Lock</text>
+<text x="1180" y="321" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">iPaaS standard; MDM tool / domains; Lakehouse</text>
+<text x="1180" y="338" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">patterns; SI structure; pilot MVP scope.</text>
+<rect x="1160" y="385" width="338" height="96" rx="9" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1160" y="385" width="7" height="96" rx="3" fill="#0F766E"/>
+<text x="1180" y="415" font-family="Aptos, Arial, sans-serif" font-size="16.5" fill="#132236" font-weight="800">Owners To Name</text>
+<text x="1180" y="441" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">Single architecture owner; data / MDM leads;</text>
+<text x="1180" y="458" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">integration lead; OpCo spokes; sustainment</text>
+<text x="1180" y="475" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">owners.</text>
+<rect x="1160" y="505" width="338" height="105" rx="9" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1160" y="505" width="7" height="105" rx="3" fill="#C9891C"/>
+<text x="1180" y="535" font-family="Aptos, Arial, sans-serif" font-size="16.5" fill="#132236" font-weight="800">Dependencies To Track</text>
+<text x="1180" y="561" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">FSM selection; ERP path; Salesforce adoption;</text>
+<text x="1180" y="578" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">payroll/time coding; data readiness; KPI</text>
+<text x="1180" y="595" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">definitions.</text>
+<rect x="1160" y="635" width="338" height="96" rx="9" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1160" y="635" width="7" height="96" rx="3" fill="#CF634E"/>
+<text x="1180" y="665" font-family="Aptos, Arial, sans-serif" font-size="16.5" fill="#132236" font-weight="800">Capacity To Staff</text>
+<text x="1180" y="691" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">Data engineering, MDM design, iPaaS build,</text>
+<text x="1180" y="708" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">reporting, AI governance, change management.</text>
+<rect x="1160" y="738" width="338" height="83" rx="9" fill="#fff" stroke="#CBD5E1" stroke-width="1"/>
+<rect x="1160" y="738" width="7" height="83" rx="3" fill="#B5443F"/>
+<text x="1180" y="768" font-family="Aptos, Arial, sans-serif" font-size="16.5" fill="#132236" font-weight="800">Gate For Pilot Go-Live</text>
+<text x="1180" y="794" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">No go-live without integration, data, KPI,</text>
+<text x="1180" y="811" font-family="Aptos, Arial, sans-serif" font-size="13.3" fill="#5D6B7C">governance, and sustainment path.</text>
+<text x="72" y="870" font-family="Aptos, Arial, sans-serif" font-size="12.5" fill="#5D6B7C">Source: Service Logic Data Discussion transcript and Service Logic FSM/RFP, data dictionary, KPI gap, and SI/data-layer artifacts inspected June 19, 2026.</text>
+</svg>

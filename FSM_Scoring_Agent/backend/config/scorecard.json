@@ -1,0 +1,72 @@
+{
+  "source_rfp": "Service Logic - Field Service Management Platform RFP (Version E, 2026-06-02)",
+  "source_instrument": "Service Logic FSM RFP - Vendor Scorecard v1.xlsx",
+  "note": "Two scoring lenses exist and are both encoded. (1) SSA scorecard categories (this file) and (2) the RFP Section 30 capability-weighted lens (capabilities.json). The agent reports both; the SSA category weighting drives the headline weighted total.",
+
+  "categories": [
+    {"id": "understanding", "name": "Understanding of Service Logic", "weight": 0.10, "tab": "1. Understanding",
+     "good_looks_like": "Reflects the multi-OpCo, PE-backed, acquisitive, union/CBA reality and the Work-to-Cash priority; not a generic FSM pitch."},
+    {"id": "completeness", "name": "Completeness of Response", "weight": 0.10, "tab": "2. Completeness",
+     "good_looks_like": "Every requirement carries a response code; all 28 qualification and all pricing questions answered with specifics; demo-ready."},
+    {"id": "architecture", "name": "Vendor Platform Architecture", "weight": 0.15, "tab": "3. Architecture",
+     "good_looks_like": "Single-tenant topology w/ SOC2 Type II; proven scale to 80+ entities / 2,000+ concurrent / 3,500+ techs; open API + event integration; offline mobile; upgrade-safe config; security & DR posture."},
+    {"id": "qualifications", "name": "Vendor Qualifications", "weight": 0.15, "tab": "4. Qualifications",
+     "good_looks_like": "Financial stability, HVAC/union/multi-entity references at comparable scale, credible implementation model, real customer-success structure."},
+    {"id": "requirement_alignment", "name": "Requirement Alignment", "weight": 0.35, "tab": "5. Requirement Alignment",
+     "good_looks_like": "OOB/CONFIG coverage of Must and Should requirements across all functional domains, with evidence; CUSTOM/ROADMAP minimized and justified."},
+    {"id": "financials", "name": "Financials & Commercial Model", "weight": 0.15, "tab": "6. Financials",
+     "good_looks_like": "Transparent, role-based, volume-tiered pricing; no hidden fees; free data export; competitive 3-/5-year TCO for Service Logic scale."}
+  ],
+
+  "quality_scale": {
+    "5": "High - Excellent: fully meets the need out-of-the-box; differentiated, proven, well-evidenced.",
+    "4": "Good: meets the need via standard configuration; strong, credible response.",
+    "3": "Average/Adequate: meets the need but with caveats, moderate effort, or thin evidence.",
+    "2": "Below Average: partially meets the need; meaningful gaps, customization, or risk.",
+    "1": "Low - Poor: does not meaningfully meet the need; gap, vague, or unsupported."
+  },
+
+  "met_values": {
+    "Yes": "Capability fully provided as described.",
+    "Partial": "Partially provided; some aspects unmet or need work.",
+    "No": "Not provided and no acceptable path to it.",
+    "N/A": "Not applicable (e.g., a 'Won't' requirement)."
+  },
+
+  "response_codes": {
+    "OOB": "Out of the box - fully supported in current GA release, no modifications.",
+    "CONFIG": "Configurable via admin configuration, no code changes.",
+    "EXTENSION": "Built using the product's extensible framework.",
+    "CUSTOM": "Custom development - scripting or code-level changes required.",
+    "PARTNER": "Delivered via certified third-party / ISV / marketplace partner.",
+    "ROADMAP": "Planned / not yet available; published future release.",
+    "GAP": "Not supported and no published roadmap."
+  },
+
+  "moscow": {
+    "Must": "Non-negotiable. A 'No' (or unsupported ROADMAP/CUSTOM without firm SOW) on any Must is a basis for disqualification.",
+    "Should": "High priority; expected of a market-leading platform. Absence hurts scoring.",
+    "Could": "Desirable differentiator; not required for initial deployment.",
+    "Won't": "Explicitly out of scope; no response required."
+  },
+
+  "gating_rules": {
+    "must_no_disqualifies": true,
+    "must_requires_oob_or_config": true,
+    "custom_must_needs_firm_sow": true,
+    "single_tenant_required": true,
+    "union_nonunion_isolation_required": true,
+    "description": "Any Must marked No -> disqualifying. A Must answered ROADMAP, GAP, or CUSTOM-without-SOW is treated as effectively unmet for gating. Single-tenant deployment and absolute entity-level union/non-union data isolation are hard architectural gates."
+  },
+
+  "requirement_priority_mix": {"Must": 278, "Should": 123, "Could": 15, "total_functional": 397, "total_rows_incl_nfr": 416},
+
+  "confidence_model": {
+    "levels": ["High", "Medium", "Low"],
+    "drivers": {
+      "raise": ["Concrete evidence cited (references, screenshots, named customers)", "OOB/CONFIG with proof", "Consistent across the response"],
+      "lower": ["Assertion without evidence", "ROADMAP/CUSTOM", "Inconsistencies or overstated claims", "Capability must be validated in live demo (Appendix F)"]
+    },
+    "rule": "Every score carries a confidence level and an explicit list of evidence gaps that must be closed (typically in the July 13-16 Charlotte demos or reference checks)."
+  }
+}

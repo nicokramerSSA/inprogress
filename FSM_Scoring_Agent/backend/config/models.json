@@ -1,0 +1,55 @@
+{
+  "_comment": "Provider/model registry powering per-interaction model selection. Every LLM call (requirement scoring, vote synthesis, chat) can pick any enabled model here. API keys are read from environment variables named in 'api_key_env' - they are NEVER stored in this file. Add or remove models freely; the backend exposes this list to the UI via GET /api/models.",
+  "default_model": "mock",
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "endpoint": "https://api.anthropic.com/v1/messages",
+      "sdk": "anthropic",
+      "models": [
+        {"id": "claude-opus-4-8", "label": "Claude Opus 4.8", "tier": "frontier", "best_for": "Deepest reasoning: final vote synthesis, contested Must gating, nuanced OpCo-fit judgment.", "max_output_tokens": 8192},
+        {"id": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6", "tier": "balanced", "best_for": "High-volume per-requirement scoring at strong quality/cost balance (recommended default for scoring runs).", "max_output_tokens": 8192},
+        {"id": "claude-haiku-4-5-20251001", "label": "Claude Haiku 4.5", "tier": "fast", "best_for": "Fast, cheap chat answers and bulk first-pass classification.", "max_output_tokens": 4096}
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "api_key_env": "OPENAI_API_KEY",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "sdk": "openai",
+      "models": [
+        {"id": "gpt-4o", "label": "GPT-4o", "tier": "frontier", "best_for": "Alternative frontier reasoning; cross-check a second opinion against the primary model.", "max_output_tokens": 8192},
+        {"id": "gpt-4o-mini", "label": "GPT-4o mini", "tier": "fast", "best_for": "Fast/cheap chat and bulk scoring.", "max_output_tokens": 4096}
+      ]
+    },
+    {
+      "id": "azure_openai",
+      "name": "Azure OpenAI",
+      "api_key_env": "AZURE_OPENAI_API_KEY",
+      "endpoint_env": "AZURE_OPENAI_ENDPOINT",
+      "sdk": "openai_azure",
+      "note": "For SSA/Bain enterprise tenants that route through Azure. Set AZURE_OPENAI_ENDPOINT and a deployment name as the model id.",
+      "models": [
+        {"id": "gpt-4o", "label": "Azure GPT-4o (deployment)", "tier": "frontier", "best_for": "Enterprise-governed frontier reasoning.", "max_output_tokens": 8192}
+      ]
+    },
+    {
+      "id": "mock",
+      "name": "Offline Demo (no API key)",
+      "api_key_env": null,
+      "sdk": "mock",
+      "note": "Deterministic, rules-based stand-in so the whole app runs with ZERO API keys. Produces structured, persona-flavored output grounded in the bundled knowledge base. Clearly labeled 'demo' in every result.",
+      "models": [
+        {"id": "mock", "label": "Offline Demo Engine", "tier": "demo", "best_for": "Running the full pipeline and UI with no keys / no network. Not a substitute for a real model on live proposals.", "max_output_tokens": 4096}
+      ]
+    }
+  ],
+  "task_defaults": {
+    "scoring": "claude-sonnet-4-6",
+    "vote_synthesis": "claude-opus-4-8",
+    "chat": "claude-haiku-4-5-20251001"
+  }
+}

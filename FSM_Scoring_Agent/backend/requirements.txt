@@ -1,0 +1,12 @@
+# Core server
+flask>=3.0
+
+# Optional LLM SDKs — only needed if you select a live model (not for the offline 'mock' demo)
+anthropic>=0.39      # for Anthropic models (set ANTHROPIC_API_KEY)
+openai>=1.40         # for OpenAI / Azure OpenAI models (set OPENAI_API_KEY / AZURE_OPENAI_*)
+
+# Optional proposal-file parsers — only needed to ingest real PDF/DOCX/XLSX proposals
+pdfplumber>=0.11     # PDF text extraction (preferred)
+pypdf>=4.0           # PDF fallback
+python-docx>=1.1     # Word proposals
+openpyxl>=3.1        # Excel requirement/response tables

@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FSM RFP Evaluation Agent — SSA &amp; Company</title>
+
+<!-- React + Babel via CDN so the app runs with no build step. -->
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<style>
+  /* SSA brand tokens (from the SSA brand spec). */
+  :root{
+    --ssa-blue:#003399; --ssa-teal:#336179; --ssa-light:#B8CFFF;
+    /* Cross-browser sticky offsets: adjust if your header/nav sizes change */
+    --header-height: 0px; /* space above the sticky nav (e.g. banner) */
+    --nav-tabs-height: 56px; /* height of the sticky nav.tabs (default) */
+    --ink:#0f1b33; --muted:#5b6677; --line:#E0E4EA; --surface:#FAFBFC;
+    --good:#1f7a4d; --warn:#D97706; --bad:#b3261e; --steel:#8BA4C4;
+    --font:'Avenir Next LT Pro','Avenir','Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);color:var(--ink);background:var(--surface);line-height:1.45}
+  a{color:var(--ssa-blue)}
+  .wrap{max-width:1440px;margin:0 auto;padding:0 30px}
+  /* Header */
+  header.app{background:linear-gradient(90deg,var(--ssa-blue),var(--ssa-teal));color:#fff}
+  header.app .bar{display:flex;align-items:center;gap:18px;padding:18px 30px;max-width:1440px;margin:0 auto}
+  header.app img{height:34px}
+  header.app .title{font-size:15px;font-weight:600;letter-spacing:.2px;opacity:.95;border-left:1px solid rgba(255,255,255,.35);padding-left:18px}
+  header.app .title small{display:block;font-weight:400;opacity:.8;font-size:12px}
+  header.app .spacer{flex:1}
+  /* Model selector */
+  .modelsel{display:flex;align-items:center;gap:8px;font-size:12px}
+  .modelsel select{font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff}
+  .modelsel select option{color:#000}
+  .modelsel label{opacity:.85}
+  .keypill{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,.18)}
+  /* Nav */
+  nav.tabs{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  nav.tabs .inner{display:flex;gap:4px;max-width:1440px;margin:0 auto;padding:0 30px;overflow-x:auto}
+  nav.tabs button{background:none;border:none;padding:15px 18px;font-family:var(--font);font-size:14px;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+  nav.tabs button.active{color:var(--ssa-blue);border-bottom-color:var(--ssa-blue);font-weight:600}
+  /* Cards & layout */
+  .grid{display:grid;gap:22px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:22px}
+  .card h3{margin:0 0 6px;font-size:16px;line-height:1.25;color:var(--ssa-blue)}
+  .card .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:34px 0 12px;font-weight:600}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  /* Vote badges */
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+  .b-Recommend{background:#e4f3ea;color:var(--good)}
+  .b-Shortlist{background:#fff2db;color:var(--warn)}
+  .b-Reject,.b-Disqualified{background:#fae6e4;color:var(--bad)}
+  /* Score ring */
+  .ring{display:flex;align-items:center;gap:14px}
+  .ring .num{font-size:30px;font-weight:700;color:var(--ssa-blue);line-height:1}
+  .ring .den{font-size:13px;color:var(--muted)}
+  .score-stack{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:14px;margin-top:12px}
+  .score-tile{border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-height:88px;display:flex;flex-direction:column;justify-content:center}
+  .score-tile .num{font-size:32px;font-weight:700;color:var(--ssa-blue);line-height:1}
+  .score-tile .den{font-size:12.5px;color:var(--muted);margin-top:5px}
+  /* Bars */
+  .bar{height:9px;background:#eef1f6;border-radius:6px;overflow:hidden}
+  .bar > span{display:block;height:100%;background:linear-gradient(90deg,var(--ssa-blue),var(--ssa-teal))}
+  .rowbar{display:grid;grid-template-columns:minmax(180px,240px) 1fr 64px;gap:14px;align-items:center;margin:10px 0;font-size:13px;line-height:1.25}
+  .rowbar .lbl{color:var(--ink)}
+  .rowbar .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+  /* Table */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.35}
+      th{color:var(--muted);font-weight:600;cursor:pointer;user-select:none;background:#fff}
+  .table-scroll{overflow:auto}
+  .dashboard-table{min-width:920px}
+  .requirement-table{min-width:980px}
+  .requirement-table th{position:sticky;top:0;z-index:10;-webkit-backface-visibility:hidden;backface-visibility:hidden;transform:translateZ(0)}
+  .requirement-table-wrap{max-height:560px;border:1px solid var(--line);border-radius:8px}
+  td.code{font-weight:600}
+  .tag{font-size:10px;padding:1px 6px;border-radius:4px;background:#eef1f6;color:var(--muted)}
+  .met-Yes{color:var(--good);font-weight:600}.met-Partial{color:var(--warn);font-weight:600}
+  .met-No{color:var(--bad);font-weight:600}.met-NA{color:var(--steel)}
+  .conf-Low{color:var(--bad)}.conf-Medium{color:var(--warn)}.conf-High{color:var(--good)}
+  /* Buttons */
+  .btn{background:var(--ssa-blue);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-family:var(--font);font-size:13px;cursor:pointer}
+  .btn:hover{background:#00257a}
+  .btn.ghost{background:#fff;color:var(--ssa-blue);border:1px solid var(--ssa-blue)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .pill{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  /* Chat */
+  .chat{display:flex;flex-direction:column;height:calc(100vh - 230px);min-height:420px}
+  .chat .log{flex:1;overflow-y:auto;padding:6px 2px}
+  .msg{margin:10px 0;max-width:85%;padding:11px 14px;border-radius:12px;font-size:13.5px;white-space:pre-wrap;line-height:1.5}
+  .msg.user{margin-left:auto;background:var(--ssa-blue);color:#fff;border-bottom-right-radius:3px}
+  .msg.bot{background:#fff;border:1px solid var(--line);border-bottom-left-radius:3px}
+  .msg .ground{margin-top:8px;font-size:10.5px;color:var(--muted)}
+  .chat .inputrow{display:flex;gap:8px;margin-top:12px}
+  .chat input{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:14px}
+  /* Footer */
+  footer.app{padding:24px 22px;color:var(--muted);font-size:11.5px;text-align:center;border-top:1px solid var(--line);margin-top:30px}
+  .demowarn{background:#fff7e6;border:1px solid #f0d9a8;color:#8a5a00;font-size:12px;padding:8px 12px;border-radius:8px;margin:14px 0}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ssa-light);border-top-color:var(--ssa-blue);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .kpi{display:flex;gap:18px 28px;flex-wrap:wrap}
+  .kpi .k{font-size:12px;color:var(--muted)}.kpi .k b{display:block;font-size:20px;color:var(--ink)}
+  .detail-hero{grid-template-columns:minmax(0,1.35fr) minmax(340px,.85fr);align-items:stretch}
+  .detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vote-columns{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
+  .vendor-pills{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .requirement-controls{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .runbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .source-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+  .research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
+  .heatmap-card{padding:18px;overflow:auto}
+  .heatmap{display:grid;gap:8px}
+  .heatmap-row{display:grid;gap:8px;align-items:stretch}
+  .heatmap-head{font-size:11px;text-transform:uppercase;letter-spacing:.45px;color:var(--muted);align-items:end}
+  .heatmap-vendor{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
+  .heatmap-vendor b{display:block;color:var(--ink)}
+  .heatmap-vendor span{font-size:11.5px;color:var(--muted)}
+  .heatcell{border:1px solid var(--line);border-radius:8px;padding:9px 8px;min-height:64px;display:flex;flex-direction:column;justify-content:space-between}
+  .heatcell span{font-size:11px;color:var(--muted)}
+  .heatcell strong{font-size:18px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+  .heatcell small{font-size:10.5px;color:var(--muted)}
+  .heat-high{background:#e6f3ec;border-color:#bddcc9}
+  .heat-mid{background:#edf3fb;border-color:#c9d9ed}
+  .heat-warn{background:#fff5df;border-color:#edd6a8}
+  .heat-low{background:#fae8e6;border-color:#ecc2bd}
+  @media (max-width: 1080px){
+    .detail-hero,.detail-grid,.vote-columns,.source-grid,.research-grid{grid-template-columns:1fr!important}
+    .score-stack{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .rowbar{grid-template-columns:minmax(150px,220px) 1fr 58px}
+  }
+  @media (max-width: 720px){
+    .wrap,header.app .bar,nav.tabs .inner{padding-left:18px;padding-right:18px}
+    header.app .bar{align-items:flex-start;flex-direction:column}
+    header.app .title{border-left:0;padding-left:0}
+    header.app .spacer{display:none}
+    .score-stack{grid-template-columns:1fr}
+    .rowbar{grid-template-columns:1fr;gap:6px}
+    .rowbar .val{text-align:left}
+    .card{padding:18px}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useMemo, useRef} = React;
+const API = ""; // same origin (Flask serves this file)
+
+// STATIC mode: when a build inlines window.__BOOT__, the app runs with no backend
+// (great for a double-clickable, server-free demo). Live evaluate/chat then fall back
+// to the offline demo behaviour client-side.
+const BOOT = (typeof window!=="undefined" && window.__BOOT__) ? window.__BOOT__ : null;
+const STATIC = !!BOOT;
+
+// ---- helpers -------------------------------------------------------------
+const fmt = n => (n===undefined||n===null) ? "—" : (Math.round(n*10)/10);
+const scoreTone = n => n>=4 ? "heat-high" : n>=3.25 ? "heat-mid" : n>=2.5 ? "heat-warn" : "heat-low";
+async function jget(u){
+  if(STATIC){
+    if(u.endsWith("/models")) return BOOT.models;
+    if(u.endsWith("/results")) return BOOT.results;
+    if(u.endsWith("/vendors")) return {vendors:BOOT.vendors};
+    if(u.endsWith("/knowledge")) return BOOT.knowledge;
+    if(u.endsWith("/health")) return {ok:true,live_models_available:false,n_results:BOOT.results.length};
+    return {};
+  }
+  const r=await fetch(API+u);return r.json();
+}
+async function jpost(u,b){
+  if(STATIC){
+    if(u.endsWith("/chat")) return {answer:"[standalone demo] This double-clickable build has no backend, so it can't call a model. Run the Flask server (see README) and select a model to get synthesized answers. The grounded knowledge base and all precomputed results are fully browsable here.",grounding:["scorecard","capabilities","evaluations"],is_demo:true};
+    if(u.endsWith("/evaluate")){ const r=BOOT.results.find(x=>x.vendor===b.vendor); return r||{error:"Run the server to evaluate new vendors."}; }
+    return {};
+  }
+  const r=await fetch(API+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return r.json();
+}
+const recoClass = r => "badge b-"+(r||"").replace(/[^A-Za-z]/g,"");
+
+// ---- score bar row -------------------------------------------------------
+function BarRow({label, value, max=5, suffix="/5"}){
+  const pct = Math.max(0, Math.min(100, (value/max)*100));
+  return (
+    <div className="rowbar">
+      <div className="lbl">{label}</div>
+      <div className="bar"><span style={{width:pct+"%"}}/></div>
+      <div className="val">{fmt(value)}{suffix}</div>
+    </div>
+  );
+}
+
+function CapabilityHeatmap({results}){
+  const caps = results[0]?.capabilities || [];
+  if(!caps.length) return null;
+  const columns = `minmax(180px,1.2fr) repeat(${caps.length}, minmax(74px,1fr))`;
+  return (
+    <div className="card heatmap-card">
+      <div className="heatmap">
+        <div className="heatmap-row heatmap-head" style={{gridTemplateColumns:columns}}>
+          <div>Vendor</div>
+          {caps.map(c=><div key={c.code}>{c.code}</div>)}
+        </div>
+        {results.map(r=>(
+          <div className="heatmap-row" style={{gridTemplateColumns:columns}} key={r.vendor}>
+            <div className="heatmap-vendor">
+              <b>{r.vendor}</b>
+              <span>{r.vote.recommendation} · {fmt(r.weighted_total)}/100</span>
+            </div>
+            {caps.map(cap=>{
+              const c = r.capabilities.find(x=>x.code===cap.code) || {};
+              return (
+                <div key={cap.code} className={"heatcell "+scoreTone(c.score_1_5 || 0)}
+                     title={`${cap.name}: ${fmt(c.score_1_5)}/5`}>
+                  <span>{cap.code}</span>
+                  <strong>{fmt(c.score_1_5)}</strong>
+                  <small>{c.n_unmet_must ? `${c.n_unmet_must} unmet Must` : "/5"}</small>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- model selector (header) --------------------------------------------
+function ModelSelector({models, value, onChange}){
+  if(!models) return null;
+  return (
+    <div className="modelsel">
+      <label>Model</label>
+      <select value={value} onChange={e=>onChange(e.target.value)}>
+        {models.providers.map(p=>(
+          <optgroup key={p.id} label={p.name + (p.key_present?"":" (no key)")}>
+            {p.models.map(m=>(
+              <option key={m.id} value={m.id} disabled={!p.key_present && p.id!=="mock"}>
+                {m.label}{p.id!=="mock" && !p.key_present ? " — key missing":""}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ---- dashboard (head-to-head) -------------------------------------------
+function Dashboard({results, onOpen}){
+  const ranked = useMemo(()=>[...results].sort((a,b)=>
+     (a.gating.disqualified-b.gating.disqualified) || (b.weighted_total-a.weighted_total)),[results]);
+  if(!results.length) return <p className="muted">No evaluations yet. Use “Run evaluation” above.</p>;
+  return (
+    <div>
+      <div className="section-title">Head-to-head ranking — the agent’s vote</div>
+      <div className="card" style={{padding:0}}>
+        <div className="table-scroll">
+        <table className="dashboard-table">
+          <thead><tr>
+            <th>#</th><th>Vendor</th><th>SSA total</th><th>Capability</th>
+            <th>Agentic future</th><th>Gate</th><th>Vote</th><th></th>
+          </tr></thead>
+          <tbody>
+          {ranked.map((r,i)=>(
+            <tr key={r.vendor}>
+              <td>{i+1}</td>
+              <td><b>{r.vendor}</b><div className="small muted">{r.product}</div></td>
+              <td><b style={{color:"var(--ssa-blue)",fontSize:15}}>{fmt(r.weighted_total)}</b><span className="muted small">/100</span></td>
+              <td>{fmt(r.capability_weighted_total)}<span className="muted small">/100</span></td>
+              <td>{fmt(r.agentic_future.score_1_5)}/5 <span className="pill">{r.agentic_future.data_control_risk} risk</span></td>
+              <td>{r.gating.disqualified
+                  ? <span className="met-No">{r.gating.unmet_must_count} unmet Must</span>
+                  : <span className="met-Yes">pass</span>}</td>
+              <td><span className={recoClass(r.vote.recommendation)}>{r.vote.recommendation}</span></td>
+              <td><button className="btn ghost small" onClick={()=>onOpen(r.vendor)}>Detail →</button></td>
+            </tr>
+          ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div className="section-title">Capability field map (1–5)</div>
+      <CapabilityHeatmap results={ranked}/>
+    </div>
+  );
+}
+
+// ---- vendor detail -------------------------------------------------------
+function VendorDetail({data}){
+  const [sortKey,setSortKey]=useState("priority");
+  const [filter,setFilter]=useState("");
+  const [capFilter,setCapFilter]=useState("ALL");
+  if(!data) return null;
+  const r=data;
+  let rows=[...r.requirement_scores];
+  if(capFilter!=="ALL") rows=rows.filter(x=>x.capability===capFilter);
+  if(filter){ const f=filter.toLowerCase();
+    rows=rows.filter(x=>(x.rid+" "+x.rationale+" "+x.evidence_gap+" "+x.vendor_code).toLowerCase().includes(f)); }
+  const order={Must:0,Should:1,Could:2,"Won't":3};
+  rows.sort((a,b)=> sortKey==="priority" ? (order[a.priority]-order[b.priority])||(a.quality-b.quality)
+                 : sortKey==="quality" ? a.quality-b.quality
+                 : a.rid.localeCompare(b.rid));
+  const caps=[...new Set(r.requirement_scores.map(x=>x.capability))];
+  return (
+    <div>
+      {/* Headline */}
+      <div className="grid detail-hero">
+        <div className="card">
+          <h3>{r.vendor} <span className="muted small">{r.product}</span></h3>
+          <div className="score-stack">
+            <div className="score-tile"><div className="num">{fmt(r.weighted_total)}</div><div className="den">/100 SSA weighted</div></div>
+            <div className="score-tile"><div className="num" style={{color:"var(--ssa-teal)"}}>{fmt(r.capability_weighted_total)}</div><div className="den">/100 capability lens</div></div>
+            <div className="score-tile"><span className={recoClass(r.vote.recommendation)} style={{fontSize:14,alignSelf:"flex-start"}}>{r.vote.recommendation}</span>
+                 <div className="den">vote · {r.vote.confidence} confidence</div></div>
+          </div>
+          <div style={{marginTop:10}} className={"demowarn"} hidden={!r.is_demo}>
+            Offline demo engine (no model key). Scores are grounded in the research dossier, not a live read of a real proposal.
+          </div>
+        </div>
+        <div className="card">
+          <h3>Gate</h3>
+          <p className="small" style={{marginTop:4}}>{r.gating.summary}</p>
+          {r.gating.unmet_musts.length>0 && <div className="small">
+            <b className="met-No">Unmet Must requirements:</b>
+            <ul style={{margin:"6px 0 0 16px",padding:0}}>
+              {r.gating.unmet_musts.slice(0,6).map(m=>(<li key={m.rid}>{m.rid} ({m.capability}): {m.reason}</li>))}
+            </ul></div>}
+          {r.gating.architectural_gate_flags.map((f,i)=>(<div key={i} className="small" style={{color:"var(--warn)",marginTop:6}}>⚑ {f}</div>))}
+        </div>
+      </div>
+
+      {/* The vote */}
+      <div className="section-title">The agent’s vote</div>
+      <div className="card">
+        <p style={{marginTop:0}}>{r.vote.narrative}</p>
+        <div className="grid vote-columns">
+          <div><b className="small">Top risks</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+            {r.vote.top_risks.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
+          <div><b className="small">Evidence to close in Charlotte demos</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+            {r.vote.evidence_to_close.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
+        </div>
+        {r.vote.dissent && <div className="small" style={{marginTop:10,paddingTop:10,borderTop:"1px solid var(--line)"}}>
+          <b>Dissent (steel-manned counter-argument):</b> {r.vote.dissent}</div>}
+      </div>
+
+      {/* Categories + capabilities */}
+      <div className="grid detail-grid">
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>SSA scorecard categories</div>
+          {r.categories.map(c=>(
+            <div key={c.id}>
+              <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
+              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{c.rationale} · <span className={"conf-"+c.confidence}>{c.confidence} conf</span></div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>RFP capabilities (Section 30)</div>
+          {r.capabilities.map(c=>(
+            <div key={c.code}>
+              <BarRow label={`${c.code} · ${c.name} (${Math.round(c.weight*100)}%)`} value={c.score_1_5}/>
+              {c.n_unmet_must>0 && <div className="small met-No" style={{margin:"-2px 0 8px 0"}}>{c.n_unmet_must} unmet Must(s)</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Segment fit + agentic */}
+      <div className="grid detail-grid">
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>OpCo-segment fit</div>
+          {r.segment_fit.map(s=>(
+            <div key={s.segment_id}>
+              <BarRow label={s.segment_name.length>34?s.segment_name.slice(0,34)+"…":s.segment_name} value={s.fit_1_5}/>
+              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{s.rationale}</div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>Fit into an agentic future</div>
+          <div className="kpi" style={{margin:"4px 0 12px"}}>
+            <div className="k">Overall<b>{fmt(r.agentic_future.score_1_5)}/5</b></div>
+            <div className="k">Openness / data<b>{fmt(r.agentic_future.openness_1_5)}/5</b></div>
+            <div className="k">AI capability<b>{fmt(r.agentic_future.ai_capability_1_5)}/5</b></div>
+            <div className="k">Data-control risk<b>{r.agentic_future.data_control_risk}</b></div>
+          </div>
+          <p className="small">{r.agentic_future.rationale}</p>
+          {r.agentic_future.citations?.length>0 && <div className="small muted">Sources: {r.agentic_future.citations.map((c,i)=>(
+            <span key={i}>{c.url? <a href={c.url} target="_blank" rel="noreferrer">{c.title||c.url}</a> : c.title}{i<r.agentic_future.citations.length-1?", ":""}</span>))}</div>}
+        </div>
+      </div>
+
+      {/* External research */}
+      {r.external_research && r.external_research.name && (
+        <div>
+          <div className="section-title">External research (cited, distinct from internal scoring)</div>
+          <div className="card small">
+            <div className="kpi" style={{marginBottom:10}}>
+              {Object.entries(r.external_research.ratings||{}).map(([k,v])=>(
+                <div className="k" key={k}>{k.replace(/_/g," ")}<b>{v}</b></div>))}
+            </div>
+            <div className="research-grid">
+              <p style={{margin:"4px 0"}}><b>Ownership/stability:</b> {r.external_research.ownership}</p>
+              <p style={{margin:"4px 0"}}><b>Analyst:</b> {r.external_research.analyst}</p>
+              <p style={{margin:"4px 0"}}><b>HVAC fit:</b> {r.external_research.hvac_fit}</p>
+              <p style={{margin:"4px 0"}}><b>Project financials:</b> {r.external_research.project_financials}</p>
+              <p style={{margin:"4px 0"}}><b>Agentic AI:</b> {r.external_research.agentic_ai}</p>
+              <p style={{margin:"4px 0"}}><b>Risks for this buyer:</b> {r.external_research.risks}</p>
+            </div>
+            {r.external_research.sources && <div className="muted" style={{marginTop:8}}>Sources: {r.external_research.sources.map((s,i)=>(
+              <span key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title||s.url}</a>{i<r.external_research.sources.length-1?" · ":""}</span>))}</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Requirement-level table */}
+      <div className="section-title">Requirement-level scoring ({r.requirement_scores.length} requirements)</div>
+      <div className="card">
+        <div className="requirement-controls">
+          <select className="pill" value={capFilter} onChange={e=>setCapFilter(e.target.value)} style={{padding:"5px 8px"}}>
+            <option value="ALL">All capabilities</option>
+            {caps.map(c=>(<option key={c} value={c}>{c}</option>))}
+          </select>
+          <input className="pill" style={{padding:"5px 10px",minWidth:200}} placeholder="filter by RID / rationale…"
+                 value={filter} onChange={e=>setFilter(e.target.value)}/>
+          <span className="muted small" style={{alignSelf:"center"}}>showing {rows.length}</span>
+        </div>
+        <div className="table-scroll requirement-table-wrap">
+        <table className="requirement-table">
+          <thead><tr>
+            <th onClick={()=>setSortKey("rid")}>RID</th>
+            <th>Cap</th>
+            <th onClick={()=>setSortKey("priority")}>Priority</th>
+            <th>Met</th>
+            <th onClick={()=>setSortKey("quality")}>Q</th>
+            <th>Code</th><th>Conf</th><th>Rationale / evidence gap</th>
+          </tr></thead>
+          <tbody>
+          {rows.slice(0,400).map(x=>(
+            <tr key={x.rid}>
+              <td className="code">{x.rid}</td>
+              <td><span className="tag">{x.capability}</span></td>
+              <td>{x.priority}</td>
+              <td className={"met-"+x.met.replace("/","")}>{x.met}</td>
+              <td>{x.quality||"—"}</td>
+              <td><span className="tag">{x.vendor_code}</span></td>
+              <td className={"conf-"+x.confidence}>{x.confidence}</td>
+              <td>{x.rationale}{x.evidence_gap && <div className="muted" style={{marginTop:2}}>⤷ {x.evidence_gap}</div>}</td>
+            </tr>
+          ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- methodology / rubric ------------------------------------------------
+function Methodology({kb}){
+  if(!kb) return <p className="muted">Loading…</p>;
+  const p=kb.persona, sc=kb.scorecard, caps=kb.capabilities, seg=kb.segments;
+  return (
+    <div>
+      <div className="section-title">The agent — who it is</div>
+      <div className="card">
+        <h3>{p.display_name}</h3>
+        <p className="small">{p.one_line}</p>
+        <p className="small muted">{p.provenance}</p>
+        <p className="small"><b>Weighting doctrine:</b> {p.weighting_doctrine.principle}</p>
+        <p className="small"><b>Agentic-future doctrine:</b> {p.agentic_future_doctrine.summary}</p>
+        <p className="small"><b>OpCo-diversity doctrine:</b> {p.opco_diversity_doctrine.summary}</p>
+      </div>
+
+      <div className="grid detail-grid">
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>Scoring rubric — SSA categories</div>
+          {sc.categories.map(c=>(<div className="rowbar" key={c.id} style={{gridTemplateColumns:"1fr 60px"}}>
+            <div className="lbl">{c.name}</div><div className="val">{Math.round(c.weight*100)}%</div></div>))}
+          <p className="small muted" style={{marginTop:8}}>Quality 1–5 per requirement; Musts weighted 3× (decision leverage). {sc.gating_rules.description}</p>
+        </div>
+        <div className="card">
+          <div className="section-title" style={{marginTop:0}}>RFP capabilities (Section 30)</div>
+          {caps.capabilities.map(c=>(<div className="rowbar" key={c.code} style={{gridTemplateColumns:"1fr 60px"}}>
+            <div className="lbl">{c.code} · {c.name}</div><div className="val">{Math.round(c.weight*100)}%</div></div>))}
+        </div>
+      </div>
+
+      <div className="section-title">OpCo archetypes (per-segment fit lens)</div>
+      <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))"}}>
+        {seg.archetypes.map(a=>(
+          <div className="card small" key={a.id}>
+            <h3 style={{fontSize:14}}>{a.name}</h3>
+            <p className="muted" style={{margin:"2px 0"}}>{a.exemplars.join(", ")}</p>
+            <p style={{margin:"6px 0"}}>{a.characteristics}</p>
+            <p className="muted">Needs: {a.needs.join("; ")}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="section-title">Quality scale</div>
+      <div className="card small">
+        {Object.entries(sc.quality_scale).map(([k,v])=>(<div key={k}><b>{k}</b> — {v}</div>))}
+      </div>
+    </div>
+  );
+}
+
+// ---- chat ----------------------------------------------------------------
+function Chat({model}){
+  const [log,setLog]=useState([{role:"bot",content:"Ask me anything about the evaluation — why a vendor scored as it did, how the Must gate works, which platform fits the small low-maturity OpCos, the agentic-future read, etc. I answer grounded in the knowledge base and this session’s results."}]);
+  const [q,setQ]=useState(""); const [busy,setBusy]=useState(false);
+  const endRef=useRef(null);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[log,busy]);
+  async function send(){
+    if(!q.trim()||busy) return;
+    const question=q.trim(); setQ("");
+    const hist=log.filter(m=>m.role!=="sys").map(m=>({role:m.role==="bot"?"assistant":"user",content:m.content}));
+    setLog(l=>[...l,{role:"user",content:question}]); setBusy(true);
+    const res=await jpost("/api/chat",{question,model_id:model,history:hist});
+    setLog(l=>[...l,{role:"bot",content:res.answer,ground:res.grounding,demo:res.is_demo}]); setBusy(false);
+  }
+  const examples=["Why is Salesforce disqualified?","Which platform fits the small low-maturity OpCos best?","How does the Must gate work?","Give me the agentic-future read on ServiceTitan."];
+  return (
+    <div className="chat">
+      <div className="log">
+        {log.map((m,i)=>(
+          <div key={i} className={"msg "+(m.role==="user"?"user":"bot")}>
+            {m.content}
+            {m.ground && <div className="ground">grounded in: {m.ground.join(", ")}{m.demo?" · demo (no model key)":""}</div>}
+          </div>
+        ))}
+        {busy && <div className="msg bot"><span className="spin"></span> thinking…</div>}
+        <div ref={endRef}/>
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:6}}>
+        {examples.map((e,i)=>(<button key={i} className="pill" style={{cursor:"pointer"}} onClick={()=>setQ(e)}>{e}</button>))}
+      </div>
+      <div className="inputrow">
+        <input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}
+               placeholder="Ask the evaluation agent…"/>
+        <button className="btn" onClick={send} disabled={busy}>Send</button>
+      </div>
+    </div>
+  );
+}
+
+// ---- run-evaluation control: upload files + URLs, or use sample ----------
+function RunBar({vendors, model, onDone}){
+  const [vendor,setVendor]=useState("");
+  const [files,setFiles]=useState([]);          // File[]
+  const [urls,setUrls]=useState("");            // newline/comma separated
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);            // {ok, text, ingest?}
+  const fileRef=useRef(null);
+  useEffect(()=>{ if(vendors.length && !vendor) setVendor(vendors[0].name); },[vendors]);
+
+  const ACCEPT=".pdf,.docx,.xlsx,.xlsm,.txt,.md";
+  function addFiles(list){ setFiles(f=>[...f, ...Array.from(list)]); }
+  function removeFile(i){ setFiles(f=>f.filter((_,j)=>j!==i)); }
+
+  async function run(useSample){
+    if(!vendor) return;
+    setBusy(true);
+    setMsg({ok:true, text:`Scoring 422 requirements${useSample?" on the sample proposal":""}, gating, segment fit, agentic future, vote…`});
+    let res;
+    if(STATIC){
+      res = await jpost("/api/evaluate",{vendor}); // standalone returns the precomputed result
+    } else if(useSample){
+      res = await jpost("/api/evaluate",{vendor,product:"",use_sample:true,scoring_model:model,vote_model:model});
+    } else {
+      // multipart upload of files + urls
+      const fd=new FormData();
+      fd.append("vendor",vendor); fd.append("scoring_model",model); fd.append("vote_model",model);
+      fd.append("urls",urls);
+      files.forEach(f=>fd.append("files",f));
+      const r=await fetch("/api/evaluate_upload",{method:"POST",body:fd});
+      res=await r.json();
+    }
+    setBusy(false);
+    if(res.error){ setMsg({ok:false,text:"Error: "+res.error}); }
+    else {
+      const ing=res._ingest;
+      setMsg({ok:true, text:`Done — ${vendor}: ${res.vote.recommendation} (${fmt(res.weighted_total)}/100).`,
+              ingest: ing ? `Ingested ${ing.files.length} file(s)${ing.urls.length?` + ${ing.urls.length} URL(s)`:""}, ${ing.chars_extracted.toLocaleString()} chars${ing.rejected.length?` · rejected: ${ing.rejected.join(", ")}`:""}.` : null});
+      onDone();
+    }
+  }
+
+  const isMock = model==="mock";
+  const hasSources = files.length>0 || urls.trim().length>0;
+
+  return (
+    <div>
+      <div className="runbar-controls" style={{marginBottom:hasSources||!STATIC?12:0}}>
+        <b className="small" style={{color:"var(--ssa-blue)"}}>Evaluate a vendor</b>
+        <select className="pill" style={{padding:"7px 10px"}} value={vendor} onChange={e=>setVendor(e.target.value)}>
+          {vendors.map(v=>(<option key={v.name} value={v.name}>{v.name}</option>))}
+        </select>
+        {!STATIC && <>
+          {/* hidden native input, triggered by a styled button */}
+          <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}}
+                 onChange={e=>{addFiles(e.target.files); e.target.value="";}}/>
+          <button className="btn ghost" onClick={()=>fileRef.current?.click()}>+ Upload proposal files</button>
+          <button className="btn" onClick={()=>run(false)} disabled={busy || !hasSources}>
+            {busy? <span className="spin"/> : "Run on uploaded sources"}</button>
+          <button className="btn ghost" onClick={()=>run(true)} disabled={busy}>Run on sample</button>
+        </>}
+        {STATIC && <button className="btn" onClick={()=>run(true)} disabled={busy}>Show evaluation</button>}
+      </div>
+
+      {!STATIC && (
+        <div className="grid source-grid"
+             onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(e.dataTransfer.files);}}>
+          <div>
+            <div className="small muted" style={{marginBottom:4}}>Accepted: PDF, DOCX, XLSX, TXT, MD — drag &amp; drop or use the button. Multiple files per vendor OK.</div>
+            {files.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {files.map((f,i)=>(<span key={i} className="pill">{f.name} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>removeFile(i)}>✕</span></span>))}
+            </div>}
+          </div>
+          <div>
+            <div className="small muted" style={{marginBottom:4}}>…or paste vendor URL(s) — one per line (portal link, shared doc, hosted PDF).</div>
+            <textarea value={urls} onChange={e=>setUrls(e.target.value)} rows={2}
+              placeholder="https://vendor.com/our-response.pdf"
+              style={{width:"100%",border:"1px solid var(--line)",borderRadius:8,padding:"8px 10px",fontFamily:"var(--font)",fontSize:13}}/>
+          </div>
+        </div>
+      )}
+
+      {isMock && !STATIC && hasSources && <div className="small" style={{color:"var(--warn)",marginTop:8}}>
+        ⚠ A live model is recommended for real proposals — the offline “mock” engine doesn’t read uploaded content deeply. Pick a model (top-right).
+      </div>}
+      {msg && <div className="small" style={{marginTop:8,color: msg.ok?"var(--good)":"var(--bad)"}}>
+        {msg.text}{msg.ingest && <div className="muted">{msg.ingest}</div>}</div>}
+    </div>
+  );
+}
+
+// ---- app -----------------------------------------------------------------
+function App(){
+  const [tab,setTab]=useState("dashboard");
+  const [models,setModels]=useState(null);
+  const [model,setModel]=useState("mock");
+  const [results,setResults]=useState([]);
+  const [vendors,setVendors]=useState([]);
+  const [kb,setKb]=useState(null);
+  const [open,setOpen]=useState(null);
+  const [logo,setLogo]=useState("");
+
+  async function loadResults(){ setResults(await jget("/api/results")); }
+  useEffect(()=>{
+    (async()=>{
+      const m=await jget("/api/models"); setModels(m); setModel(m.task_defaults?.scoring && m.providers.some(p=>p.key_present&&p.models.some(x=>x.id===m.task_defaults.scoring)) ? m.task_defaults.scoring : m.default_model);
+      setVendors((await jget("/api/vendors")).vendors||[]);
+      setKb(await jget("/api/knowledge"));
+      await loadResults();
+      if(STATIC){ setLogo(BOOT.logo||""); }
+      else { try{ const t=await (await fetch("/ssa_logo_long_white_b64.txt")).text(); setLogo(t.trim()); }catch(e){} }
+    })();
+  },[]);
+  useEffect(()=>{
+    if(results.length && !results.some(r=>r.vendor===open)) setOpen(results[0].vendor);
+  },[results,open]);
+
+  const openData = open ? results.find(r=>r.vendor===open) : null;
+  const anyLive = models?.providers?.some(p=>p.key_present && p.id!=="mock");
+
+  return (
+    <div>
+      <header className="app">
+        <div className="bar">
+          {logo ? <img src={logo} alt="SSA & Company"/> : <b style={{fontSize:18}}>SSA &amp; Company</b>}
+          <div className="title">FSM RFP Evaluation Agent
+            <small>Service Logic · Field Service Management platform selection</small></div>
+          <div className="spacer"/>
+          <ModelSelector models={models} value={model} onChange={setModel}/>
+        </div>
+      </header>
+
+      <nav className="tabs"><div className="inner">
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+          <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
+        ))}
+      </div></nav>
+
+      <div className="wrap" style={{paddingTop:18,paddingBottom:30}}>
+        {!anyLive && <div className="demowarn">
+          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier (clearly labelled “demo”). Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read. Vendor proposals are due July 2; until then the app runs on synthetic sample proposals.
+        </div>}
+
+        <div className="card" style={{marginBottom:18}}>
+          <RunBar vendors={vendors} model={model} onDone={loadResults}/>
+        </div>
+
+        {tab==="dashboard" && <Dashboard results={results} onOpen={(v)=>{setOpen(v);setTab("detail");}}/>}
+        {tab==="detail" && (
+          <div>
+            <div className="vendor-pills">
+              {results.map(r=>(
+                <button key={r.vendor} className={"pill"} style={{cursor:"pointer",
+                  borderColor: open===r.vendor?"var(--ssa-blue)":"var(--line)",
+                  color: open===r.vendor?"var(--ssa-blue)":"var(--muted)",
+                  fontWeight: open===r.vendor?600:400}}
+                  onClick={()=>setOpen(r.vendor)}>{r.vendor}</button>
+              ))}
+            </div>
+            {openData ? <VendorDetail data={openData}/> : <p className="muted">Pick a vendor above.</p>}
+          </div>
+        )}
+        {tab==="method" && <Methodology kb={kb}/>}
+        {tab==="chat" && <Chat model={model}/>}
+      </div>
+
+      <footer className="app">
+        Prepared by SSA &amp; Company · Confidential &amp; Proprietary · FSM RFP Evaluation Agent (research preview).
+        The agent casts an advisory vote to augment — not replace — the human evaluation committee.
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

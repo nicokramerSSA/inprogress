@@ -1,0 +1,97 @@
+{
+  "disclaimer": "EXTERNAL RESEARCH - distinct from internal RFP criteria. Compiled via web research, current as of June 2026. The agent must keep these sources clearly separate from vendor self-claims and from internal Service Logic evidence, and must cite them. Analyst note: Gartner RETIRED the FSM Magic Quadrant (last 2022) and replaced it with a Market Guide (Mar 2025) - no current MQ leader/challenger rankings exist for any vendor.",
+  "rating_legend": "High / Med / Low qualitative synthesis against THIS buyer's needs (60-OpCo HVAC/mechanical rollup, project billing, union labor, single-tenant, customer-built AI).",
+  "cross_cutting_flags": [
+    "ServiceMax is NOT being sold by PTC - the March 2026 divestiture was ThingWorx (IoT) + Kepware, sold to TPG, not ServiceMax. ServiceMax remains PTC's SLM anchor; ownership is stable. (Corrects a common internal premise.)",
+    "Single-tenant requirement likely challenges multi-tenant SaaS vendors (Salesforce, ServiceTitan, largely BuildOps/ServiceMax) - confirm each deployment model; potentially gating.",
+    "Customer-built-AI openness: Salesforce and IFS score best; ServiceTitan's API terms explicitly RESTRICT using its data to train/benchmark AI - a material constraint given Service Logic's customer-built-AI strategy.",
+    "Native certified-payroll/CBA was not verified as native in ANY vendor; ServiceTitan via Miter partner; BuildOps markets it; IFS/Salesforce/ServiceMax need explicit RFP confirmation."
+  ],
+  "vendors": [
+    {
+      "name": "IFS", "product": "IFS Cloud / IFS Field Service Management",
+      "stability": "High", "ownership": "Private, PE-backed (EQT + Hg, TA minority; ADIA & CPP joined Apr 2025). Valued >EUR 15B. >EUR 1.2B revenue 2024, >EUR 1B ARR, >30% YoY.",
+      "analyst": "Leader in all 7 Gartner FSM MQs pre-retirement; only 2024 Gartner Peer Insights Customers' Choice for FSM.",
+      "hvac_fit": "High - markets FSM for construction/HVAC (distributed teams, AI scheduling, job costing).",
+      "enterprise_union": "High - natively unifies ERP+EAM+FSM on one platform (unique among the five); strong multi-entity. Certified-payroll/CBA specifics unverified - probe in RFP.",
+      "project_financials": "Med - full ERP with project accounting/job costing; native AIA G702/G703 and ASC 606 WIP not confirmed publicly - verify.",
+      "agentic_ai": "High - acquired TheLoops to launch 'IFS Loops' agentic AI with autonomous Digital Workers; IFS Cloud 25R2 ships agentic capabilities; IFS.ai Copilot for technicians.",
+      "risks": "Breadth = complexity and heavier/costlier implementation; certified-payroll/CBA and AIA specifics need confirmation.",
+      "ratings": {"hvac_fit": "High", "project_financials": "Med", "enterprise_scale": "High", "agentic_ai": "High", "stability": "High"},
+      "sources": [
+        {"label": "EQT/Hg EUR 15B valuation", "url": "https://eqtgroup.com/news/eqt-hg-and-ta-owned-ifs-valued-at-eur-15-billion-in-minority-stake-sale-following-investment-from-hg-adia-and-cpp-investments-2025-04-09"},
+        {"label": "IFS Customers' Choice 2024", "url": "https://www.ifs.com/assets/service-management/customers-choice-fsm-gartner-peer-insights-report"},
+        {"label": "IFS acquires TheLoops", "url": "https://www.ifs.com/en/insights/news/ifs-acquires-theloops-to-launch-the-industrial-ai-workforce"},
+        {"label": "IFS Cloud 25R2", "url": "https://www.ifs.com/en/insights/news/ifs-cloud-25r2"},
+        {"label": "Best FSM for Construction 2026", "url": "https://blog.ifs.com/best-field-service-management-software-for-construction-2026/"}
+      ]
+    },
+    {
+      "name": "Salesforce", "product": "Salesforce Field Service / Agentforce",
+      "stability": "High", "ownership": "Public mega-cap (NYSE: CRM). FY2026 revenue $41.5B; 34.1% non-GAAP op margin; record $15.0B operating cash flow; 21 straight years profitable.",
+      "analyst": "Representative Vendor in the 2025 Gartner Market Guide for FSM.",
+      "hvac_fit": "Med - generalist FSM, not trades-specific; lacks OOB trades/contractor templates.",
+      "enterprise_union": "High - best-in-class enterprise scale/configurability, but capabilities come via configuration/customization, not prebuilt construction-labor features.",
+      "project_financials": "Low - no native AIA/WIP/ASC 606; requires ERP integration or ISV add-ons.",
+      "agentic_ai": "High - Agentforce/Agentforce 360; Agentforce Field Service (Esri maps, Voice-to-Form); Data Cloud. Agentforce ARR +330% YoY (>$0.5B). Open platform/APIs.",
+      "risks": "Heavy integration/SI dependency (typical deployments 9-18 months, $300K-$800K implementation); no native project financials or certified payroll; multi-tenant SaaS vs. single-tenant requirement - confirm.",
+      "ratings": {"hvac_fit": "Med", "project_financials": "Low", "enterprise_scale": "High", "agentic_ai": "High", "stability": "High"},
+      "sources": [
+        {"label": "Salesforce Q4 FY25 results (SEC)", "url": "https://www.sec.gov/Archives/edgar/data/0001108524/000110852425000002/crm-q4fy25xexhibit991.htm"},
+        {"label": "Agentforce 360 launch", "url": "https://investor.salesforce.com/news/news-details/2025/Welcome-to-the-Agentic-Enterprise-With-Agentforce-360-Salesforce-Elevates-Human-Potential-in-the-Age-of-AI/default.aspx"},
+        {"label": "Salesforce Field Service", "url": "https://www.salesforce.com/service/field-service-management/"},
+        {"label": "Salesforce FS vs IFS (implementation cost)", "url": "https://www.selecthub.com/field-service-software/salesforce-field-service-vs-ifs-field-service-management/"}
+      ]
+    },
+    {
+      "name": "BuildOps", "product": "BuildOps",
+      "stability": "Med", "ownership": "Private, VC-backed. $127M Series C (Mar 2025) at $1B valuation (unicorn), led by Meritech; Bond Capital and Schneider Electric's SE Ventures participated; ~$225.8M total funding. Pre-profitability/private.",
+      "analyst": "Newer entrant; no Gartner MQ/Market Guide or Peer Insights Customers' Choice placement found - a gap vs. incumbents.",
+      "hvac_fit": "High - purpose-built for COMMERCIAL trades (HVAC, mechanical, electrical, plumbing, fire/life-safety); 'largest commercial trade contractor platform'; veteran-owned.",
+      "enterprise_union": "Med - designed for large service contracts and multi-location mgmt; integrates with Sage/Vista/QuickBooks; markets union/prevailing-wage construction payroll. Depth at 60-OpCo/3,500-tech scale UNPROVEN - verify references.",
+      "project_financials": "Med-High - project mgmt + on-site invoicing; ERP integrations (Vista/Sage) typically carry AIA/WIP. Native AIA G702/G703 + ASC 606 depth not confirmed - verify.",
+      "agentic_ai": "Med - markets an 'AI-driven contractor platform'; investing Series C in API architecture (positive for openness), but agentic toolset less mature than Salesforce/IFS.",
+      "risks": "Youngest and smallest; least proven at this buyer's scale; no analyst validation; single-tenant and multi-entity governance need confirmation; higher vendor-stability risk despite strong backing.",
+      "ratings": {"hvac_fit": "High", "project_financials": "Med-High", "enterprise_scale": "Med", "agentic_ai": "Med", "stability": "Med"},
+      "sources": [
+        {"label": "TechCrunch - BuildOps unicorn", "url": "https://techcrunch.com/2025/03/21/commercial-services-platform-buildops-becomes-a-unicorn-raises-127m/"},
+        {"label": "BuildOps Commercial HVAC", "url": "https://buildops.com/industries/hvac"},
+        {"label": "BuildOps construction payroll", "url": "https://buildops.com/resources/construction-payroll-software/"}
+      ]
+    },
+    {
+      "name": "ServiceMax", "product": "ServiceMax (PTC)",
+      "stability": "High", "ownership": "Owned by PTC (Nasdaq: PTC); acquired for $1.46B (Jan 2023). Ownership stable; PTC divested ThingWorx/Kepware (Mar 2026), NOT ServiceMax; treats ServiceMax as SLM 'anchor system of record'.",
+      "analyst": "Long-standing recognized FSM vendor; listed in Gartner Peer Insights. No current MQ ranking.",
+      "hvac_fit": "Med - asset-centric, OEM/equipment-oriented (asset hierarchies, SLAs, warranty, predictive maintenance), NOT contractor/trades/project-oriented.",
+      "enterprise_union": "High for asset/contract mgmt at large service orgs; no evidence of native certified-payroll/CBA.",
+      "project_financials": "Low - not a project-financials/AIA platform; asset-centric execution; AIA/WIP/ASC 606 needs external systems.",
+      "agentic_ai": "Med - backed by PTC SLM/PLM 'digital thread'; specific ServiceMax agentic-AI products less prominent than peers - probe.",
+      "risks": "Poor architectural fit (asset/OEM, not contractor/project); reported mobile (ServiceMax Go) sync reliability issues; identity tied to PTC PLM/asset strategy rather than mechanical contracting.",
+      "ratings": {"hvac_fit": "Med", "project_financials": "Low", "enterprise_scale": "High", "agentic_ai": "Med", "stability": "High"},
+      "sources": [
+        {"label": "PTC acquires ServiceMax", "url": "https://www.ptc.com/en/news/2023/ptc-acquires-servicemax"},
+        {"label": "PTC divests Kepware/ThingWorx (not ServiceMax)", "url": "https://www.ptc.com/en/news/2026/ptc-completes-divestiture-of-kepware-and-thingworx-businesses"},
+        {"label": "ServiceMax / PTC product", "url": "https://www.ptc.com/en/products/servicemax"}
+      ]
+    },
+    {
+      "name": "ServiceTitan", "product": "ServiceTitan",
+      "stability": "Med-High", "ownership": "Public (Nasdaq: TTAN) since Dec 2024; IPO ~$625M, ~$8.9B valuation. FY2025 revenue $771.9M (+26%); FY2026 guide ~$895-905M; approaching non-GAAP op profitability.",
+      "analyst": "Dominant in residential/commercial trades software; no current Gartner MQ ranking.",
+      "hvac_fit": "High - strong trades footprint (HVAC, plumbing, electrical); historically residential-trades-centric, expanding into commercial/construction.",
+      "enterprise_union": "Med - 'Enterprise Hub' centralizes multi-location/franchise mgmt; union/prevailing-wage/certified payroll via Miter partnership (NOT native); multi-legal-entity at 60-OpCo scale to be validated.",
+      "project_financials": "Med-High - notably strong for a trades platform: AIA-style G702/G703 pay apps, progress billing, schedule of values, retainage, change-order tracking.",
+      "agentic_ai": "Med-High capability (Titan Intelligence 'ti'; Atlas agentic sidekick) BUT API terms explicitly restrict using platform/data to train/benchmark AI - conflicts with customer-built-AI strategy.",
+      "risks": "AI/data-use API restrictions; residential/light-commercial roots (large multi-month commercial project depth less proven); payroll partner-dependent (Miter); multi-tenant SaaS vs single-tenant; 60-OpCo consolidation to stress-test.",
+      "ratings": {"hvac_fit": "High", "project_financials": "Med-High", "enterprise_scale": "Med", "agentic_ai": "Med-High (restricted)", "stability": "Med-High"},
+      "sources": [
+        {"label": "ServiceTitan / IPO", "url": "https://en.wikipedia.org/wiki/ServiceTitan"},
+        {"label": "ServiceTitan FY2025 results (SEC)", "url": "https://www.sec.gov/Archives/edgar/data/0001638826/000095017025113024/ttan-ex99_1.htm"},
+        {"label": "ServiceTitan + Miter union payroll", "url": "https://www.servicetitan.com/blog/servicetitan-and-miter-partner"},
+        {"label": "ServiceTitan construction/AIA billing", "url": "https://www.servicetitan.com/market/construction-software"},
+        {"label": "ServiceTitan API Terms (AI restriction)", "url": "https://www.servicetitan.com/legal/api-terms"}
+      ]
+    }
+  ]
+}

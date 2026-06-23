@@ -1,0 +1,57 @@
+{
+  "source": "OpCo_Segmentation_Framework_v17.xlsx, Business Capabilities Matrix, Current-State Process Analysis, and segmentation transcripts (May 2026).",
+  "portfolio_context": {
+    "opco_count_modeled": 57,
+    "portfolio_revenue_musd": 2490.5,
+    "top10_share": 0.50,
+    "process_similarity_note": "Process mining of 85,070 calls found cosine similarity averaging 0.92 across OpCos - they vary far less in process than they claim; variance is mostly configuration and labels. Do not over-index on self-reported 'we're different'.",
+    "acquisition_cliff": "Post-2020 OpCos are markedly less digital (digitization composite 2.13 vs 3.8 pre-2020). Recent tuck-ins need onboarding simplicity, not feature depth."
+  },
+  "dimensions": [
+    {"id": "size_revenue", "name": "Size by revenue", "detail": "Range $8.2M (Alpha) to $174.2M (Maxair). Bands at $15M/$30M/$60M/$100M. Primary axis."},
+    {"id": "size_techs", "name": "Headcount / field-tech count & revenue-per-tech", "detail": "Median ~$432K revenue per field tech; median field-to-back-office ratio 4.1:1."},
+    {"id": "product_mix", "name": "Service vs. project / product mix", "detail": "T&M service, PM contracts, and project/construction work. The definition of a 'project' varies by OpCo."},
+    {"id": "market", "name": "Residential vs. commercial vs. industrial", "detail": "Only 4 of 57 OpCos are >=5% residential (Gentry 61%, ENCON 51%, Comfort Flow 44%, Air Force One 10%). Residential is a specialty minority pattern."},
+    {"id": "breadth", "name": "Trade diversification (Breadth 1-5)", "detail": "11 single-trade, 28 HVAC+1, only 4 at breadth-4. Skews narrow."},
+    {"id": "maturity", "name": "Data/process maturity (digitization composite)", "detail": "Avg of CRM, FSM/Mobile, Reporting, Asset-Data scores (1-5). Data readiness is a distinct lens."},
+    {"id": "talent", "name": "Talent / back-office capability", "detail": "Ranges from staffed finance teams to 'an 18-year-old kid who shows up after school'. A sequencing gate."},
+    {"id": "labor", "name": "Union vs. non-union", "detail": "First-class constraint. Sharing an asset across a union/non-union line can trigger unionization - hard lines in the sand; absolute entity isolation required."},
+    {"id": "geography", "name": "Geography / region (incl. Canada)", "detail": "Southeast, Midwest & West, Northeast, Corporate cuts. Canada (e.g., Naylor, Oakville ON) referenced as an operating-model benchmark."}
+  ],
+  "archetypes": [
+    {"id": "A_large_project", "name": "Large, sophisticated, project-heavy multi-division",
+     "exemplars": ["Yale Mechanical ($78.4M)", "Maxair ($174.2M)"],
+     "characteristics": "85-90% T&M with on-the-fly scope change; internal rental cost centers; cradle-to-grave PMs paid on job margin; multi-state payroll; per-job rate overrides; GMP/progress billing.",
+     "needs": ["Project Execution (WIP, forecast updates, T&M conversion)", "Per-job rate matrices", "AIA-style progress billing", "Rental/equipment costing", "Multi-state payroll/union tax"],
+     "fit_emphasis": {"PJE": 1.6, "W2C": 1.2, "RLC": 1.2, "TPA": 1.0, "EVG": 1.0, "ACQ": 0.8, "CXR": 0.8, "SCL": 1.0}},
+    {"id": "B_large_service", "name": "Large, process-mature service/controls leader",
+     "exemplars": ["Tolin ($149.2M, pilot reference)", "ECS", "Piedmont"],
+     "characteristics": "Mature, opinionated, incumbent-anchored (often WennSoft). Can absorb governance and standardization. Pilot/migration anchor.",
+     "needs": ["Work-to-Cash", "Enterprise Visibility & Governance", "Standardization at scale"],
+     "fit_emphasis": {"W2C": 1.4, "EVG": 1.4, "TPA": 1.1, "PJE": 1.0, "SCL": 1.1, "RLC": 1.0, "ACQ": 0.8, "CXR": 0.9}},
+    {"id": "C_strategic_accounts", "name": "Strategic / National Accounts",
+     "exemplars": ["National-accounts team (e.g., big-box customers)"],
+     "characteristics": "National customers, partner network where SL may not own the shop, margin-stacking opacity, 'one neck to choke', flying blind on SLAs/safety.",
+     "needs": ["Cross-OpCo consolidation", "Standardized inbound deliverables", "Margin/markup transparency", "SLA visibility"],
+     "fit_emphasis": {"CXR": 1.6, "EVG": 1.4, "W2C": 1.1, "SCL": 1.1, "PJE": 0.9, "TPA": 0.9, "RLC": 1.0, "ACQ": 0.9}},
+    {"id": "D_residential", "name": "Residential / white-glove specialty",
+     "exemplars": ["ENCON (51% resi)", "Gentry (61% resi)"],
+     "characteristics": "High-touch dispatch, live good/better/best flat-rate quoting on site, zone/ZIP pricing, real-time customer comms. Off the standard commercial pattern.",
+     "needs": ["Mobile-first dispatch/routing", "Automated customer comms", "In-field flat-rate good/better/best quoting tied to ERP", "Zone pricing"],
+     "fit_emphasis": {"TPA": 1.5, "CXR": 1.5, "W2C": 1.2, "PJE": 0.6, "EVG": 0.9, "RLC": 0.8, "ACQ": 0.9, "SCL": 1.0}},
+    {"id": "E_midsize_lowmaturity", "name": "Mid-size, low-maturity manual shops (the 44% plurality)",
+     "exemplars": ["Atlantic Cooling ($15M)", "HVH"],
+     "characteristics": "No FSM or paper field workflow; weak back office. Largest single group (25 of 57).",
+     "needs": ["Simplicity", "Guided/gated workflows", "Low adoption burden", "Fast onboarding", "System-supplied guardrails the org lacks"],
+     "fit_emphasis": {"TPA": 1.5, "ACQ": 1.3, "W2C": 1.2, "SCL": 1.0, "EVG": 0.8, "PJE": 0.8, "RLC": 0.9, "CXR": 0.9}},
+    {"id": "F_small_lowfunded", "name": "Small, low-funded / newly tucked-in (<$15M)",
+     "exemplars": ["Thornton", "Caswell", "Chamberlain", "Alpha ($8.2M)"],
+     "characteristics": "7 OpCos totaling $73.1M; may not be ready for advanced tech; low funded.",
+     "needs": ["Lowest-friction onboarding", "Affordability", "Out-of-the-box simplicity", "Minimal admin overhead"],
+     "fit_emphasis": {"ACQ": 1.6, "TPA": 1.3, "W2C": 1.1, "SCL": 0.9, "EVG": 0.7, "PJE": 0.6, "RLC": 0.9, "CXR": 0.9}}
+  ],
+  "corporate_floor": {
+    "note": "Scalable architecture, Enterprise Visibility & Governance, and Regulatory/Labor compliance are GATES across ALL segments - minimum thresholds, not weighted trade-offs. Score corporate dimensions centrally; do not let local business users (who may not know SOX) score them.",
+    "gates": ["single_tenant_architecture", "scale_80plus_entities", "union_nonunion_isolation", "sox_itgc", "open_data_access"]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "source": "RFP Section 30 / Table 64 (the capability scheme whose codes actually tag the 397 requirements).",
+  "scoring_method": "Each capability scored 1-5, derived from the requirement-level responses tagged with its code, emphasizing OOB/CONFIG coverage of Must and Should items; then weighted and aggregated.",
+  "value_signal": "KPI gap analysis shows only 5 of 66 KPIs are deliverable today; the biggest measurable value concentrates in W2C (billing velocity / ~$6.8M revenue leakage), TPA (offline mobile + field data capture), and PJE (project WIP/ASC 606).",
+  "capabilities": [
+    {"code": "W2C", "name": "Work-to-Cash Velocity", "weight": 0.25, "domains": ["A","D","E","F"],
+     "what_matters": "Gated WO completion -> billing -> cash; close the 15-30 day billing lag; NTE alerts at 50/75/90%; eliminate revenue leakage; zero-touch auto-bill; GL-coding accuracy.",
+     "value": "Single largest operational improvement opportunity; ~$6.8M portfolio revenue-leakage exposure."},
+    {"code": "TPA", "name": "Technician Productivity & Adoption", "weight": 0.20, "domains": ["A","L"],
+     "what_matters": "Native offline mobile (iOS 16+/Android 12+, not PWA); fast job close-out; auto-capture (OCR data plates); guided/gated workflows that reduce the chance to pick the wrong job.",
+     "value": "Precondition for all other value; lack of offline is the #1 technician complaint."},
+    {"code": "PJE", "name": "Project Execution & Financial Control", "weight": 0.15, "domains": ["B"],
+     "what_matters": "WBS, WIP, ASC 606 percentage-of-completion, AIA G702/G703 progress billing, retainage, change orders, certified/prevailing wage, per-job rate overrides.",
+     "value": "Protects >$1B in project revenue and margin."},
+    {"code": "ACQ", "name": "Acquisition Onboarding Speed", "weight": 0.10, "domains": ["H","J","N"],
+     "what_matters": "Repeatable 6-8 week OpCo onboarding playbook; rapid data migration; configurable overlays for newly acquired entities.",
+     "value": "5-7 acquisitions/year; onboarding speed compounds across the portfolio."},
+    {"code": "EVG", "name": "Enterprise Visibility & Governance", "weight": 0.10, "domains": ["G","M"],
+     "what_matters": "Cross-OpCo standardized KPIs and benchmarking; 3-click drill-down; global-vs-entity governance; open data access for customer-built analytics/AI.",
+     "value": "No standardized KPIs today; wide OpCo variance (e.g., DSO, first-call resolution)."},
+    {"code": "RLC", "name": "Regulatory & Labor Compliance", "weight": 0.10, "domains": ["A5","B4","K"],
+     "what_matters": "Multi-tier CBA wage determination, certified payroll, Davis-Bacon/prevailing wage, blended crews, absolute union/non-union entity isolation, SOX ITGC, SoD, immutable audit, IPO/SEC readiness.",
+     "value": "Hard disqualification risk despite moderate weight; PE/IPO posture is non-negotiable."},
+    {"code": "CXR", "name": "Customer Experience & Retention", "weight": 0.05, "domains": ["C"],
+     "what_matters": "Authorized-caller validation, equipment/asset history, customer comms (e.g., 'tech is 10 minutes away'), national-accounts consolidation.",
+     "value": "Retention and national-accounts transparency."},
+    {"code": "SCL", "name": "Scalable Platform Architecture", "weight": 0.05, "domains": ["H","I","K"],
+     "what_matters": "Single-tenant; 40+ -> 80+ entities without re-architecture; 2,000+ concurrent; 99.9% uptime; RPO<1h/RTO<4h; US (and Canada) residency; open API/event integration.",
+     "value": "Architectural gate for the whole portfolio."}
+  ]
+}
