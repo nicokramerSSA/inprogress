@@ -12,6 +12,10 @@ graphify-out/
 .DS_Store
 *:Zone.Identifier
 
+# Stray scratchpad dirs (real scratchpad lives in /tmp)
+scratchpad/
+.superpowers/
+
 # Local secrets — never commit (also asserted in Task 2)
 backend/.env
 .env
