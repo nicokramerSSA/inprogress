@@ -106,6 +106,10 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
     ev = evaluate_vendor(vendor, product, proposal_text,
                          scoring_model=scoring_model, requirement_sample=sample_n,
                          progress=progress)
+    # Drop empty/null slots so a vote_dual of all-blank values (e.g. the UI's default
+    # {openai:"", anthropic:"", ...}) doesn't activate the dual engine on placeholders.
+    if vote_dual:
+        vote_dual = {k: v for k, v in vote_dual.items() if v} or None
     if vote_dual:
         ev.vote = synthesize_vote_dual(
             ev, openai_model=vote_dual.get("openai", "mock"),
