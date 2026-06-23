@@ -27,7 +27,8 @@
   .wrap{max-width:1440px;margin:0 auto;padding:0 30px}
   /* Header */
   header.app{background:linear-gradient(90deg,var(--ssa-blue),var(--ssa-teal));color:#fff}
-  header.app .bar{display:flex;align-items:center;gap:18px;padding:18px 30px;max-width:1440px;margin:0 auto}
+  /* `bar` collides with the generic progress-bar rule below; reset its leaked props so the header gradient shows. */
+  header.app .bar{display:flex;align-items:center;gap:18px;padding:18px 30px;max-width:1440px;margin:0 auto;background:transparent;height:auto;border-radius:0;overflow:visible}
   header.app img{height:34px}
   header.app .title{font-size:15px;font-weight:600;letter-spacing:.2px;opacity:.95;border-left:1px solid rgba(255,255,255,.35);padding-left:18px}
   header.app .title small{display:block;font-weight:400;opacity:.8;font-size:12px}

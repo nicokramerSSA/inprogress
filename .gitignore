@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# graphify generated knowledge graph (regenerated via `graphify update .`)
+graphify-out/
+
+# OS / editor junk
+.DS_Store
+*:Zone.Identifier
