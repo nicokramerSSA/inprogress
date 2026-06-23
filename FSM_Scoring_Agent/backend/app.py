@@ -66,7 +66,7 @@ _load_dotenv()  # must run before the agent imports below so provider keys are s
 from agent.knowledge import get_kb
 from agent.providers import available_models, resolve_model
 from agent.scoring import evaluate_vendor
-from agent.vote import synthesize_vote
+from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources
 from agent.sample import sample_proposal_text
@@ -100,11 +100,19 @@ def _validate_models(*ids):
     return None
 
 
-def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n=None):
+def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
+                   sample_n=None, vote_dual=None, progress=None, should_cancel=None):
     """Shared evaluate -> vote -> cache path used by both evaluate endpoints."""
     ev = evaluate_vendor(vendor, product, proposal_text,
-                         scoring_model=scoring_model, requirement_sample=sample_n)
-    ev.vote = synthesize_vote(ev, model_id=vote_model)
+                         scoring_model=scoring_model, requirement_sample=sample_n,
+                         progress=progress)
+    if vote_dual:
+        ev.vote = synthesize_vote_dual(
+            ev, openai_model=vote_dual.get("openai", "mock"),
+            anthropic_model=vote_dual.get("anthropic", "mock"),
+            synthesizer_model=vote_dual.get("synthesizer", "claude-opus-4-8"))
+    else:
+        ev.vote = synthesize_vote(ev, model_id=vote_model)
     result = ev.to_dict()
     with _RESULTS_LOCK:
         _RESULTS[vendor] = result
@@ -193,8 +201,11 @@ def evaluate():
     scoring_model = body.get("scoring_model", "mock")
     vote_model = body.get("vote_model", scoring_model)
     sample_n = body.get("requirement_sample")
+    vote_dual = body.get("vote_dual")  # {openai, anthropic, synthesizer} or None
 
-    err = _validate_models(scoring_model, vote_model)
+    pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
+                if vote_dual and vote_dual.get(k)] if vote_dual else []
+    err = _validate_models(scoring_model, vote_model, *pair_ids)
     if err:
         return jsonify({"error": err}), 400
 
@@ -214,7 +225,8 @@ def evaluate():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No proposal content could be extracted from the provided sources."}), 400
 
-    return jsonify(_run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n))
+    return jsonify(_run_and_cache(vendor, product, proposal_text, scoring_model,
+                                  vote_model, sample_n, vote_dual=vote_dual))
 
 
 @app.route("/api/evaluate_upload", methods=["POST"])
@@ -234,8 +246,16 @@ def evaluate_upload():
     vote_model = request.form.get("vote_model", scoring_model)
     sample_n = request.form.get("requirement_sample", type=int)
     urls = _split_urls(request.form.get("urls", ""))
+    vote_dual = None
+    if request.form.get("vote_dual"):
+        try:
+            vote_dual = json.loads(request.form["vote_dual"])
+        except Exception:
+            vote_dual = None
+    pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
+                if vote_dual and vote_dual.get(k)] if vote_dual else []
 
-    err = _validate_models(scoring_model, vote_model)
+    err = _validate_models(scoring_model, vote_model, *pair_ids)
     if err:
         return jsonify({"error": err}), 400
 
@@ -265,7 +285,8 @@ def evaluate_upload():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No readable text could be extracted from the uploads/URLs."}), 400
 
-    result = _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n)
+    result = _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
+                            sample_n, vote_dual=vote_dual)
     result["_ingest"] = {
         "files": [os.path.basename(p) for p in saved_paths],
         "urls": urls,
