@@ -107,6 +107,12 @@ class Vote:
     dissent: str                  # the strongest counter-argument to the recommendation
     top_risks: List[str] = field(default_factory=list)
     evidence_to_close: List[str] = field(default_factory=list)  # validate in Charlotte demos / refs
+    mode: str = "single"          # "single" | "dual"
+    raw_votes: List[Dict[str, Any]] = field(default_factory=list)
+        # each: {provider, model, recommendation, narrative, dissent, top_risks}
+    note: str = ""                # e.g. "dual off — add OPENAI_API_KEY to enable"
+    disagreements: List[Dict[str, Any]] = field(default_factory=list)
+        # each: {dimension, openai_position, anthropic_position, resolution}
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

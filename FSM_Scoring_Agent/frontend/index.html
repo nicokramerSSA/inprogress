@@ -27,7 +27,8 @@
   .wrap{max-width:1440px;margin:0 auto;padding:0 30px}
   /* Header */
   header.app{background:linear-gradient(90deg,var(--ssa-blue),var(--ssa-teal));color:#fff}
-  header.app .bar{display:flex;align-items:center;gap:18px;padding:18px 30px;max-width:1440px;margin:0 auto}
+  /* `bar` collides with the generic progress-bar rule below; reset its leaked props so the header gradient shows. */
+  header.app .bar{display:flex;align-items:center;gap:18px;padding:18px 30px;max-width:1440px;margin:0 auto;background:transparent;height:auto;border-radius:0;overflow:visible}
   header.app img{height:34px}
   header.app .title{font-size:15px;font-weight:600;letter-spacing:.2px;opacity:.95;border-left:1px solid rgba(255,255,255,.35);padding-left:18px}
   header.app .title small{display:block;font-weight:400;opacity:.8;font-size:12px}
@@ -230,23 +231,44 @@ function CapabilityHeatmap({results}){
   );
 }
 
-// ---- model selector (header) --------------------------------------------
-function ModelSelector({models, value, onChange}){
+// ---- model controls (header) --------------------------------------------
+function Picker({models,value,onChange,title}){
+  return (
+    <select title={title||""} value={value} onChange={e=>onChange(e.target.value)}
+            style={{fontFamily:"var(--font)",fontSize:12,padding:"6px 8px",borderRadius:6,
+                    border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.12)",color:"#fff"}}>
+      {models.providers.map(p=>(
+        <optgroup key={p.id} label={p.name+(p.key_present?"":" (no key)")}>
+          {p.models.map(m=>(<option key={m.id} value={m.id} disabled={!p.key_present && p.id!=="mock"}
+             style={{color:"#000"}}>{m.label}{!p.key_present&&p.id!=="mock"?" — key missing":""}</option>))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+function ModelControls({models, scoring, setScoring, voteMode, setVoteMode, voteModel, setVoteModel, voteDual, setVoteDual}){
   if(!models) return null;
   return (
-    <div className="modelsel">
-      <label>Model</label>
-      <select value={value} onChange={e=>onChange(e.target.value)}>
-        {models.providers.map(p=>(
-          <optgroup key={p.id} label={p.name + (p.key_present?"":" (no key)")}>
-            {p.models.map(m=>(
-              <option key={m.id} value={m.id} disabled={!p.key_present && p.id!=="mock"}>
-                {m.label}{p.id!=="mock" && !p.key_present ? " — key missing":""}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+    <div className="modelsel" style={{gap:12,flexWrap:"wrap"}}>
+      <span style={{display:"flex",alignItems:"center",gap:6}}>
+        <label>Scoring</label><Picker models={models} value={scoring} onChange={setScoring}/>
+      </span>
+      <span style={{display:"flex",alignItems:"center",gap:6}}>
+        <label>Vote</label>
+        <select value={voteMode} onChange={e=>setVoteMode(e.target.value)}
+                style={{fontSize:12,padding:"6px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.12)",color:"#fff"}}>
+          <option value="single" style={{color:"#000"}}>Single model</option>
+          <option value="dual" style={{color:"#000"}}>Dual (two-model read)</option>
+        </select>
+      </span>
+      {voteMode==="single"
+        ? <Picker models={models} value={voteModel} onChange={setVoteModel} title="Vote model"/>
+        : <span style={{display:"flex",alignItems:"center",gap:6}}>
+            <Picker models={models} value={voteDual.openai} onChange={v=>setVoteDual({...voteDual,openai:v})} title="OpenAI vote model"/>
+            <span style={{opacity:.7}}>+</span>
+            <Picker models={models} value={voteDual.anthropic} onChange={v=>setVoteDual({...voteDual,anthropic:v})} title="Anthropic vote model"/>
+            <span className="keypill" title="Reconciler (fixed)">&#8635; Opus 4.8 reconciles</span>
+          </span>}
     </div>
   );
 }
@@ -255,7 +277,7 @@ function ModelSelector({models, value, onChange}){
 function Dashboard({results, onOpen}){
   const ranked = useMemo(()=>[...results].sort((a,b)=>
      (a.gating.disqualified-b.gating.disqualified) || (b.weighted_total-a.weighted_total)),[results]);
-  if(!results.length) return <p className="muted">No evaluations yet. Use “Run evaluation” above.</p>;
+  if(!results.length) return <p className="muted">No evaluations yet. Use "Run evaluation" above.</p>;
   return (
     <div>
       <div className="section-title">Head-to-head ranking — the agent’s vote</div>
@@ -348,6 +370,24 @@ function VendorDetail({data}){
         </div>
         {r.vote.dissent && <div className="small" style={{marginTop:10,paddingTop:10,borderTop:"1px solid var(--line)"}}>
           <b>Dissent (steel-manned counter-argument):</b> {r.vote.dissent}</div>}
+        {r.vote.note && <div className="small muted" style={{marginTop:8}}>&#8505; {r.vote.note}</div>}
+        {r.vote.mode==="dual" && r.vote.raw_votes && r.vote.raw_votes.length>0 && <div style={{marginTop:14}}>
+          <div className="section-title" style={{marginTop:0}}>Two-model read</div>
+          <div className="grid vote-columns">
+            {r.vote.raw_votes.map((rv,i)=>(
+              <div key={i} className="card" style={{padding:14}}>
+                <b className="small" style={{color:"var(--ssa-blue)"}}>{rv.provider==="openai"?"OpenAI":"Anthropic"} <span className="muted">({rv.model})</span></b>
+                <p className="small" style={{marginTop:6}}>{rv.narrative}</p>
+                {rv.dissent && <p className="small muted" style={{marginTop:6}}><b>Dissent:</b> {rv.dissent}</p>}
+              </div>
+            ))}
+          </div>
+          {r.vote.disagreements && r.vote.disagreements.length>0 && <div className="small" style={{marginTop:10}}>
+            <b>Where they disagreed</b>
+            <ul style={{margin:"6px 0 0 16px",padding:0}}>
+              {r.vote.disagreements.map((d,i)=>(<li key={i}><b>{d.dimension}:</b> OpenAI &#8212; {d.openai_position}; Anthropic &#8212; {d.anthropic_position}. <i>Resolved:</i> {d.resolution}</li>))}
+            </ul></div>}
+        </div>}
       </div>
 
       {/* Categories + capabilities */}
@@ -553,12 +593,15 @@ function Chat({model}){
 }
 
 // ---- run-evaluation control: upload files + URLs, or use sample ----------
-function RunBar({vendors, model, onDone}){
+function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   const [vendor,setVendor]=useState("");
   const [files,setFiles]=useState([]);          // File[]
   const [urls,setUrls]=useState("");            // newline/comma separated
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState(null);            // {ok, text, ingest?}
+  const [prog,setProg]=useState(null);
+  const [jobId,setJobId]=useState(null);
+  const cancelledRef=useRef(false);
   const fileRef=useRef(null);
   useEffect(()=>{ if(vendors.length && !vendor) setVendor(vendors[0].name); },[vendors]);
 
@@ -566,32 +609,71 @@ function RunBar({vendors, model, onDone}){
   function addFiles(list){ setFiles(f=>[...f, ...Array.from(list)]); }
   function removeFile(i){ setFiles(f=>f.filter((_,j)=>j!==i)); }
 
+  function votePayload(){
+    return voteMode==="dual" ? {vote_dual: voteDual} : {vote_model: voteModel};
+  }
+  async function poll(jid){
+    setJobId(jid);
+    while(!cancelledRef.current){
+      await new Promise(r=>setTimeout(r,900));
+      if(cancelledRef.current) return;
+      const s=await jget("/api/evaluate/status/"+jid);
+      if(s.error){ setBusy(false); setProg(null); setJobId(null); setMsg({ok:false,text:"Error: "+s.error}); return; }
+      setProg(s.total? `${s.stage} (${s.scored}/${s.total})` : s.stage);
+      if(s.done){
+        setBusy(false); setProg(null); setJobId(null);
+        if(s.error){ setMsg({ok:false,text:"Error: "+s.error}); }
+        else {
+          const res=s.result, ing=res._ingest;
+          setMsg({ok:true, text:`Done — ${vendor}: ${res.vote.recommendation} (${fmt(res.weighted_total)}/100).`,
+                  ingest: ing? `Ingested ${ing.files.length} file(s)${ing.urls.length?` + ${ing.urls.length} URL(s)`:""}, ${ing.chars_extracted.toLocaleString()} chars${ing.rejected.length?` · rejected: ${ing.rejected.join(", ")}`:""}.`:null});
+          onDone();
+        }
+        return;
+      }
+    }
+  }
   async function run(useSample){
     if(!vendor) return;
-    setBusy(true);
-    setMsg({ok:true, text:`Scoring 422 requirements${useSample?" on the sample proposal":""}, gating, segment fit, agentic future, vote…`});
-    let res;
+    cancelledRef.current = false;
+    setBusy(true); setProg("Starting…");
+    setMsg({ok:true, text:`Evaluating ${vendor}…`});
     if(STATIC){
-      res = await jpost("/api/evaluate",{vendor}); // standalone returns the precomputed result
-    } else if(useSample){
-      res = await jpost("/api/evaluate",{vendor,product:"",use_sample:true,scoring_model:model,vote_model:model});
+      // Offline standalone build: no server to poll. Ignores scoring_model/voteMode (dual mode is intentionally inert here) and returns the precomputed result.
+      const res=await jpost("/api/evaluate",{vendor}); setBusy(false); setProg(null);
+      if(res.error) setMsg({ok:false,text:"Error: "+res.error});
+      else { setMsg({ok:true,text:`${vendor}: ${res.vote.recommendation} (${fmt(res.weighted_total)}/100).`}); onDone(); }
+      return;
+    }
+    let jid;
+    if(useSample){
+      const res=await jpost("/api/evaluate",{vendor,product:"",use_sample:true,scoring_model:model,...votePayload()});
+      if(res.error){ setBusy(false); setProg(null); setMsg({ok:false,text:"Error: "+res.error}); return; }
+      jid=res.job_id;
     } else {
-      // multipart upload of files + urls
       const fd=new FormData();
-      fd.append("vendor",vendor); fd.append("scoring_model",model); fd.append("vote_model",model);
-      fd.append("urls",urls);
-      files.forEach(f=>fd.append("files",f));
-      const r=await fetch("/api/evaluate_upload",{method:"POST",body:fd});
-      res=await r.json();
+      fd.append("vendor",vendor); fd.append("scoring_model",model);
+      if(voteMode==="dual") fd.append("vote_dual",JSON.stringify(voteDual)); else fd.append("vote_model",voteModel);
+      fd.append("urls",urls); files.forEach(f=>fd.append("files",f));
+      let res;
+      try {
+        const r=await fetch("/api/evaluate_upload",{method:"POST",body:fd});
+        res=await r.json();  // a 413/oversized upload may return non-JSON; the catch keeps the spinner from hanging
+      } catch(e) {
+        setBusy(false); setProg(null);
+        setMsg({ok:false,text:"Upload failed - the files may exceed the size limit, or the server is unreachable."});
+        return;
+      }
+      if(res.error){ setBusy(false); setProg(null); setMsg({ok:false,text:"Error: "+res.error}); return; }
+      jid=res.job_id;
     }
-    setBusy(false);
-    if(res.error){ setMsg({ok:false,text:"Error: "+res.error}); }
-    else {
-      const ing=res._ingest;
-      setMsg({ok:true, text:`Done — ${vendor}: ${res.vote.recommendation} (${fmt(res.weighted_total)}/100).`,
-              ingest: ing ? `Ingested ${ing.files.length} file(s)${ing.urls.length?` + ${ing.urls.length} URL(s)`:""}, ${ing.chars_extracted.toLocaleString()} chars${ing.rejected.length?` · rejected: ${ing.rejected.join(", ")}`:""}.` : null});
-      onDone();
-    }
+    poll(jid);
+  }
+  async function cancel(){
+    cancelledRef.current = true;
+    if(jobId) await jpost("/api/evaluate/cancel/"+jobId,{});
+    setBusy(false); setProg(null); setJobId(null);
+    setMsg({ok:true, text:"Evaluation cancelled."});
   }
 
   const isMock = model==="mock";
@@ -610,10 +692,14 @@ function RunBar({vendors, model, onDone}){
                  onChange={e=>{addFiles(e.target.files); e.target.value="";}}/>
           <button className="btn ghost" onClick={()=>fileRef.current?.click()}>+ Upload proposal files</button>
           <button className="btn" onClick={()=>run(false)} disabled={busy || !hasSources}>
-            {busy? <span className="spin"/> : "Run on uploaded sources"}</button>
+            Run on uploaded sources</button>
           <button className="btn ghost" onClick={()=>run(true)} disabled={busy}>Run on sample</button>
         </>}
         {STATIC && <button className="btn" onClick={()=>run(true)} disabled={busy}>Show evaluation</button>}
+        {busy && !STATIC && <span className="small" style={{display:"flex",alignItems:"center",gap:8}}>
+          <span className="spin"/>{prog||"Working…"}
+          <button className="btn ghost" onClick={cancel} style={{padding:"4px 10px"}}>Cancel</button>
+        </span>}
       </div>
 
       {!STATIC && (
@@ -622,7 +708,7 @@ function RunBar({vendors, model, onDone}){
           <div>
             <div className="small muted" style={{marginBottom:4}}>Accepted: PDF, DOCX, XLSX, TXT, MD — drag &amp; drop or use the button. Multiple files per vendor OK.</div>
             {files.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {files.map((f,i)=>(<span key={i} className="pill">{f.name} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>removeFile(i)}>✕</span></span>))}
+              {files.map((f,i)=>(<span key={i} className="pill">{f.name} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>removeFile(i)}>&#10005;</span></span>))}
             </div>}
           </div>
           <div>
@@ -635,7 +721,7 @@ function RunBar({vendors, model, onDone}){
       )}
 
       {isMock && !STATIC && hasSources && <div className="small" style={{color:"var(--warn)",marginTop:8}}>
-        ⚠ A live model is recommended for real proposals — the offline “mock” engine doesn’t read uploaded content deeply. Pick a model (top-right).
+        &#9888; A live model is recommended for real proposals — the offline "mock" engine doesn’t read uploaded content deeply. Pick a model (top-right).
       </div>}
       {msg && <div className="small" style={{marginTop:8,color: msg.ok?"var(--good)":"var(--bad)"}}>
         {msg.text}{msg.ingest && <div className="muted">{msg.ingest}</div>}</div>}
@@ -647,7 +733,10 @@ function RunBar({vendors, model, onDone}){
 function App(){
   const [tab,setTab]=useState("dashboard");
   const [models,setModels]=useState(null);
-  const [model,setModel]=useState("mock");
+  const [model,setModel]=useState("mock");        // scoring model
+  const [voteMode,setVoteMode]=useState("single"); // "single" | "dual"
+  const [voteModel,setVoteModel]=useState("mock");  // single-vote model
+  const [voteDual,setVoteDual]=useState({openai:"",anthropic:"",synthesizer:"claude-opus-4-8"});
   const [results,setResults]=useState([]);
   const [vendors,setVendors]=useState([]);
   const [kb,setKb]=useState(null);
@@ -657,7 +746,12 @@ function App(){
   async function loadResults(){ setResults(await jget("/api/results")); }
   useEffect(()=>{
     (async()=>{
-      const m=await jget("/api/models"); setModels(m); setModel(m.task_defaults?.scoring && m.providers.some(p=>p.key_present&&p.models.some(x=>x.id===m.task_defaults.scoring)) ? m.task_defaults.scoring : m.default_model);
+      const m=await jget("/api/models"); setModels(m);
+      setModel(m.task_defaults?.scoring && m.providers.some(p=>p.key_present&&p.models.some(x=>x.id===m.task_defaults.scoring)) ? m.task_defaults.scoring : m.default_model);
+      const td = m.task_defaults || {};
+      const has = id => m.providers.some(p=>p.key_present && p.models.some(x=>x.id===id));
+      setVoteModel(has(td.vote_synthesis) ? td.vote_synthesis : m.default_model);
+      if(td.dual_vote) setVoteDual({openai:td.dual_vote.openai||"", anthropic:td.dual_vote.anthropic||"", synthesizer:td.dual_vote.synthesizer||"claude-opus-4-8"});
       setVendors((await jget("/api/vendors")).vendors||[]);
       setKb(await jget("/api/knowledge"));
       await loadResults();
@@ -680,7 +774,9 @@ function App(){
           <div className="title">FSM RFP Evaluation Agent
             <small>Service Logic · Field Service Management platform selection</small></div>
           <div className="spacer"/>
-          <ModelSelector models={models} value={model} onChange={setModel}/>
+          <ModelControls models={models} scoring={model} setScoring={setModel}
+            voteMode={voteMode} setVoteMode={setVoteMode} voteModel={voteModel} setVoteModel={setVoteModel}
+            voteDual={voteDual} setVoteDual={setVoteDual}/>
         </div>
       </header>
 
@@ -692,11 +788,11 @@ function App(){
 
       <div className="wrap" style={{paddingTop:18,paddingBottom:30}}>
         {!anyLive && <div className="demowarn">
-          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier (clearly labelled “demo”). Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read. Vendor proposals are due July 2; until then the app runs on synthetic sample proposals.
+          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier (clearly labelled "demo"). Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read. Vendor proposals are due July 2; until then the app runs on synthetic sample proposals.
         </div>}
 
         <div className="card" style={{marginBottom:18}}>
-          <RunBar vendors={vendors} model={model} onDone={loadResults}/>
+          <RunBar vendors={vendors} model={model} voteMode={voteMode} voteModel={voteModel} voteDual={voteDual} onDone={loadResults}/>
         </div>
 
         {tab==="dashboard" && <Dashboard results={results} onOpen={(v)=>{setOpen(v);setTab("detail");}}/>}

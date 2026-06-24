@@ -26,6 +26,9 @@ def extract_text(path: str) -> str:
             return _docx(path)
         if ext in (".xlsx", ".xlsm"):
             return _xlsx(path)
+    except ImportError as e:
+        return (f"[parser not installed for {os.path.basename(path)} ({ext}); "
+                f"install the matching library (pdfplumber/pypdf, python-docx, or openpyxl): {e}]")
     except Exception as e:
         return f"[ingest error for {os.path.basename(path)}: {type(e).__name__}: {e}]"
     return f"[unsupported file type: {ext}]"
@@ -58,11 +61,26 @@ def fetch_url(url: str, timeout: int = 30) -> str:
     if not url.lower().startswith(("http://", "https://")):
         return f"[invalid url (must start with http/https): {url}]"
 
+    # SSRF guard: refuse private/loopback/link-local/reserved addresses
+    import ipaddress, socket
+    host = urlparse(url).hostname or ""
+    try:
+        infos = socket.getaddrinfo(host, None)
+        for fam, _, _, _, sockaddr in infos:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return f"[refused: {url} resolves to a non-public address ({ip})]"
+    except Exception as e:
+        return f"[refused: could not resolve host for {url}: {type(e).__name__}: {e}]"
+
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "FSM-RFP-Eval-Agent/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             ctype = (resp.headers.get("Content-Type") or "").lower()
-            data = resp.read()
+            max_bytes = int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
+            data = resp.read(max_bytes + 1)
+            if len(data) > max_bytes:
+                return f"[refused: {url} exceeds the {max_bytes // (1024*1024)} MB limit]"
     except Exception as e:
         return f"[url fetch error for {url}: {type(e).__name__}: {e}]"
 

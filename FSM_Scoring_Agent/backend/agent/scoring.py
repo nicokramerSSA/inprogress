@@ -43,6 +43,10 @@ from .schemas import (
     GatingResult, AgenticFuture, VendorEvaluation,
 )
 
+class EvaluationCancelled(Exception):
+    """Raised when a running evaluation is cancelled via the job API."""
+
+
 # Map each SSA scorecard category to the domains that feed it.
 # Requirement Alignment spans everything; the others draw on focused slices.
 _CATEGORY_DOMAIN_HINTS = {
@@ -67,6 +71,7 @@ def evaluate_vendor(
     scoring_model: str = "mock",
     progress: Optional[Callable[[str, float], None]] = None,
     requirement_sample: Optional[int] = None,
+    should_cancel: Optional[Callable[[], bool]] = None,
 ) -> VendorEvaluation:
     """
     Run the full evaluation pipeline for one vendor and return a VendorEvaluation.
@@ -93,7 +98,7 @@ def evaluate_vendor(
     _emit(f"Scoring {len(reqs)} requirements for {vendor}…", 0.05)
 
     # 1) Per-requirement scoring (batched) -----------------------------------
-    req_scores = _score_requirements(vendor, product, proposal_text, reqs, scoring_model, _emit)
+    req_scores = _score_requirements(vendor, product, proposal_text, reqs, scoring_model, _emit, should_cancel)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
     gating = _compute_gating(req_scores, proposal_text)
@@ -144,7 +149,7 @@ def evaluate_vendor(
 # --------------------------------------------------------------------------- #
 # 1) Per-requirement scoring                                                  #
 # --------------------------------------------------------------------------- #
-def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit) -> List[RequirementScore]:
+def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None) -> List[RequirementScore]:
     strengths = _vendor_cap_strength(vendor)
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
@@ -157,6 +162,8 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit) ->
     total = len(reqs)
     retrieval_index = build_retrieval_index(proposal_text)
     for i in range(0, total, BATCH):
+        if should_cancel and should_cancel():
+            raise EvaluationCancelled()
         batch = reqs[i:i + BATCH]
         # Localize the vendor's most relevant passages for this batch's terms.
         kws = _batch_keywords(batch)

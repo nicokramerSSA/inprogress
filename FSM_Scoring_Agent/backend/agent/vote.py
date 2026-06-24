@@ -18,6 +18,8 @@ the structured findings so the app is fully functional offline.
 """
 from __future__ import annotations
 
+import concurrent.futures as _f
+import json
 from typing import List
 
 from .knowledge import get_kb
@@ -144,24 +146,138 @@ def _mock_narrative(ev, reco, band_reason, findings) -> tuple[str, str]:
     return narrative, dissent
 
 
-def _llm_narrative(ev, reco, band_reason, findings, model_id) -> tuple[str, str]:
+def _provider_narrative(ev, reco, band_reason, findings, model_id) -> dict:
+    """Generate one provider's narrative+dissent for the vote. Returns a dict so the
+    dual path can carry per-provider results; the single path unwraps it."""
     kb = get_kb()
     system = kb.persona_system_prompt()
-    import json as _json
     user = (
         f"You are casting your independent VOTE on vendor {ev.vendor} ({ev.product}) for the "
         f"Service Logic FSM selection. The deterministic rubric says: {reco} ({band_reason}).\n\n"
-        f"STRUCTURED FINDINGS:\n{_json.dumps(findings, indent=2)}\n\n"
+        f"STRUCTURED FINDINGS:\n{json.dumps(findings, indent=2)}\n\n"
         f"Write your vote. Lead with the verdict, then the why. Tie weaknesses to dollars/outcomes "
         f"where you can (billing lag, revenue leakage, DSO, adoption). Name what must be proven in the "
         f"July 13-16 Charlotte demos. Then write the single strongest honest DISSENT against your own "
         f"recommendation.\n\n"
         f"Return ONLY JSON: {{\"narrative\": \"...\", \"dissent\": \"...\"}}"
     )
-    resp = client.generate(system, user, model_id, expect_json=True, max_tokens=1500, temperature=0.3)
-    try:
-        d = extract_json(resp["text"]) if resp["ok"] else {}
-        return (str(d.get("narrative", "")).strip() or band_reason,
-                str(d.get("dissent", "")).strip())
-    except Exception:
-        return (band_reason, "")
+    # generous cap (plan said 1500): adaptive thinking on opus-4-8 spends budget before the JSON; cap is billed only for tokens actually generated (model hard-cap 8192), so headroom is free insurance against truncation.
+    resp = client.generate(system, user, model_id, expect_json=True, max_tokens=4000, temperature=0.3)
+    out = {"provider": resp.get("provider", ""), "model": model_id,
+           "narrative": band_reason, "dissent": "", "ok": bool(resp.get("ok"))}
+    if resp.get("ok"):
+        try:
+            d = extract_json(resp["text"])
+            out["narrative"] = str(d.get("narrative", "")).strip() or band_reason
+            out["dissent"] = str(d.get("dissent", "")).strip()
+        except Exception:
+            # API responded but the body was unparseable (rare truncation). Flag it so the
+            # caller can report honestly rather than claiming "no live response".
+            out["ok"] = False
+            out["parse_error"] = True
+    return out
+
+
+def _llm_narrative(ev, reco, band_reason, findings, model_id) -> tuple[str, str]:
+    """Single-model path (unchanged behavior): returns (narrative, dissent)."""
+    r = _provider_narrative(ev, reco, band_reason, findings, model_id)
+    return (r["narrative"], r["dissent"])
+
+
+def _reconcile(ev, reco, band_reason, findings, raw_votes, synthesizer_model) -> dict:
+    """Anthropic reconciliation of the two provider votes. Returns
+    {"narrative","dissent","disagreements":[...]} ; falls back to the Anthropic raw vote."""
+    kb = get_kb()
+    system = kb.persona_system_prompt()
+    user = (
+        f"Two AI analysts independently voted on vendor {ev.vendor} ({ev.product}). The deterministic "
+        f"rubric says {reco} ({band_reason}). Reconcile their votes into ONE final vote in Nick Kramer's "
+        f"voice, and surface where they materially disagreed.\n\n"
+        f"DETERMINISTIC FINDINGS:\n{json.dumps(findings, indent=2)}\n\n"
+        f"ANALYST VOTES:\n{json.dumps(raw_votes, indent=2)}\n\n"
+        f"Return ONLY JSON: {{\"narrative\":\"...\",\"dissent\":\"...\",\"disagreements\":"
+        f"[{{\"dimension\":\"...\",\"openai_position\":\"...\",\"anthropic_position\":\"...\",\"resolution\":\"...\"}}]}}"
+    )
+    # generous cap (plan said 2000): adaptive thinking on opus-4-8 spends budget before the JSON; cap is billed only for tokens actually generated (model hard-cap 8192), so headroom is free insurance against truncation.
+    resp = client.generate(system, user, synthesizer_model, expect_json=True, max_tokens=4000, temperature=0.3)
+    # Fallback = the Anthropic raw vote (or first available) if reconciliation fails.
+    fallback = next((v for v in raw_votes if v["provider"] == "anthropic"), raw_votes[0] if raw_votes else {})
+    out = {"narrative": fallback.get("narrative", band_reason),
+           "dissent": fallback.get("dissent", ""), "disagreements": []}
+    if resp.get("ok"):
+        try:
+            d = extract_json(resp["text"])
+            out["narrative"] = str(d.get("narrative", "")).strip() or out["narrative"]
+            out["dissent"] = str(d.get("dissent", "")).strip() or out["dissent"]
+            dis = d.get("disagreements", [])
+            out["disagreements"] = dis if isinstance(dis, list) else []
+        except Exception:
+            pass
+    return out
+
+
+def synthesize_vote_dual(ev, openai_model: str, anthropic_model: str,
+                         synthesizer_model: str = "claude-opus-4-8") -> Vote:
+    """Vote produced by OpenAI and Anthropic independently, then reconciled by Anthropic.
+    Degrades to a single-provider vote when only one live key is present, and to the mock
+    single vote when neither is. Gating/recommendation stay deterministic."""
+    # If neither side can run live, keep the offline demo behavior intact.
+    if is_mock(openai_model) and is_mock(anthropic_model):
+        return synthesize_vote(ev, model_id="mock")
+
+    reco, band_reason, confidence = derive_recommendation(ev)
+    findings = _structured_findings(ev)
+
+    # Reuse the single path's deterministic risks + evidence so they stay identical.
+    base = synthesize_vote(ev, model_id="mock")  # mock => no network, gives us risks/evidence
+    risks, evidence = base.top_risks, base.evidence_to_close
+
+    # Decide which providers actually have keys (a missing-key generate() returns ok:False fast).
+    sides = []
+    for label, mid in (("openai", openai_model), ("anthropic", anthropic_model)):
+        if mid and not is_mock(mid):
+            sides.append((label, mid))
+
+    raw_votes, notes = [], []
+    with _f.ThreadPoolExecutor(max_workers=2) as ex:
+        futs = {ex.submit(_provider_narrative, ev, reco, band_reason, findings, mid): (label, mid)
+                for (label, mid) in sides}
+        for fut in _f.as_completed(futs):
+            label, mid = futs[fut]
+            try:
+                r = fut.result()
+            except Exception:
+                r = {"ok": False}
+            if r.get("ok"):
+                raw_votes.append({"provider": label, "model": mid,
+                                  "recommendation": reco,
+                                  "narrative": r["narrative"], "dissent": r["dissent"],
+                                  "top_risks": risks})
+            elif r.get("parse_error"):
+                # The model DID respond; we just couldn't parse its body. Say so honestly
+                # rather than implying the key/network was the problem.
+                notes.append(f"{label} model responded but its output could not be parsed; excluded from the vote")
+            else:
+                notes.append(f"{label} vote unavailable (missing key or API error)")
+
+    # Stable UI order: the two known providers, openai before anthropic.
+    raw_votes.sort(key=lambda v: 0 if v["provider"] == "openai" else 1)
+
+    if len(raw_votes) >= 2:
+        rec = _reconcile(ev, reco, band_reason, findings, raw_votes, synthesizer_model)
+        return Vote(recommendation=reco, confidence=confidence,
+                    narrative=rec["narrative"], dissent=rec["dissent"],
+                    top_risks=risks, evidence_to_close=evidence,
+                    mode="dual", raw_votes=raw_votes, disagreements=rec["disagreements"],
+                    note="; ".join(notes))
+    if len(raw_votes) == 1:
+        only = raw_votes[0]
+        missing = "OPENAI_API_KEY" if only["provider"] == "anthropic" else "ANTHROPIC_API_KEY"
+        return Vote(recommendation=reco, confidence=confidence,
+                    narrative=only["narrative"], dissent=only["dissent"],
+                    top_risks=risks, evidence_to_close=evidence,
+                    mode="single", raw_votes=raw_votes, disagreements=[],
+                    note=f"Dual synthesis off — add {missing} to enable a two-model read.")
+    # Both sides failed -> deterministic mock vote, flagged.
+    base.note = "Live vote unavailable; showing deterministic read. " + "; ".join(notes)
+    return base

@@ -28,13 +28,46 @@ import os
 import re
 import json
 import threading
+import uuid
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
 
+
+def _load_dotenv():
+    """Load backend/.env into os.environ if present. Uses python-dotenv when available,
+    else a tiny built-in parser. Never overwrites a variable already set in the real
+    environment (real env wins). Keys are read from env at call time by providers.py —
+    this only makes a local .env convenient; the app never writes keys to disk."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.exists(env_path):
+        return
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path, override=False)
+        return
+    except Exception:
+        pass
+    # Fallback parser (no python-dotenv installed)
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k, v = k.strip(), v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_dotenv()  # must run before the agent imports below so provider keys are set at import time
+
 from agent.knowledge import get_kb
 from agent.providers import available_models, resolve_model
-from agent.scoring import evaluate_vendor
-from agent.vote import synthesize_vote
+from agent.scoring import evaluate_vendor, EvaluationCancelled
+from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources
 from agent.sample import sample_proposal_text
@@ -68,21 +101,86 @@ def _validate_models(*ids):
     return None
 
 
-def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n=None):
+def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
+                   sample_n=None, vote_dual=None, progress=None, should_cancel=None):
     """Shared evaluate -> vote -> cache path used by both evaluate endpoints."""
     ev = evaluate_vendor(vendor, product, proposal_text,
-                         scoring_model=scoring_model, requirement_sample=sample_n)
-    ev.vote = synthesize_vote(ev, model_id=vote_model)
+                         scoring_model=scoring_model, requirement_sample=sample_n,
+                         progress=progress, should_cancel=should_cancel)
+    # Drop empty/null slots so a vote_dual of all-blank values (e.g. the UI's default
+    # {openai:"", anthropic:"", ...}) doesn't activate the dual engine on placeholders.
+    if vote_dual:
+        vote_dual = {k: v for k, v in vote_dual.items() if v} or None
+    if vote_dual:
+        ev.vote = synthesize_vote_dual(
+            ev, openai_model=vote_dual.get("openai", "mock"),
+            anthropic_model=vote_dual.get("anthropic", "mock"),
+            synthesizer_model=vote_dual.get("synthesizer", "claude-opus-4-8"))
+    else:
+        ev.vote = synthesize_vote(ev, model_id=vote_model)
     result = ev.to_dict()
     with _RESULTS_LOCK:
         _RESULTS[vendor] = result
     return result
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
 # In-memory results store: vendor name -> evaluation dict. Seeded from disk on boot.
 _RESULTS: dict[str, dict] = {}
 _RESULTS_LOCK = threading.Lock()
+
+# Job registry for background evaluations: job_id -> job state dict.
+_JOBS: dict[str, dict] = {}
+_JOBS_LOCK = threading.Lock()
+
+
+def _new_job():
+    jid = uuid.uuid4().hex[:12]
+    with _JOBS_LOCK:
+        _JOBS[jid] = {"stage": "queued", "scored": 0, "total": 0,
+                      "done": False, "error": None, "result": None, "cancel": False}
+    return jid
+
+
+def _job_progress(jid):
+    def cb(msg, frac):
+        with _JOBS_LOCK:
+            j = _JOBS.get(jid)
+            if j:
+                j["stage"] = msg
+                # messages look like "Scored 120/422 requirements…"  (re imported at module top)
+                m = re.search(r"(\d+)\s*/\s*(\d+)", msg)
+                if m:
+                    j["scored"], j["total"] = int(m.group(1)), int(m.group(2))
+    return cb
+
+
+def _job_should_cancel(jid):
+    def chk():
+        with _JOBS_LOCK:
+            j = _JOBS.get(jid)
+            return bool(j and j["cancel"])
+    return chk
+
+
+def _run_job(jid, **kw):
+    try:
+        result = _run_and_cache(progress=_job_progress(jid),
+                                should_cancel=_job_should_cancel(jid), **kw)
+        # Single lock block: attach ingest metadata and publish the result atomically,
+        # so a status poll never sees a half-updated job and there's no ordering fragility.
+        with _JOBS_LOCK:
+            if "ingest" in _JOBS[jid]:
+                result["_ingest"] = _JOBS[jid]["ingest"]
+            _JOBS[jid].update(stage="done", done=True, result=result)
+    except EvaluationCancelled:
+        with _JOBS_LOCK:
+            _JOBS[jid].update(stage="cancelled", done=True, error="cancelled")
+    except Exception as e:
+        with _JOBS_LOCK:
+            _JOBS[jid].update(stage="error", done=True, error=f"{type(e).__name__}: {e}")
 
 
 def _seed_results():
@@ -159,8 +257,11 @@ def evaluate():
     scoring_model = body.get("scoring_model", "mock")
     vote_model = body.get("vote_model", scoring_model)
     sample_n = body.get("requirement_sample")
+    vote_dual = body.get("vote_dual")  # {openai, anthropic, synthesizer} or None
 
-    err = _validate_models(scoring_model, vote_model)
+    pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
+                if vote_dual and vote_dual.get(k)] if vote_dual else []
+    err = _validate_models(scoring_model, vote_model, *pair_ids)
     if err:
         return jsonify({"error": err}), 400
 
@@ -180,7 +281,12 @@ def evaluate():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No proposal content could be extracted from the provided sources."}), 400
 
-    return jsonify(_run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n))
+    jid = _new_job()
+    threading.Thread(target=_run_job, kwargs=dict(
+        jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
+        scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
+        vote_dual=vote_dual), daemon=True).start()
+    return jsonify({"job_id": jid}), 202
 
 
 @app.route("/api/evaluate_upload", methods=["POST"])
@@ -200,8 +306,16 @@ def evaluate_upload():
     vote_model = request.form.get("vote_model", scoring_model)
     sample_n = request.form.get("requirement_sample", type=int)
     urls = _split_urls(request.form.get("urls", ""))
+    vote_dual = None
+    if request.form.get("vote_dual"):
+        try:
+            vote_dual = json.loads(request.form["vote_dual"])
+        except Exception:
+            vote_dual = None
+    pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
+                if vote_dual and vote_dual.get(k)] if vote_dual else []
 
-    err = _validate_models(scoring_model, vote_model)
+    err = _validate_models(scoring_model, vote_model, *pair_ids)
     if err:
         return jsonify({"error": err}), 400
 
@@ -231,14 +345,39 @@ def evaluate_upload():
     if not (proposal_text or "").strip():
         return jsonify({"error": "No readable text could be extracted from the uploads/URLs."}), 400
 
-    result = _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model, sample_n)
-    result["_ingest"] = {
+    ingest_meta = {
         "files": [os.path.basename(p) for p in saved_paths],
-        "urls": urls,
-        "rejected": rejected,
-        "chars_extracted": len(proposal_text),
+        "urls": urls, "rejected": rejected, "chars_extracted": len(proposal_text),
     }
-    return jsonify(result)
+    jid = _new_job()
+    # Attach ingest metadata BEFORE the worker is spawned below — the thread (and thus any
+    # reader of _JOBS[jid]["ingest"]) only starts after this line, so no lock race exists.
+    with _JOBS_LOCK:
+        _JOBS[jid]["ingest"] = ingest_meta
+    threading.Thread(target=_run_job, kwargs=dict(
+        jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
+        scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
+        vote_dual=vote_dual), daemon=True).start()
+    return jsonify({"job_id": jid}), 202
+
+
+@app.route("/api/evaluate/status/<job_id>")
+def evaluate_status(job_id):
+    with _JOBS_LOCK:
+        j = _JOBS.get(job_id)
+        if not j:
+            return jsonify({"error": "unknown job"}), 404
+        return jsonify({k: j[k] for k in ("stage", "scored", "total", "done", "error", "result")})
+
+
+@app.route("/api/evaluate/cancel/<job_id>", methods=["POST"])
+def evaluate_cancel(job_id):
+    with _JOBS_LOCK:
+        j = _JOBS.get(job_id)
+        if not j:
+            return jsonify({"error": "unknown job"}), 404
+        j["cancel"] = True
+    return jsonify({"ok": True})
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -252,6 +391,14 @@ def chat():
     with _RESULTS_LOCK:
         snapshot = list(_RESULTS.values())
     return jsonify(chat_answer(question, results=snapshot, model_id=model_id, history=history))
+
+
+# --------------------------------------------------------------------------- #
+# Error handlers                                                              #
+# --------------------------------------------------------------------------- #
+@app.errorhandler(413)
+def _too_large(_e):
+    return jsonify({"error": f"Upload exceeds the {MAX_UPLOAD_MB} MB limit."}), 413
 
 
 if __name__ == "__main__":

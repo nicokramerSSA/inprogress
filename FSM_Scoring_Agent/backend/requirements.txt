@@ -1,5 +1,6 @@
 # Core server
 flask>=3.0
+python-dotenv>=1.0   # optional: load backend/.env at startup (built-in fallback if absent)
 
 # Optional LLM SDKs — only needed if you select a live model (not for the offline 'mock' demo)
 anthropic>=0.39      # for Anthropic models (set ANTHROPIC_API_KEY)
