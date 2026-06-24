@@ -409,7 +409,7 @@ def evaluate_batch():
         except Exception:
             vote_dual = None
     pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
-                if vote_dual and vote_dual.get(k)] if vote_dual else []
+                if vote_dual.get(k)] if vote_dual else []
     err = _validate_models(scoring_model, vote_model, *pair_ids)
     if err:
         return jsonify({"error": err}), 400
@@ -423,7 +423,7 @@ def evaluate_batch():
             continue
         urls = _split_urls(request.form.get(f"urls_{i}", ""))
         saved_paths, row_rejected = [], []
-        vdir = os.path.join(UPLOAD_DIR, secure_filename(vendor) or "vendor")
+        vdir = os.path.join(UPLOAD_DIR, secure_filename(vendor) or f"vendor_{i}")
         os.makedirs(vdir, exist_ok=True)
         for f in request.files.getlist(f"files_{i}"):
             if not f or not f.filename:
@@ -434,7 +434,11 @@ def evaluate_batch():
                 row_rejected.append(f.filename)
                 continue
             dest = os.path.join(vdir, name)
-            f.save(dest)
+            try:
+                f.save(dest)
+            except Exception:
+                row_rejected.append(f.filename)
+                continue
             saved_paths.append(dest)
         if not saved_paths and not urls:
             reason = "no file (.pdf/.docx/.xlsx/.txt/.md) or URL provided"
