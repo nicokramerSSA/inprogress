@@ -1079,8 +1079,9 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
 
 // ---- batch runner: many vendors, one parallel run, live board -------------
 const REQ_TOTAL = 422; // requirements in data/requirements.json; used only for the ~estimate
+function newRow(){ return {id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()), vendor:"", files:[], urls:""}; }
 function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
-  const [rows,setRows]=useState([{vendor:"", files:[], urls:""}]);
+  const [rows,setRows]=useState([newRow()]);
   const [confirm,setConfirm]=useState(null); // {text} pre-flight estimate, or null
   const [board,setBoard]=useState(null);     // [{vendor, job_id, stage, scored, total, done, error}]
   const [busy,setBusy]=useState(false);
@@ -1088,7 +1089,7 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
   const ACCEPT=".pdf,.docx,.xlsx,.xlsm,.txt,.md";
 
   function setRow(i,patch){ setRows(rs=>rs.map((r,j)=>j===i?{...r,...patch}:r)); }
-  function addRow(){ setRows(rs=>[...rs,{vendor:"", files:[], urls:""}]); }
+  function addRow(){ setRows(rs=>[...rs,newRow()]); }
   function removeRow(i){ setRows(rs=>rs.length>1?rs.filter((_,j)=>j!==i):rs); }
   function addFiles(i,list){ setRow(i,{files:[...rows[i].files,...Array.from(list)]}); }
   function removeFile(i,k){ setRow(i,{files:rows[i].files.filter((_,j)=>j!==k)}); }
@@ -1132,16 +1133,22 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
 
   async function pollAll(jobs){
     const live={}; jobs.forEach(j=>live[j.job_id]=true);
-    while(Object.values(live).some(Boolean)){
-      await new Promise(r=>setTimeout(r,900));
-      await Promise.all(jobs.map(async j=>{
-        if(!live[j.job_id]) return;
-        const s=await jget("/api/evaluate/status/"+j.job_id);
-        setBoard(b=>b.map(x=>x.job_id===j.job_id?{...x, stage:s.stage, scored:s.scored, total:s.total, done:s.done, error:s.error}:x));
-        if(s.done || s.error){ live[j.job_id]=false; }
-      }));
+    try{
+      while(Object.values(live).some(Boolean)){
+        await new Promise(r=>setTimeout(r,900));
+        await Promise.all(jobs.map(async j=>{
+          if(!live[j.job_id]) return;
+          let s;
+          try{ s=await jget("/api/evaluate/status/"+j.job_id); }
+          catch(e){ return; } // transient (network/502): skip this tick, retry next loop
+          if(!s || s.error===undefined && s.stage===undefined && s.done===undefined) return; // unparseable body: retry next loop
+          setBoard(b=>b.map(x=>x.job_id===j.job_id?{...x, stage:s.stage, scored:s.scored, total:s.total, done:s.done, error:s.error}:x));
+          if(s.done || s.error){ live[j.job_id]=false; }
+        }));
+      }
+    } finally {
+      setBusy(false); onDone();
     }
-    setBusy(false); onDone();
   }
   async function cancelOne(jid){ await jpost("/api/evaluate/cancel/"+jid,{}); }
 
@@ -1155,7 +1162,7 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
         {!STATIC && <>
           <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:10}}>
             {rows.map((r,i)=>(
-              <div key={i} className="grid" style={{gridTemplateColumns:"180px 1fr auto",gap:8,alignItems:"start"}}>
+              <div key={r.id} className="grid" style={{gridTemplateColumns:"180px 1fr auto",gap:8,alignItems:"start"}}>
                 <input className="pill" style={{padding:"8px 10px"}} placeholder="Vendor name"
                        value={r.vendor} onChange={e=>setRow(i,{vendor:e.target.value})}/>
                 <div onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(i,e.dataTransfer.files);}}>
