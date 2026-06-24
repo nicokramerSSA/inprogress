@@ -529,6 +529,18 @@ function Dashboard({results, onOpen}){
   return (
     <div>
       <div className="section-title">Head-to-head ranking — the agent’s vote</div>
+      <div style={{display:"flex",gap:8,margin:"0 0 10px"}}>
+        <button className="btn small" onClick={()=>{
+          const {rows,headers}=rankingRows(results);
+          downloadCSV(exportFilename("ranking",[],new Date().toISOString().slice(0,10)),rows,headers);
+        }}>Export ranking (CSV)</button>
+        <button className="btn ghost small" onClick={()=>{
+          const {rows,headers}=rankingRows(results);
+          printBranded("Vendor ranking — FSM RFP evaluation",{
+            contextLine:results.length+" vendors evaluated · advisory scoring",
+            tableHTML:tableHTML(rows,headers)});
+        }}>Export ranking (PDF)</button>
+      </div>
       <div className="card" style={{padding:0}}>
         <div className="table-scroll">
         <table className="dashboard-table">
@@ -580,6 +592,10 @@ function VendorDetail({data}){
   const caps=[...new Set(r.requirement_scores.map(x=>x.capability))];
   return (
     <div>
+      <button className="btn small" style={{marginBottom:10}} onClick={()=>{
+        const {rows,headers}=requirementRows(data);
+        downloadCSV(exportFilename("requirements",[data.vendor],new Date().toISOString().slice(0,10)),rows,headers);
+      }}>Export requirements (CSV)</button>
       {/* Headline */}
       <div className="grid detail-hero">
         <div className="card">
@@ -853,6 +869,18 @@ function Compare({results}){
           </select>
         </label>
         {bName === aName && <span className="small" style={{color:"var(--warn)"}}>Pick two different vendors — showing the next one.</span>}
+      </div>
+
+      <div style={{display:"flex",gap:8,margin:"10px 0"}}>
+        <button className="btn small" disabled={!A||!B||A===B} onClick={()=>{
+          const {rows,headers}=compareRows(A,B);
+          downloadCSV(exportFilename("compare",[A.vendor,"vs",B.vendor],new Date().toISOString().slice(0,10)),rows,headers);
+        }}>Export comparison (CSV)</button>
+        <button className="btn ghost small" disabled={!A||!B||A===B} onClick={()=>{
+          const {rows,headers}=compareRows(A,B);
+          printBranded(A.vendor+" vs "+B.vendor+" — FSM RFP comparison",{
+            takeaway:cmpTakeaway(A,B), tableHTML:tableHTML(rows,headers)});
+        }}>Export comparison (PDF)</button>
       </div>
 
       <div className="cmp-takeaway">{cmpTakeaway(A, B)}</div>
