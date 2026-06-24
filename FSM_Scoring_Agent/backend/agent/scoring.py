@@ -37,7 +37,8 @@ from typing import List, Dict, Any, Optional, Callable
 
 from .knowledge import get_kb
 from .providers import client, is_mock, extract_json
-from .ingest import build_retrieval_index, relevant_passages
+from .ingest import (build_retrieval_index, relevant_passages,
+                     parse_segments, strip_loc_markers, locate_quote)
 from .schemas import (
     RequirementScore, CategoryScore, CapabilityScore, SegmentFit,
     GatingResult, AgenticFuture, VendorEvaluation,
@@ -95,13 +96,19 @@ def evaluate_vendor(
         if progress:
             progress(msg, frac)
 
+    # Split structural markers out of the flat blob ONCE: segments carry source +
+    # locator for quote-mapping; clean_text drives every existing consumer so
+    # scoring is unperturbed (markers stripped).
+    segments = parse_segments(proposal_text)
+    clean_text = strip_loc_markers(proposal_text)
+
     _emit(f"Scoring {len(reqs)} requirements for {vendor}…", 0.05)
 
     # 1) Per-requirement scoring (batched) -----------------------------------
-    req_scores = _score_requirements(vendor, product, proposal_text, reqs, scoring_model, _emit, should_cancel)
+    req_scores = _score_requirements(vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel, segments)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
-    gating = _compute_gating(req_scores, proposal_text)
+    gating = _compute_gating(req_scores, clean_text)
     _emit("Applying MoSCoW + architectural gates…", 0.72)
 
     # 3) Category rollup ------------------------------------------------------
@@ -116,7 +123,7 @@ def evaluate_vendor(
     _emit("Assessing OpCo-segment fit…", 0.88)
 
     # 6) Agentic-future assessment (LLM or mock, + dossier) ------------------
-    agentic = _agentic_future(vendor, product, proposal_text, scoring_model)
+    agentic = _agentic_future(vendor, product, clean_text, scoring_model)
     _emit("Assessing fit into an agentic future…", 0.94)
 
     # Headline weighted totals (0-100) ---------------------------------------
@@ -149,11 +156,11 @@ def evaluate_vendor(
 # --------------------------------------------------------------------------- #
 # 1) Per-requirement scoring                                                  #
 # --------------------------------------------------------------------------- #
-def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None) -> List[RequirementScore]:
+def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None, segments=None) -> List[RequirementScore]:
     strengths = _vendor_cap_strength(vendor)
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
-        return [_mock_score_requirement(r, proposal_text, strengths, proposal_low) for r in reqs]
+        return [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
 
     kb = get_kb()
     system = kb.persona_system_prompt() + "\n\n" + kb.scoring_context()
@@ -185,11 +192,11 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
         for r in batch:
             row = by_rid.get(r["rid"])
             if row:
-                out.append(_row_to_score(r, row))
+                out.append(_row_to_score(r, row, segments))
             else:
                 # Fall back to the deterministic engine for any row the model skipped,
                 # so the rollups never have holes (fail soft).
-                out.append(_mock_score_requirement(r, proposal_text, strengths, proposal_low))
+                out.append(_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments))
 
         emit(f"Scored {min(i + BATCH, total)}/{total} requirements…",
              0.05 + 0.62 * (min(i + BATCH, total) / total))
@@ -229,16 +236,18 @@ def _batch_prompt(vendor, product, batch, context) -> str:
         f"  - vendor_code: OOB | CONFIG | EXTENSION | CUSTOM | PARTNER | ROADMAP | GAP\n"
         f"  - confidence: High | Medium | Low (Low if the proposal does not clearly evidence it)\n"
         f"  - rationale: one terse sentence in your voice (tie to outcomes/dollars where you can)\n"
-        f"  - evidence_gap: what must still be proven in the Charlotte demo or references (\"\" if none)\n\n"
+        f"  - evidence_gap: what must still be proven in the Charlotte demo or references (\"\" if none)\n"
+        f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the excerpts "
+        f"above that supports your call (\"\" if the excerpts do not address it)\n\n"
         f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
         f"Partial/No with Low confidence and name the gap.\n\n"
         f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
         f"Return ONLY a JSON array, one object per requirement, keys: "
-        f"rid, met, quality, vendor_code, confidence, rationale, evidence_gap."
+        f"rid, met, quality, vendor_code, confidence, rationale, evidence_gap, evidence_quote."
     )
 
 
-def _row_to_score(r: Dict[str, Any], row: Dict[str, Any]) -> RequirementScore:
+def _row_to_score(r: Dict[str, Any], row: Dict[str, Any], segments=None) -> RequirementScore:
     """Coerce one LLM row into a validated RequirementScore."""
     met = str(row.get("met", "Partial")).strip().title()
     if met not in ("Yes", "Partial", "No", "N/A"):
@@ -252,11 +261,17 @@ def _row_to_score(r: Dict[str, Any], row: Dict[str, Any]) -> RequirementScore:
     conf = str(row.get("confidence", "Medium")).strip().title()
     if conf not in ("High", "Medium", "Low"):
         conf = "Medium"
+    quote = str(row.get("evidence_quote", "")).strip()[:240]
+    evidence = {}
+    if quote:
+        loc = locate_quote(quote, segments or [])
+        evidence = {"quote": quote, "source": loc["source"], "locator": loc["locator"]}
     return RequirementScore(
         rid=r["rid"], domain=r["domain"], capability=r["capability"],
         priority=r["priority"], met=met, quality=quality, vendor_code=code,
         confidence=conf, rationale=str(row.get("rationale", "")).strip()[:400],
         evidence_gap=str(row.get("evidence_gap", "")).strip()[:300],
+        evidence=evidence,
     )
 
 
@@ -313,7 +328,8 @@ def _vendor_cap_strength(vendor: str) -> Dict[str, float]:
 
 def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
                             strengths: Optional[Dict[str, float]] = None,
-                            proposal_text_lower: Optional[str] = None) -> RequirementScore:
+                            proposal_text_lower: Optional[str] = None,
+                            segments=None) -> RequirementScore:
     """
     Deterministic, dossier-grounded stand-in (offline demo, no API key). Strength comes
     from the vendor's research ratings for this requirement's capability; the proposal
@@ -369,8 +385,32 @@ def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
     return RequirementScore(
         rid=r["rid"], domain=r["domain"], capability=cap, priority=r["priority"],
         met=met, quality=quality, vendor_code=code, confidence=conf,
-        rationale=rationale, evidence_gap=gap,
+        rationale=rationale, evidence_gap=gap, evidence=_mock_evidence(r, segments),
     )
+
+
+def _mock_evidence(r: Dict[str, Any], segments) -> Dict[str, Any]:
+    """Best-effort demo evidence: pick the segment with the most requirement-term
+    hits and snip a short window around the first hit, clearly prefixed [demo].
+    Returns {} with no segments or no term hits (honest — never fabricates)."""
+    if not segments:
+        return {}
+    terms = [w.strip(".,()/").lower() for w in r["requirement"].split() if len(w) > 5]
+    if not terms:
+        return {}
+    best, best_hits, best_pos = None, 0, 0
+    for seg in segments:
+        low = seg["text"].lower()
+        hits = sum(low.count(t) for t in terms)
+        if hits > best_hits:
+            positions = [low.find(t) for t in terms if t in low]
+            best, best_hits, best_pos = seg, hits, (min(positions) if positions else 0)
+    if not best:
+        return {}
+    start = max(0, best_pos - 60)
+    snippet = " ".join(best["text"][start:start + 200].split())
+    return {"quote": ("[demo] " + snippet)[:240],
+            "source": best["source"], "locator": best["locator"]}
 
 
 # --------------------------------------------------------------------------- #

@@ -23,6 +23,7 @@ class RequirementScore:
     confidence: str               # High / Medium / Low
     rationale: str                # short justification in the agent's voice
     evidence_gap: str = ""        # what still must be proven (demo / references)
+    evidence: Dict[str, Any] = field(default_factory=dict)  # {quote, source, locator}; {} if none
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
