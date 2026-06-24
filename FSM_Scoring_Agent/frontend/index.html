@@ -161,6 +161,9 @@
     .rowbar .val{text-align:left}
     .card{padding:18px}
   }
+  .requirement-table details.evidence{margin-top:4px}
+  .requirement-table details.evidence>summary{cursor:pointer;color:var(--ssa-blue);font-size:12px}
+  .requirement-table details.evidence blockquote{margin:4px 0;padding:4px 8px;border-left:3px solid var(--ssa-blue);background:rgba(0,0,0,.03);font-style:italic;font-size:12px}
 </style>
 </head>
 <body>
@@ -580,7 +583,20 @@ function VendorDetail({data}){
               <td>{x.quality||"—"}</td>
               <td><span className="tag">{x.vendor_code}</span></td>
               <td className={"conf-"+x.confidence}>{x.confidence}</td>
-              <td>{x.rationale}{x.evidence_gap && <div className="muted" style={{marginTop:2}}>⤷ {x.evidence_gap}</div>}</td>
+              <td>{x.rationale}
+                {x.evidence_gap && <div className="muted" style={{marginTop:2}}>⤷ {x.evidence_gap}</div>}
+                {x.evidence && x.evidence.quote && (
+                  <details className="evidence">
+                    <summary>evidence</summary>
+                    <blockquote>{x.evidence.quote}</blockquote>
+                    <div className="small muted">
+                      {x.evidence.locator === "(unlocated)"
+                        ? "location not pinned"
+                        : (x.evidence.source ? x.evidence.source + ", " : "") + x.evidence.locator}
+                    </div>
+                  </details>
+                )}
+              </td>
             </tr>
           ))}
           </tbody>
