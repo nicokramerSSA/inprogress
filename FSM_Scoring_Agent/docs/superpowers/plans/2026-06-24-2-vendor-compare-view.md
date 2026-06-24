@@ -37,7 +37,7 @@ Every task's requirements implicitly include this section. Values are copied ver
   ```
 - The App tab-render branches are lines 798–814 (`{tab==="dashboard" && ...}` … `{tab==="chat" && <Chat .../>}`).
 - A vendor evaluation object `r` has: `vendor`, `product`, `is_demo`, `weighted_total`, `capability_weighted_total`, `gating{disqualified,unmet_must_count,unmet_musts[{rid,capability,reason}],architectural_gate_flags,summary}`, `categories[]{id,name,weight,raw_1_5,weighted_points,confidence,rationale}`, `capabilities[]{code,name,weight,score_1_5,n_requirements,n_unmet_must}`, `segment_fit[]{segment_id,segment_name,fit_1_5,rationale}`, `agentic_future{score_1_5,openness_1_5,ai_capability_1_5,data_control_risk,rationale}`, `vote{recommendation,confidence,narrative,dissent,top_risks,evidence_to_close}`, `requirement_scores[]{rid,domain,capability,priority,met,quality,vendor_code,confidence,rationale,evidence_gap}`.
-- Build the standalone: `cd backend && python build_static.py` → writes `../FSM_Evaluation_Agent_Standalone.html`.
+- Build the standalone: `cd backend && python3 build_static.py` → writes `../FSM_Evaluation_Agent_Standalone.html`.
 - The scratchpad for throwaway verification scripts is `/tmp/claude-1000/-home-chagood-workspace-projects-RFP-Agent-FSM-Scoring-Agent/b8bc3f98-10e6-4167-bcaa-b007f9b186a5/scratchpad`.
 
 ---
@@ -226,7 +226,7 @@ The harness proves the logic but evals only the marker block. Confirm the edited
 
 Run:
 ```bash
-cd "<repo>/FSM_Scoring_Agent/backend" && python app.py & SRV=$!; sleep 3; \
+cd "<repo>/FSM_Scoring_Agent/backend" && python3 app.py & SRV=$!; sleep 3; \
 google-chrome --headless --disable-gpu --no-sandbox --dump-dom http://127.0.0.1:8000 2>/dev/null | grep -c "Head-to-head"; \
 kill $SRV
 ```
@@ -346,7 +346,7 @@ In the `<style>` block, after the `.requirement-controls` rule (≈ line 114), a
 
 Run:
 ```bash
-cd "<repo>/FSM_Scoring_Agent/backend" && python app.py & SRV=$!; sleep 3; \
+cd "<repo>/FSM_Scoring_Agent/backend" && python3 app.py & SRV=$!; sleep 3; \
 google-chrome --headless --disable-gpu --no-sandbox --dump-dom http://127.0.0.1:8000 2>/dev/null | grep -c ">Compare<"; \
 google-chrome --headless --disable-gpu --no-sandbox --window-size=1440,2000 --screenshot="<scratchpad>/compare_shell.png" http://127.0.0.1:8000 2>/dev/null; \
 kill $SRV
@@ -532,7 +532,7 @@ In `<style>`, right after the `.cmp-takeaway` rule added in Task 2, add:
 
 Run:
 ```bash
-cd "<repo>/FSM_Scoring_Agent/backend" && python app.py & SRV=$!; sleep 3; \
+cd "<repo>/FSM_Scoring_Agent/backend" && python3 app.py & SRV=$!; sleep 3; \
 google-chrome --headless --disable-gpu --no-sandbox --dump-dom http://127.0.0.1:8000 2>/dev/null | grep -c ">Compare<"; \
 google-chrome --headless --disable-gpu --no-sandbox --window-size=1440,2600 --screenshot="<scratchpad>/compare_rollups.png" http://127.0.0.1:8000 2>/dev/null; \
 kill $SRV
@@ -656,7 +656,7 @@ Insert just before the last `</div>` that closes the `return (...)` of `Compare`
 
 Run:
 ```bash
-cd "<repo>/FSM_Scoring_Agent/backend" && python app.py & SRV=$!; sleep 3; \
+cd "<repo>/FSM_Scoring_Agent/backend" && python3 app.py & SRV=$!; sleep 3; \
 google-chrome --headless --disable-gpu --no-sandbox --dump-dom http://127.0.0.1:8000 2>/dev/null | grep -c ">Compare<"; \
 kill $SRV
 ```
@@ -690,7 +690,7 @@ Claude-Session: https://claude.ai/code/session_019qDE6a8ib6kdPJZ5ASnGmx"
 
 - [ ] **Step 1: Rebuild the standalone**
 
-Run: `cd "<repo>/FSM_Scoring_Agent/backend" && python build_static.py`
+Run: `cd "<repo>/FSM_Scoring_Agent/backend" && python3 build_static.py`
 Expected: prints success and writes `../FSM_Evaluation_Agent_Standalone.html` (file size noticeably > 0; ~900 KB+).
 
 - [ ] **Step 2: Verify the standalone compiles, mounts, and includes Compare offline**
