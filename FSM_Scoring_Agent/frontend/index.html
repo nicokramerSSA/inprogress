@@ -115,6 +115,19 @@
   .cmp-pickers{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
   .cmp-pickers label{display:flex;align-items:center}
   .cmp-takeaway{background:#eef3fb;border:1px solid #c9d9ed;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.5;margin-bottom:8px}
+  .cmp-colhead,.cmp-metric{display:grid;grid-template-columns:minmax(160px,1.4fr) 1fr 64px 1fr;gap:12px;align-items:center}
+  .cmp-colhead{margin:6px 0 2px;padding:0 22px}
+  .cmp-vendorhead{text-align:left}
+  .cmp-metric{font-size:13px;margin:9px 0}
+  .cmp-metric-label{color:var(--ink);line-height:1.25}
+  .cmp-side{display:flex;align-items:center;gap:10px}
+  .cmp-side .bar{flex:1}
+  .cmp-num{font-variant-numeric:tabular-nums;color:var(--muted);min-width:34px;text-align:right}
+  .cmp-delta{text-align:center;font-size:12px;font-variant-numeric:tabular-nums}
+  .delta-up{color:var(--good);font-weight:600}
+  .delta-down{color:var(--bad);font-weight:600}
+  .delta-zero{color:var(--muted)}
+  @media (max-width:1080px){ .cmp-colhead,.cmp-metric{grid-template-columns:minmax(120px,1fr) 1fr 52px 1fr} }
   .runbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .source-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
   .research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
@@ -578,6 +591,36 @@ function VendorDetail({data}){
   );
 }
 
+// ---- compare helpers -------------------------------------------------------
+// delta = A - B; arrow + sign carry meaning (colorblind-safe), color secondary.
+function DeltaChip({delta, digits=1}){
+  const p = Math.pow(10, digits);
+  const d = Math.round((delta||0) * p) / p;
+  if(d > 0) return <span className="delta-up" title="Vendor A higher">{"▲"} +{d}</span>;
+  if(d < 0) return <span className="delta-down" title="Vendor B higher">{"▼"} {d}</span>;
+  return <span className="delta-zero" title="tie">{"–"} 0</span>;
+}
+
+// One paired metric row: label | A value | delta | B value, with mini bars.
+function CmpRow({label, a, b, max=5, sub}){
+  const pa = Math.max(0, Math.min(100, (a/max)*100));
+  const pb = Math.max(0, Math.min(100, (b/max)*100));
+  return (
+    <div className="cmp-metric">
+      <div className="cmp-metric-label">{label}{sub && <div className="small muted">{sub}</div>}</div>
+      <div className="cmp-side">
+        <div className="bar"><span style={{width:pa+"%"}}/></div>
+        <span className="cmp-num">{fmt(a)}</span>
+      </div>
+      <div className="cmp-delta"><DeltaChip delta={a-b}/></div>
+      <div className="cmp-side">
+        <div className="bar"><span style={{width:pb+"%"}}/></div>
+        <span className="cmp-num">{fmt(b)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ---- compare (two vendors side by side) ----------------------------------
 function Compare({results}){
   const names = results.map(r => r.vendor);
@@ -624,7 +667,94 @@ function Compare({results}){
 
       <div className="cmp-takeaway">{cmpTakeaway(A, B)}</div>
 
-      {/* rollup + requirement sections added in later tasks */}
+      {/* Column headers */}
+      <div className="cmp-colhead">
+        <div></div>
+        <div className="cmp-vendorhead"><b>{A.vendor}</b><div className="small muted">{A.product}{A.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+        <div></div>
+        <div className="cmp-vendorhead"><b>{B.vendor}</b><div className="small muted">{B.product}{B.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+      </div>
+
+      {/* Headline lenses */}
+      <div className="section-title">Headline scores</div>
+      <div className="card">
+        <CmpRow label="SSA weighted total" a={A.weighted_total} b={B.weighted_total} max={100}/>
+        <CmpRow label={"RFP §30 capability lens"} a={A.capability_weighted_total} b={B.capability_weighted_total} max={100}/>
+      </div>
+
+      {/* Gating */}
+      <div className="section-title">Gate (MoSCoW + architectural)</div>
+      <div className="grid detail-grid">
+        {[A,B].map((r,i)=>(
+          <div className="card" key={i}>
+            <b>{r.vendor}: {r.gating.disqualified ? <span className="met-No">DISQUALIFIED</span> : <span className="met-Yes">PASS</span>}</b>
+            <p className="small muted" style={{marginTop:4}}>{r.gating.summary}</p>
+            {r.gating.unmet_musts.length>0 && <ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+              {r.gating.unmet_musts.slice(0,6).map(m=>(<li key={m.rid}>{m.rid} ({m.capability}): {m.reason}</li>))}
+            </ul>}
+            {r.gating.architectural_gate_flags.map((f,j)=>(<div key={j} className="small" style={{color:"var(--warn)",marginTop:6}}>{"⚑"} {f}</div>))}
+          </div>
+        ))}
+      </div>
+
+      {/* §30 capabilities */}
+      <div className="section-title">{"RFP capabilities (Section 30)"}</div>
+      <div className="card">
+        {A.capabilities.map(ca=>{
+          const cb = B.capabilities.find(x=>x.code===ca.code) || {score_1_5:0,n_unmet_must:0};
+          return <CmpRow key={ca.code} label={`${ca.code} · ${ca.name}`}
+                   sub={(ca.n_unmet_must>0||cb.n_unmet_must>0) ? `unmet Must — ${A.vendor}: ${ca.n_unmet_must}, ${B.vendor}: ${cb.n_unmet_must}` : null}
+                   a={ca.score_1_5} b={cb.score_1_5}/>;
+        })}
+      </div>
+
+      {/* SSA categories */}
+      <div className="section-title">SSA scorecard categories</div>
+      <div className="card">
+        {A.categories.map(ca=>{
+          const cb = B.categories.find(x=>x.id===ca.id) || {raw_1_5:0};
+          return <CmpRow key={ca.id} label={`${ca.name} (${Math.round(ca.weight*100)}%)`} a={ca.raw_1_5} b={cb.raw_1_5}/>;
+        })}
+      </div>
+
+      {/* Segment fit */}
+      <div className="section-title">OpCo-segment fit</div>
+      <div className="card">
+        {A.segment_fit.map(sa=>{
+          const sb = B.segment_fit.find(x=>x.segment_id===sa.segment_id) || {fit_1_5:0};
+          return <CmpRow key={sa.segment_id} label={sa.segment_name} a={sa.fit_1_5} b={sb.fit_1_5}/>;
+        })}
+      </div>
+
+      {/* Agentic future */}
+      <div className="section-title">Fit into an agentic future</div>
+      <div className="card">
+        <CmpRow label="Overall" a={A.agentic_future.score_1_5} b={B.agentic_future.score_1_5}/>
+        <CmpRow label="Openness / data access" a={A.agentic_future.openness_1_5} b={B.agentic_future.openness_1_5}/>
+        <CmpRow label="AI capability (shipped)" a={A.agentic_future.ai_capability_1_5} b={B.agentic_future.ai_capability_1_5}/>
+        <div className="cmp-metric">
+          <div className="cmp-metric-label">Data-control risk</div>
+          <div className="cmp-side"><span className="cmp-num">{A.agentic_future.data_control_risk}</span></div>
+          <div className="cmp-delta"></div>
+          <div className="cmp-side"><span className="cmp-num">{B.agentic_future.data_control_risk}</span></div>
+        </div>
+      </div>
+
+      {/* Vote */}
+      <div className="section-title">{"The agent's vote"}</div>
+      <div className="grid detail-grid">
+        {[A,B].map((r,i)=>(
+          <div className="card" key={i}>
+            <b>{r.vendor}</b> <span className={recoClass(r.vote.recommendation)}>{r.vote.recommendation}</span>
+            <span className="small muted"> · {r.vote.confidence} confidence</span>
+            <details style={{marginTop:8}}>
+              <summary className="small" style={{cursor:"pointer",color:"var(--ssa-blue)"}}>Narrative</summary>
+              <p className="small" style={{marginTop:6}}>{r.vote.narrative}</p>
+              {r.vote.dissent && <p className="small muted" style={{marginTop:6}}><b>Dissent:</b> {r.vote.dissent}</p>}
+            </details>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
