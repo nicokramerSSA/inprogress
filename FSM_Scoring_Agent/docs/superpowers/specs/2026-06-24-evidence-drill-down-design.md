@@ -104,7 +104,10 @@ already exist; add within-source locator lines `===== LOC: <locator> =====`.
   current `## Sheet:` line).
 - `_docx`: emit `===== LOC: <heading text> =====` at each Heading-styled
   paragraph; text before the first heading → `===== LOC: (document) =====`.
-- `.txt`/`.md`/HTML/URL: a single `===== LOC: (document) =====`.
+- `.txt`/`.md`/HTML/URL: no `LOC` marker is emitted. `parse_segments`
+  defaults the locator to `(document)` for any source lacking a `LOC`
+  marker, so these collapse to a single `(document)` segment — same
+  observable result, one less marker to emit.
 - `extract_sources`: unchanged structure (it concatenates per-source text under
   the `FILE:`/`URL:` headers); the per-source text now contains `LOC:` markers
   from the extractors.

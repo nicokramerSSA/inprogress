@@ -141,19 +141,29 @@ def _pdf(path: str) -> str:
         import pdfplumber  # preferred: better layout handling
         out = []
         with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
+            for i, page in enumerate(pdf.pages):
+                out.append(f"===== LOC: p.{i + 1} =====")
                 out.append(page.extract_text() or "")
         return "\n".join(out)
     except ImportError:
         from pypdf import PdfReader  # fallback
         reader = PdfReader(path)
-        return "\n".join((pg.extract_text() or "") for pg in reader.pages)
+        out = []
+        for i, pg in enumerate(reader.pages):
+            out.append(f"===== LOC: p.{i + 1} =====")
+            out.append(pg.extract_text() or "")
+        return "\n".join(out)
 
 
 def _docx(path: str) -> str:
     from docx import Document  # python-docx
+    parts = []
     doc = Document(path)
-    parts = [p.text for p in doc.paragraphs]
+    for p in doc.paragraphs:
+        style = (p.style.name if p.style else "") or ""
+        if style.lower().startswith("heading") and p.text.strip():
+            parts.append(f"===== LOC: {p.text.strip()} =====")
+        parts.append(p.text)
     for table in doc.tables:                     # vendor responses often live in tables
         for row in table.rows:
             parts.append(" | ".join(cell.text for cell in row.cells))
@@ -165,7 +175,7 @@ def _xlsx(path: str) -> str:
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     parts = []
     for ws in wb.worksheets:
-        parts.append(f"\n## Sheet: {ws.title}")
+        parts.append(f"===== LOC: Sheet '{ws.title}' =====")
         for row in ws.iter_rows(values_only=True):
             cells = [str(c) for c in row if c is not None and str(c).strip()]
             if cells:
@@ -221,3 +231,76 @@ def relevant_passages(
     scored.sort(key=lambda x: x[0], reverse=True)
     top = [c for _, c in scored[:max_chunks]]
     return "\n\n".join(top) if top else "\n\n".join(chunk for chunk, _ in entries[:max_chunks])
+
+
+# --------------------------------------------------------------------------- #
+# Source segmentation & evidence locators                                     #
+# --------------------------------------------------------------------------- #
+_SRC_RE = re.compile(r"^=====\s+(?:FILE|URL):\s+(.*?)\s+=====$")
+_LOC_RE = re.compile(r"^=====\s+LOC:\s+(.*?)\s+=====$")
+
+
+def _norm(s: str) -> str:
+    """Lowercase, collapse whitespace, strip surrounding quotes — for tolerant
+    quote-to-segment matching."""
+    s = re.sub(r"\s+", " ", (s or "")).strip()
+    return s.strip("\"'“”‘’").lower()  # ASCII + curly quotes
+
+
+def parse_segments(blob: str) -> List[dict]:
+    """Reconstruct (source, locator, text) segments from a blob carrying
+    ===== FILE/URL: ... ===== source headers and ===== LOC: ... ===== markers.
+    A blob with no headers yields a single (source='', locator='(document)')
+    segment. Each segment also caches its normalized text under '_norm' for fast
+    locate_quote()."""
+    segments: List[dict] = []
+    source, locator = "", "(document)"
+    buf: List[str] = []
+
+    def flush():
+        text = "\n".join(buf).strip()
+        if text:
+            segments.append({"source": source, "locator": locator,
+                             "text": text, "_norm": _norm(text)})
+        buf.clear()
+
+    for line in (blob or "").split("\n"):
+        m = _SRC_RE.match(line)
+        if m:
+            flush()
+            source = m.group(1)
+            locator = "(document)"      # reset locator when the source changes
+            continue
+        m = _LOC_RE.match(line)
+        if m:
+            flush()
+            locator = m.group(1)
+            continue
+        buf.append(line)
+    flush()
+    return segments
+
+
+def strip_loc_markers(blob: str) -> str:
+    """Remove only ===== LOC: ... ===== lines, leaving FILE/URL headers and text.
+    On the text/markdown/PDF/URL/sample paths this reproduces the pre-evidence
+    blob byte-for-byte, so scoring is provably unperturbed (the regression
+    anchor). XLSX differs only by the intentional '## Sheet:' -> LOC swap."""
+    return "\n".join(line for line in (blob or "").split("\n")
+                     if not _LOC_RE.match(line))
+
+
+def locate_quote(quote: str, segments: List[dict], min_len: int = 12) -> dict:
+    """Map a verbatim quote back to the segment that contains it (normalized
+    substring). Returns {source, locator}; {source:'', locator:'(unlocated)'}
+    when the quote is too short or not found — never fabricates a locator."""
+    nq = _norm(quote)
+    if len(nq) < min_len:
+        return {"source": "", "locator": "(unlocated)"}
+    for seg in segments:
+        seg_norm = seg.get("_norm")
+        if seg_norm is None:
+            seg_norm = _norm(seg["text"])
+        if nq in seg_norm:
+            return {"source": seg["source"], "locator": seg["locator"]}
+    return {"source": "", "locator": "(unlocated)"}
