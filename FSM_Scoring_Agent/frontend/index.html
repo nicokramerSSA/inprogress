@@ -196,6 +196,78 @@ function BarRow({label, value, max=5, suffix="/5"}){
   );
 }
 
+// ---- compare: deterministic helpers ------------------------------------
+// Pure, self-contained (no outer-scope refs) so a Node harness can extract
+// the block between the markers and exercise the ACTUAL shipped logic.
+// === COMPARE_HELPERS_START ===
+const _cr1 = n => (n===undefined||n===null) ? 0 : Math.round(n*10)/10;
+const _plural = n => n===1 ? "" : "s";
+
+// Count, over the 8 RFP capabilities, where each side leads (epsilon tie).
+function cmpCapabilityLead(a, b, eps){
+  eps = (eps===undefined) ? 0.05 : eps;
+  const bMap = {}; (b.capabilities||[]).forEach(c => { bMap[c.code] = c; });
+  let aLeads=0, bLeads=0, ties=0;
+  (a.capabilities||[]).forEach(ca => {
+    const cb = bMap[ca.code]; if(!cb) return;
+    const d = ca.score_1_5 - cb.score_1_5;
+    if(Math.abs(d) <= eps) ties++;
+    else if(d > 0) aLeads++; else bLeads++;
+  });
+  return {aLeads, bLeads, ties};
+}
+
+// Requirement-level divergence. Must-met = priority Must AND met === "Yes".
+// Quality counts exclude rows where either side is N/A or quality 0.
+function cmpReqDivergence(a, b){
+  const bMap = {}; (b.requirement_scores||[]).forEach(x => { bMap[x.rid] = x; });
+  let mustAOnly=0, mustBOnly=0, aHigher=0, tie=0, bHigher=0;
+  const deltas = [];
+  (a.requirement_scores||[]).forEach(xa => {
+    const xb = bMap[xa.rid]; if(!xb) return;
+    if(xa.priority === "Must"){
+      const aMet = xa.met === "Yes", bMet = xb.met === "Yes";
+      if(aMet && !bMet) mustAOnly++;
+      else if(bMet && !aMet) mustBOnly++;
+    }
+    const qOk = xa.quality>0 && xb.quality>0 && xa.met!=="N/A" && xb.met!=="N/A";
+    if(qOk){
+      const d = xa.quality - xb.quality;
+      if(d>0) aHigher++; else if(d<0) bHigher++; else tie++;
+      if(d!==0) deltas.push({rid:xa.rid, domain:xa.domain, priority:xa.priority, a:xa.quality, b:xb.quality, delta:d});
+    }
+  });
+  deltas.sort((p,q) => Math.abs(q.delta) - Math.abs(p.delta));
+  return {mustAOnly, mustBOnly, aHigher, tie, bHigher, topDeltas:deltas.slice(0,5), total:deltas.length};
+}
+
+// One-sentence deterministic verdict. Gating divergence leads; else headline
+// lenses (with a 1-point tie band); else capability count breaks a tie.
+function cmpTakeaway(a, b){
+  const aDQ = !!(a.gating && a.gating.disqualified);
+  const bDQ = !!(b.gating && b.gating.disqualified);
+  const aMust = a.gating ? a.gating.unmet_must_count : 0;
+  const bMust = b.gating ? b.gating.unmet_must_count : 0;
+  if(aDQ && !bDQ) return `${b.vendor} is the standing option — ${a.vendor} is disqualified (${aMust} unmet Must${_plural(aMust)}).`;
+  if(bDQ && !aDQ) return `${a.vendor} is the standing option — ${b.vendor} is disqualified (${bMust} unmet Must${_plural(bMust)}).`;
+  if(aDQ && bDQ) return `Both ${a.vendor} and ${b.vendor} are disqualified (${aMust} vs ${bMust} unmet Musts) — neither passes the Must gate.`;
+  const cap = cmpCapabilityLead(a, b);
+  const ssaD = a.weighted_total - b.weighted_total;
+  const c30D = a.capability_weighted_total - b.capability_weighted_total;
+  const lens = `SSA ${_cr1(a.weighted_total)} vs ${_cr1(b.weighted_total)}, §30 ${_cr1(a.capability_weighted_total)} vs ${_cr1(b.capability_weighted_total)}`;
+  const near = Math.abs(ssaD) <= 1 && Math.abs(c30D) <= 1;
+  const split = (ssaD > 0) !== (c30D > 0);
+  if(near || split){
+    const capLeader = cap.aLeads > cap.bLeads ? a.vendor : cap.bLeads > cap.aLeads ? b.vendor : null;
+    const capPhrase = capLeader ? `${capLeader} leads on ${Math.max(cap.aLeads, cap.bLeads)} of 8 capabilities` : `capabilities are split evenly`;
+    return `Evenly matched on headline scores (${lens}); ${capPhrase}.`;
+  }
+  const leader = ssaD > 0 ? a : b;
+  const ahead = ssaD > 0 ? cap.aLeads : cap.bLeads;
+  return `${leader.vendor} leads — higher on both lenses (${lens}) and ahead on ${ahead} of 8 capabilities.`;
+}
+// === COMPARE_HELPERS_END ===
+
 function CapabilityHeatmap({results}){
   const caps = results[0]?.capabilities || [];
   if(!caps.length) return null;
