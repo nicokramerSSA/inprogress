@@ -815,7 +815,7 @@ function Compare({results}){
                 <td className="code">{r.rid}</td>
                 <td className="small">{r.domain}</td>
                 <td>{r.priority}</td>
-                <td>{r.a || "—"} <span className={"met-"+r.met_a.replace("/","")} style={{fontSize:11}}>{r.met_a}</span></td>
+                <td>{r.a || "—"} <span className={"met-"+String(r.met_a||"").replace("/","")} style={{fontSize:11}}>{r.met_a}</span></td>
                 <td>{r.b===null ? "—" : (r.b || "—")} <span className={"met-"+String(r.met_b).replace("/","")} style={{fontSize:11}}>{r.met_b}</span></td>
                 <td>{r.b===null ? "—" : <DeltaChip delta={r.delta}/>}</td>
               </tr>
