@@ -703,7 +703,7 @@ function Compare({results}){
         {A.capabilities.map(ca=>{
           const cb = B.capabilities.find(x=>x.code===ca.code) || {score_1_5:0,n_unmet_must:0};
           return <CmpRow key={ca.code} label={`${ca.code} · ${ca.name}`}
-                   sub={(ca.n_unmet_must>0||cb.n_unmet_must>0) ? `unmet Must — ${A.vendor}: ${ca.n_unmet_must}, ${B.vendor}: ${cb.n_unmet_must}` : null}
+                   sub={((ca.n_unmet_must ?? 0)>0||(cb.n_unmet_must ?? 0)>0) ? `unmet Must — ${A.vendor}: ${ca.n_unmet_must ?? 0}, ${B.vendor}: ${cb.n_unmet_must ?? 0}` : null}
                    a={ca.score_1_5} b={cb.score_1_5}/>;
         })}
       </div>
