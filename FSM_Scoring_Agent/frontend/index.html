@@ -22,6 +22,11 @@
     --font:'Avenir Next LT Pro','Avenir','Segoe UI',system-ui,sans-serif;
   }
   *{box-sizing:border-box}
+  /* Reserve the vertical-scrollbar gutter so a tall tab (e.g. Compare) whose height
+     lands on the scrollbar threshold can't oscillate the scrollbar on/off — each toggle
+     changes the width ~15px, rewraps the full-width takeaway/labels, re-crosses the
+     threshold, and the page jitters. overflow-y:scroll guarantees it in every browser. */
+  html{scrollbar-gutter:stable;overflow-y:scroll}
   body{margin:0;font-family:var(--font);color:var(--ink);background:var(--surface);line-height:1.45}
   a{color:var(--ssa-blue)}
   .wrap{max-width:1440px;margin:0 auto;padding:0 30px}
