@@ -511,5 +511,8 @@ def _too_large(_e):
 if __name__ == "__main__":
     _seed_results()
     port = int(os.environ.get("PORT", "8000"))
+    # Bind 0.0.0.0 so a hosting platform (Render/Docker) can route to the container;
+    # locally you still reach it at http://127.0.0.1:PORT. Override with HOST if needed.
+    host = os.environ.get("HOST", "0.0.0.0")
     print(f"\n  FSM RFP Evaluation Agent  →  http://127.0.0.1:{port}\n")
-    app.run(host="127.0.0.1", port=port, debug=False)
+    app.run(host=host, port=port, debug=False)
