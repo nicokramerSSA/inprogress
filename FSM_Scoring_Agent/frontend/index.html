@@ -112,6 +112,9 @@
   .vote-columns{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
   .vendor-pills{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
   .requirement-controls{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .cmp-pickers{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .cmp-pickers label{display:flex;align-items:center}
+  .cmp-takeaway{background:#eef3fb;border:1px solid #c9d9ed;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.5;margin-bottom:8px}
   .runbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .source-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
   .research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
@@ -575,6 +578,57 @@ function VendorDetail({data}){
   );
 }
 
+// ---- compare (two vendors side by side) ----------------------------------
+function Compare({results}){
+  const names = results.map(r => r.vendor);
+  const [aName, setAName] = useState(null);
+  const [bName, setBName] = useState(null);
+
+  useEffect(() => {
+    if(results.length < 2) return;
+    const ranked = [...results].sort((x,y) => y.weighted_total - x.weighted_total);
+    setAName(prev => (prev && names.includes(prev)) ? prev : ranked[0].vendor);
+    setBName(prev => (prev && names.includes(prev) && prev!==ranked[0].vendor) ? prev : ranked[1].vendor);
+  }, [results]);
+
+  if(results.length < 2){
+    return <p className="muted">Need at least two evaluated vendors to compare. Run another evaluation above.</p>;
+  }
+
+  let bSafe = bName;
+  if(bSafe === aName) bSafe = names.find(n => n !== aName) || bName;
+  const A = results.find(r => r.vendor === aName);
+  const B = results.find(r => r.vendor === bSafe);
+  if(!A || !B) return <p className="muted">Pick two vendors to compare.</p>;
+
+  const REQUIRED = ["gating","categories","capabilities","segment_fit","agentic_future","vote","requirement_scores"];
+  const missing = REQUIRED.find(k => !A[k] || !B[k]);
+  if(missing) return <p className="muted">One of these evaluations is missing data ({missing}); re-run it before comparing.</p>;
+
+  return (
+    <div>
+      <div className="cmp-pickers">
+        <label className="small muted">Vendor A
+          <select className="pill" style={{padding:"5px 8px",marginLeft:6}} value={aName} onChange={e=>setAName(e.target.value)}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <span className="muted">vs</span>
+        <label className="small muted">Vendor B
+          <select className="pill" style={{padding:"5px 8px",marginLeft:6}} value={bSafe} onChange={e=>setBName(e.target.value)}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        {bName === aName && <span className="small" style={{color:"var(--warn)"}}>Pick two different vendors - showing the next one.</span>}
+      </div>
+
+      <div className="cmp-takeaway">{cmpTakeaway(A, B)}</div>
+
+      {/* rollup + requirement sections added in later tasks */}
+    </div>
+  );
+}
+
 // ---- methodology / rubric ------------------------------------------------
 function Methodology({kb}){
   if(!kb) return <p className="muted">Loading…</p>;
@@ -853,7 +907,7 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
@@ -868,6 +922,7 @@ function App(){
         </div>
 
         {tab==="dashboard" && <Dashboard results={results} onOpen={(v)=>{setOpen(v);setTab("detail");}}/>}
+        {tab==="compare" && <Compare results={results}/>}
         {tab==="detail" && (
           <div>
             <div className="vendor-pills">
