@@ -626,6 +626,9 @@ function Compare({results}){
   const names = results.map(r => r.vendor);
   const [aName, setAName] = useState(null);
   const [bName, setBName] = useState(null);
+  const [showTable, setShowTable] = useState(false);
+  const [onlyDiff, setOnlyDiff] = useState(true);
+  const [prio, setPrio] = useState("ALL");
 
   useEffect(() => {
     if(results.length < 2) return;
@@ -647,6 +650,20 @@ function Compare({results}){
   const REQUIRED = ["gating","categories","capabilities","segment_fit","agentic_future","vote","requirement_scores"];
   const missing = REQUIRED.find(k => !A[k] || !B[k]);
   if(missing) return <p className="muted">One of these evaluations is missing data ({missing}); re-run it before comparing.</p>;
+
+  const div = cmpReqDivergence(A, B);
+  const bReq = {}; B.requirement_scores.forEach(x => { bReq[x.rid] = x; });
+  const mergedRows = A.requirement_scores.map(xa => {
+    const xb = bReq[xa.rid] || {};
+    const qa = xa.quality || 0, qb = (xb.quality || 0);
+    const hasB = bReq[xa.rid] !== undefined;
+    return {rid:xa.rid, domain:xa.domain, priority:xa.priority,
+            a:qa, b:hasB ? qb : null, met_a:xa.met, met_b:hasB ? xb.met : "—",
+            delta: hasB ? (qa - qb) : 0,
+            differ: !hasB || qa !== qb || xa.met !== xb.met};
+  });
+  const visibleRows = mergedRows.filter(r =>
+    (prio === "ALL" || r.priority === prio) && (!onlyDiff || r.differ));
 
   return (
     <div>
@@ -754,6 +771,58 @@ function Compare({results}){
             </details>
           </div>
         ))}
+      </div>
+
+      {/* Requirement-level divergence */}
+      <div className="section-title">Requirement divergence (422 requirements)</div>
+      <div className="card">
+        <div className="kpi" style={{marginBottom:6}}>
+          <div className="k">Musts met by {A.vendor} only<b>{div.mustAOnly}</b></div>
+          <div className="k">Musts met by {B.vendor} only<b>{div.mustBOnly}</b></div>
+          <div className="k">{A.vendor} higher quality<b>{div.aHigher}</b></div>
+          <div className="k">Tie<b>{div.tie}</b></div>
+          <div className="k">{B.vendor} higher quality<b>{div.bHigher}</b></div>
+        </div>
+        {div.topDeltas.length>0 && <div className="small" style={{marginTop:8}}>
+          <b>Biggest quality gaps</b>
+          <ul style={{margin:"6px 0 0 16px",padding:0}}>
+            {div.topDeltas.map(d=>(<li key={d.rid}>{d.rid} ({d.priority}): {A.vendor} {d.a} vs {B.vendor} {d.b} <DeltaChip delta={d.delta}/></li>))}
+          </ul>
+        </div>}
+        <div className="requirement-controls" style={{marginTop:12}}>
+          <button className="btn ghost small" onClick={()=>setShowTable(s=>!s)}>{showTable ? "Hide" : "Show"} full diff table</button>
+          {showTable && <React.Fragment>
+            <label className="small muted" style={{display:"flex",alignItems:"center",gap:6}}>
+              <input type="checkbox" checked={onlyDiff} onChange={e=>setOnlyDiff(e.target.checked)}/> only where they differ
+            </label>
+            <select className="pill" style={{padding:"5px 8px"}} value={prio} onChange={e=>setPrio(e.target.value)}>
+              <option value="ALL">All priorities</option>
+              <option value="Must">Must</option><option value="Should">Should</option>
+              <option value="Could">Could</option><option value="Won't">Won't</option>
+            </select>
+            <span className="muted small" style={{alignSelf:"center"}}>showing {visibleRows.length} of {mergedRows.length}</span>
+          </React.Fragment>}
+        </div>
+        {showTable && <div className="table-scroll requirement-table-wrap">
+          <table className="requirement-table">
+            <thead><tr>
+              <th>RID</th><th>Domain</th><th>Priority</th>
+              <th>{A.vendor}</th><th>{B.vendor}</th><th>{"Δ"}</th>
+            </tr></thead>
+            <tbody>
+            {visibleRows.slice(0,422).map(r=>(
+              <tr key={r.rid}>
+                <td className="code">{r.rid}</td>
+                <td className="small">{r.domain}</td>
+                <td>{r.priority}</td>
+                <td>{r.a || "—"} <span className={"met-"+r.met_a.replace("/","")} style={{fontSize:11}}>{r.met_a}</span></td>
+                <td>{r.b===null ? "—" : (r.b || "—")} <span className={"met-"+String(r.met_b).replace("/","")} style={{fontSize:11}}>{r.met_b}</span></td>
+                <td>{r.b===null ? "—" : <DeltaChip delta={r.delta}/>}</td>
+              </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>}
       </div>
     </div>
   );
