@@ -365,6 +365,44 @@ function compareRows(a, b){
     {key:"aVal",label:a.vendor},{key:"bVal",label:b.vendor},{key:"delta",label:"Delta (A-B)"}];
   return {rows, headers};
 }
+function htmlEsc(s){
+  return String(s===null||s===undefined?"":s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function tableHTML(rows, headers){
+  const head = "<thead><tr>" + headers.map(h => "<th>"+htmlEsc(h.label)+"</th>").join("") + "</tr></thead>";
+  const body = "<tbody>" + rows.map(r =>
+    "<tr>" + headers.map(h => "<td>"+htmlEsc(r[h.key])+"</td>").join("") + "</tr>").join("") + "</tbody>";
+  return "<table>" + head + body + "</table>";
+}
+function brandedDoc(o){
+  const logo = (o.logoSrc && o.logoSrc.length > 0)
+    ? '<img class="logo" src="'+o.logoSrc+'" alt="SSA & Company"/>'
+    : '<div class="wordmark">SSA & Company</div>';
+  const takeaway = o.takeaway ? '<p class="takeaway">'+htmlEsc(o.takeaway)+'</p>' : "";
+  const ctx = o.contextLine ? '<p class="ctx">'+htmlEsc(o.contextLine)+'</p>' : "";
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'+htmlEsc(o.title)+'</title><style>'
+    + '@page{size:A4;margin:18mm}'
+    + 'body{font-family:\'Avenir Next LT Pro\',\'Avenir\',\'Segoe UI\',system-ui,sans-serif;color:#0f1b33;margin:0}'
+    + '.band{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #003399;padding-bottom:8px;margin-bottom:14px}'
+    + '.logo{height:34px}.wordmark{font-weight:700;font-size:18px;color:#003399}'
+    + '.band .meta{text-align:right;color:#5b6677;font-size:12px}'
+    + 'h1{color:#003399;font-size:18px;margin:0 0 2px}'
+    + '.ctx{color:#5b6677;font-size:12px;margin:0 0 10px}'
+    + '.takeaway{background:#003399;color:#fff;padding:8px 12px;border-radius:6px;font-size:13px;margin:0 0 12px}'
+    + 'table{border-collapse:collapse;width:100%;font-size:11px}'
+    + 'thead{display:table-header-group}tr{break-inside:avoid}'
+    + 'th{background:#336179;color:#fff;text-align:left;padding:5px 7px}'
+    + 'td{border:1px solid #E0E4EA;padding:4px 7px;vertical-align:top}'
+    + 'tbody tr:nth-child(even){background:#FAFBFC}'
+    + 'footer{position:fixed;bottom:8mm;left:18mm;right:18mm;color:#8BA4C4;font-size:10px;border-top:1px solid #E0E4EA;padding-top:4px}'
+    + '</style></head><body>'
+    + '<div class="band"><div><div class="meta-logo">'+logo+'</div></div>'
+    + '<div class="meta"><div>'+htmlEsc(o.title)+'</div><div>Generated '+htmlEsc(o.dateStr)+'</div></div></div>'
+    + '<h1>'+htmlEsc(o.title)+'</h1>'+ctx+takeaway+(o.tableHTML||"")
+    + '<footer>SSA & Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr)+'</footer>'
+    + '</body></html>';
+}
 // === EXPORT_HELPERS_END ===
 
 function downloadCSV(filename, rows, headers){
@@ -374,6 +412,36 @@ function downloadCSV(filename, rows, headers){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+
+// Resolve the color logo for the print header. Standalone: BOOT.logo_dark.
+// Server: fetch the served color asset. Either may be absent -> wordmark.
+async function resolvePrintLogo(){
+  if(typeof BOOT !== "undefined" && BOOT && BOOT.logo_dark) return BOOT.logo_dark;
+  if(typeof STATIC !== "undefined" && STATIC) return "";
+  try { return (await (await fetch("/ssa_logo_long_b64.txt")).text()).trim(); }
+  catch(e){ return ""; }
+}
+function printViaHiddenContainer(docHTML){
+  // Fallback when popups are blocked: write an iframe, print it, remove it.
+  const iframe = document.createElement("iframe");
+  iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
+  iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
+  document.body.appendChild(iframe);
+  const d = iframe.contentWindow.document;
+  d.open(); d.write(docHTML); d.close();
+  iframe.contentWindow.focus();
+  setTimeout(()=>{ iframe.contentWindow.print(); setTimeout(()=>iframe.remove(), 1000); }, 200);
+}
+async function printBranded(title, parts){
+  const dateStr = new Date().toISOString().slice(0,10);
+  const logoSrc = await resolvePrintLogo();
+  const docHTML = brandedDoc({title, dateStr, logoSrc,
+    contextLine:parts.contextLine||"", takeaway:parts.takeaway||"", tableHTML:parts.tableHTML||""});
+  const w = window.open("", "_blank");
+  if(!w){ printViaHiddenContainer(docHTML); return; }
+  w.document.open(); w.document.write(docHTML); w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
 }
 
 function CapabilityHeatmap({results}){
