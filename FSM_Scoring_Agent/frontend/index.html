@@ -112,6 +112,22 @@
   .vote-columns{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}
   .vendor-pills{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
   .requirement-controls{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .cmp-pickers{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .cmp-pickers label{display:flex;align-items:center}
+  .cmp-takeaway{background:#eef3fb;border:1px solid #c9d9ed;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.5;margin-bottom:8px}
+  .cmp-colhead,.cmp-metric{display:grid;grid-template-columns:minmax(160px,1.4fr) 1fr 64px 1fr;gap:12px;align-items:center}
+  .cmp-colhead{margin:6px 0 2px;padding:0 22px}
+  .cmp-vendorhead{text-align:left}
+  .cmp-metric{font-size:13px;margin:9px 0}
+  .cmp-metric-label{color:var(--ink);line-height:1.25}
+  .cmp-side{display:flex;align-items:center;gap:10px}
+  .cmp-side .bar{flex:1}
+  .cmp-num{font-variant-numeric:tabular-nums;color:var(--muted);min-width:34px;text-align:right}
+  .cmp-delta{text-align:center;font-size:12px;font-variant-numeric:tabular-nums}
+  .delta-up{color:var(--good);font-weight:600}
+  .delta-down{color:var(--bad);font-weight:600}
+  .delta-zero{color:var(--muted)}
+  @media (max-width:1080px){ .cmp-colhead,.cmp-metric{grid-template-columns:minmax(120px,1fr) 1fr 52px 1fr} }
   .runbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .source-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
   .research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
@@ -195,6 +211,78 @@ function BarRow({label, value, max=5, suffix="/5"}){
     </div>
   );
 }
+
+// ---- compare: deterministic helpers ------------------------------------
+// Pure, self-contained (no outer-scope refs) so a Node harness can extract
+// the block between the markers and exercise the ACTUAL shipped logic.
+// === COMPARE_HELPERS_START ===
+const _cr1 = n => (n===undefined||n===null) ? 0 : Math.round(n*10)/10;
+const _plural = n => n===1 ? "" : "s";
+
+// Count, over the 8 RFP capabilities, where each side leads (epsilon tie).
+function cmpCapabilityLead(a, b, eps){
+  eps = (eps===undefined) ? 0.05 : eps;
+  const bMap = {}; (b.capabilities||[]).forEach(c => { bMap[c.code] = c; });
+  let aLeads=0, bLeads=0, ties=0;
+  (a.capabilities||[]).forEach(ca => {
+    const cb = bMap[ca.code]; if(!cb) return;
+    const d = ca.score_1_5 - cb.score_1_5;
+    if(Math.abs(d) <= eps) ties++;
+    else if(d > 0) aLeads++; else bLeads++;
+  });
+  return {aLeads, bLeads, ties};
+}
+
+// Requirement-level divergence. Must-met = priority Must AND met === "Yes".
+// Quality counts exclude rows where either side is N/A or quality 0.
+function cmpReqDivergence(a, b){
+  const bMap = {}; (b.requirement_scores||[]).forEach(x => { bMap[x.rid] = x; });
+  let mustAOnly=0, mustBOnly=0, aHigher=0, tie=0, bHigher=0;
+  const deltas = [];
+  (a.requirement_scores||[]).forEach(xa => {
+    const xb = bMap[xa.rid]; if(!xb) return;
+    if(xa.priority === "Must"){
+      const aMet = xa.met === "Yes", bMet = xb.met === "Yes";
+      if(aMet && !bMet) mustAOnly++;
+      else if(bMet && !aMet) mustBOnly++;
+    }
+    const qOk = xa.quality>0 && xb.quality>0 && xa.met!=="N/A" && xb.met!=="N/A";
+    if(qOk){
+      const d = xa.quality - xb.quality;
+      if(d>0) aHigher++; else if(d<0) bHigher++; else tie++;
+      if(d!==0) deltas.push({rid:xa.rid, domain:xa.domain, priority:xa.priority, a:xa.quality, b:xb.quality, delta:d});
+    }
+  });
+  deltas.sort((p,q) => Math.abs(q.delta) - Math.abs(p.delta));
+  return {mustAOnly, mustBOnly, aHigher, tie, bHigher, topDeltas:deltas.slice(0,5), total:deltas.length};
+}
+
+// One-sentence deterministic verdict. Gating divergence leads; else headline
+// lenses (with a 1-point tie band); else capability count breaks a tie.
+function cmpTakeaway(a, b){
+  const aDQ = !!(a.gating && a.gating.disqualified);
+  const bDQ = !!(b.gating && b.gating.disqualified);
+  const aMust = a.gating ? a.gating.unmet_must_count : 0;
+  const bMust = b.gating ? b.gating.unmet_must_count : 0;
+  if(aDQ && !bDQ) return `${b.vendor} is the standing option — ${a.vendor} is disqualified (${aMust} unmet Must${_plural(aMust)}).`;
+  if(bDQ && !aDQ) return `${a.vendor} is the standing option — ${b.vendor} is disqualified (${bMust} unmet Must${_plural(bMust)}).`;
+  if(aDQ && bDQ) return `Both ${a.vendor} and ${b.vendor} are disqualified (${aMust} vs ${bMust} unmet Musts) — neither passes the Must gate.`;
+  const cap = cmpCapabilityLead(a, b);
+  const ssaD = a.weighted_total - b.weighted_total;
+  const c30D = a.capability_weighted_total - b.capability_weighted_total;
+  const lens = `SSA ${_cr1(a.weighted_total)} vs ${_cr1(b.weighted_total)}, §30 ${_cr1(a.capability_weighted_total)} vs ${_cr1(b.capability_weighted_total)}`;
+  const near = Math.abs(ssaD) <= 1 && Math.abs(c30D) <= 1;
+  const split = (ssaD > 0) !== (c30D > 0);
+  if(near || split){
+    const capLeader = cap.aLeads > cap.bLeads ? a.vendor : cap.bLeads > cap.aLeads ? b.vendor : null;
+    const capPhrase = capLeader ? `${capLeader} leads on ${Math.max(cap.aLeads, cap.bLeads)} of 8 capabilities` : `capabilities are split evenly`;
+    return `Evenly matched on headline scores (${lens}); ${capPhrase}.`;
+  }
+  const leader = ssaD > 0 ? a : b;
+  const ahead = ssaD > 0 ? cap.aLeads : cap.bLeads;
+  return `${leader.vendor} leads — higher on both lenses (${lens}) and ahead on ${ahead} of 8 capabilities.`;
+}
+// === COMPARE_HELPERS_END ===
 
 function CapabilityHeatmap({results}){
   const caps = results[0]?.capabilities || [];
@@ -503,6 +591,244 @@ function VendorDetail({data}){
   );
 }
 
+// ---- compare helpers -------------------------------------------------------
+// delta = A - B; arrow + sign carry meaning (colorblind-safe), color secondary.
+function DeltaChip({delta, digits=1}){
+  const p = Math.pow(10, digits);
+  const d = Math.round((delta||0) * p) / p;
+  if(d > 0) return <span className="delta-up" title="Vendor A higher">{"▲"} +{d}</span>;
+  if(d < 0) return <span className="delta-down" title="Vendor B higher">{"▼"} {d}</span>;
+  return <span className="delta-zero" title="tie">{"–"} 0</span>;
+}
+
+// One paired metric row: label | A value | delta | B value, with mini bars.
+function CmpRow({label, a, b, max=5, sub}){
+  const pa = Math.max(0, Math.min(100, (a/max)*100));
+  const pb = Math.max(0, Math.min(100, (b/max)*100));
+  return (
+    <div className="cmp-metric">
+      <div className="cmp-metric-label">{label}{sub && <div className="small muted">{sub}</div>}</div>
+      <div className="cmp-side">
+        <div className="bar"><span style={{width:pa+"%"}}/></div>
+        <span className="cmp-num">{fmt(a)}</span>
+      </div>
+      <div className="cmp-delta"><DeltaChip delta={a-b}/></div>
+      <div className="cmp-side">
+        <div className="bar"><span style={{width:pb+"%"}}/></div>
+        <span className="cmp-num">{fmt(b)}</span>
+      </div>
+    </div>
+  );
+}
+
+// ---- compare (two vendors side by side) ----------------------------------
+function Compare({results}){
+  const names = results.map(r => r.vendor);
+  const [aName, setAName] = useState(null);
+  const [bName, setBName] = useState(null);
+  const [showTable, setShowTable] = useState(false);
+  const [onlyDiff, setOnlyDiff] = useState(true);
+  const [prio, setPrio] = useState("ALL");
+
+  useEffect(() => {
+    if(results.length < 2) return;
+    const ranked = [...results].sort((x,y) => y.weighted_total - x.weighted_total);
+    setAName(prev => (prev && names.includes(prev)) ? prev : ranked[0].vendor);
+    setBName(prev => (prev && names.includes(prev) && prev!==ranked[0].vendor) ? prev : ranked[1].vendor);
+  }, [results]);
+
+  if(results.length < 2){
+    return <p className="muted">Need at least two evaluated vendors to compare. Run another evaluation above.</p>;
+  }
+
+  let bSafe = bName;
+  if(bSafe === aName) bSafe = names.find(n => n !== aName) || bName;
+  const A = results.find(r => r.vendor === aName);
+  const B = results.find(r => r.vendor === bSafe);
+  if(!A || !B) return <p className="muted">Pick two vendors to compare.</p>;
+
+  const REQUIRED = ["gating","categories","capabilities","segment_fit","agentic_future","vote","requirement_scores"];
+  const missing = REQUIRED.find(k => !A[k] || !B[k]);
+  if(missing) return <p className="muted">One of these evaluations is missing data ({missing}); re-run it before comparing.</p>;
+
+  const div = cmpReqDivergence(A, B);
+  const bReq = {}; B.requirement_scores.forEach(x => { bReq[x.rid] = x; });
+  const mergedRows = A.requirement_scores.map(xa => {
+    const xb = bReq[xa.rid] || {};
+    const qa = xa.quality || 0, qb = (xb.quality || 0);
+    const hasB = bReq[xa.rid] !== undefined;
+    return {rid:xa.rid, domain:xa.domain, priority:xa.priority,
+            a:qa, b:hasB ? qb : null, met_a:xa.met, met_b:hasB ? xb.met : "—",
+            delta: hasB ? (qa - qb) : 0,
+            differ: !hasB || qa !== qb || xa.met !== xb.met};
+  });
+  const visibleRows = mergedRows.filter(r =>
+    (prio === "ALL" || r.priority === prio) && (!onlyDiff || r.differ));
+
+  return (
+    <div>
+      <div className="cmp-pickers">
+        <label className="small muted">Vendor A
+          <select className="pill" style={{padding:"5px 8px",marginLeft:6}} value={aName} onChange={e=>setAName(e.target.value)}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <span className="muted">vs</span>
+        <label className="small muted">Vendor B
+          <select className="pill" style={{padding:"5px 8px",marginLeft:6}} value={bSafe} onChange={e=>setBName(e.target.value)}>
+            {names.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        {bName === aName && <span className="small" style={{color:"var(--warn)"}}>Pick two different vendors — showing the next one.</span>}
+      </div>
+
+      <div className="cmp-takeaway">{cmpTakeaway(A, B)}</div>
+
+      {/* Column headers */}
+      <div className="cmp-colhead">
+        <div></div>
+        <div className="cmp-vendorhead"><b>{A.vendor}</b><div className="small muted">{A.product}{A.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+        <div></div>
+        <div className="cmp-vendorhead"><b>{B.vendor}</b><div className="small muted">{B.product}{B.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+      </div>
+
+      {/* Headline lenses */}
+      <div className="section-title">Headline scores</div>
+      <div className="card">
+        <CmpRow label="SSA weighted total" a={A.weighted_total} b={B.weighted_total} max={100}/>
+        <CmpRow label={"RFP §30 capability lens"} a={A.capability_weighted_total} b={B.capability_weighted_total} max={100}/>
+      </div>
+
+      {/* Gating */}
+      <div className="section-title">Gate (MoSCoW + architectural)</div>
+      <div className="grid detail-grid">
+        {[A,B].map((r,i)=>(
+          <div className="card" key={i}>
+            <b>{r.vendor}: {r.gating.disqualified ? <span className="met-No">DISQUALIFIED</span> : <span className="met-Yes">PASS</span>}</b>
+            <p className="small muted" style={{marginTop:4}}>{r.gating.summary}</p>
+            {r.gating.unmet_musts.length>0 && <ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+              {r.gating.unmet_musts.slice(0,6).map(m=>(<li key={m.rid}>{m.rid} ({m.capability}): {m.reason}</li>))}
+            </ul>}
+            {r.gating.architectural_gate_flags.map((f,j)=>(<div key={j} className="small" style={{color:"var(--warn)",marginTop:6}}>{"⚑"} {f}</div>))}
+          </div>
+        ))}
+      </div>
+
+      {/* §30 capabilities */}
+      <div className="section-title">{"RFP capabilities (Section 30)"}</div>
+      <div className="card">
+        {A.capabilities.map(ca=>{
+          const cb = B.capabilities.find(x=>x.code===ca.code) || {score_1_5:0,n_unmet_must:0};
+          return <CmpRow key={ca.code} label={`${ca.code} · ${ca.name}`}
+                   sub={((ca.n_unmet_must ?? 0)>0||(cb.n_unmet_must ?? 0)>0) ? `unmet Must — ${A.vendor}: ${ca.n_unmet_must ?? 0}, ${B.vendor}: ${cb.n_unmet_must ?? 0}` : null}
+                   a={ca.score_1_5} b={cb.score_1_5}/>;
+        })}
+      </div>
+
+      {/* SSA categories */}
+      <div className="section-title">SSA scorecard categories</div>
+      <div className="card">
+        {A.categories.map(ca=>{
+          const cb = B.categories.find(x=>x.id===ca.id) || {raw_1_5:0};
+          return <CmpRow key={ca.id} label={`${ca.name} (${Math.round(ca.weight*100)}%)`} a={ca.raw_1_5} b={cb.raw_1_5}/>;
+        })}
+      </div>
+
+      {/* Segment fit */}
+      <div className="section-title">OpCo-segment fit</div>
+      <div className="card">
+        {A.segment_fit.map(sa=>{
+          const sb = B.segment_fit.find(x=>x.segment_id===sa.segment_id) || {fit_1_5:0};
+          return <CmpRow key={sa.segment_id} label={sa.segment_name} a={sa.fit_1_5} b={sb.fit_1_5}/>;
+        })}
+      </div>
+
+      {/* Agentic future */}
+      <div className="section-title">Fit into an agentic future</div>
+      <div className="card">
+        <CmpRow label="Overall" a={A.agentic_future.score_1_5} b={B.agentic_future.score_1_5}/>
+        <CmpRow label="Openness / data access" a={A.agentic_future.openness_1_5} b={B.agentic_future.openness_1_5}/>
+        <CmpRow label="AI capability (shipped)" a={A.agentic_future.ai_capability_1_5} b={B.agentic_future.ai_capability_1_5}/>
+        <div className="cmp-metric">
+          <div className="cmp-metric-label">Data-control risk</div>
+          <div className="cmp-side"><span className="cmp-num">{A.agentic_future.data_control_risk}</span></div>
+          <div className="cmp-delta"></div>
+          <div className="cmp-side"><span className="cmp-num">{B.agentic_future.data_control_risk}</span></div>
+        </div>
+      </div>
+
+      {/* Vote */}
+      <div className="section-title">{"The agent's vote"}</div>
+      <div className="grid detail-grid">
+        {[A,B].map((r,i)=>(
+          <div className="card" key={i}>
+            <b>{r.vendor}</b> <span className={recoClass(r.vote.recommendation)}>{r.vote.recommendation}</span>
+            <span className="small muted"> · {r.vote.confidence} confidence</span>
+            <details style={{marginTop:8}}>
+              <summary className="small" style={{cursor:"pointer",color:"var(--ssa-blue)"}}>Narrative</summary>
+              <p className="small" style={{marginTop:6}}>{r.vote.narrative}</p>
+              {r.vote.dissent && <p className="small muted" style={{marginTop:6}}><b>Dissent:</b> {r.vote.dissent}</p>}
+            </details>
+          </div>
+        ))}
+      </div>
+
+      {/* Requirement-level divergence */}
+      <div className="section-title">Requirement divergence (422 requirements)</div>
+      <div className="card">
+        <div className="kpi" style={{marginBottom:6}}>
+          <div className="k">Musts met by {A.vendor} only<b>{div.mustAOnly}</b></div>
+          <div className="k">Musts met by {B.vendor} only<b>{div.mustBOnly}</b></div>
+          <div className="k">{A.vendor} higher quality<b>{div.aHigher}</b></div>
+          <div className="k">Tie<b>{div.tie}</b></div>
+          <div className="k">{B.vendor} higher quality<b>{div.bHigher}</b></div>
+        </div>
+        {div.topDeltas.length>0 && <div className="small" style={{marginTop:8}}>
+          <b>Biggest quality gaps</b>
+          <ul style={{margin:"6px 0 0 16px",padding:0}}>
+            {div.topDeltas.map(d=>(<li key={d.rid}>{d.rid} ({d.priority}): {A.vendor} {d.a} vs {B.vendor} {d.b} <DeltaChip delta={d.delta}/></li>))}
+          </ul>
+        </div>}
+        <div className="requirement-controls" style={{marginTop:12}}>
+          <button className="btn ghost small" onClick={()=>setShowTable(s=>!s)}>{showTable ? "Hide" : "Show"} full diff table</button>
+          {showTable && <React.Fragment>
+            <label className="small muted" style={{display:"flex",alignItems:"center",gap:6}}>
+              <input type="checkbox" checked={onlyDiff} onChange={e=>setOnlyDiff(e.target.checked)}/> only where they differ
+            </label>
+            <select className="pill" style={{padding:"5px 8px"}} value={prio} onChange={e=>setPrio(e.target.value)}>
+              <option value="ALL">All priorities</option>
+              <option value="Must">Must</option><option value="Should">Should</option>
+              <option value="Could">Could</option><option value="Won't">Won't</option>
+            </select>
+            <span className="muted small" style={{alignSelf:"center"}}>showing {visibleRows.length} of {mergedRows.filter(r => prio==="ALL" || r.priority===prio).length}</span>
+          </React.Fragment>}
+        </div>
+        {showTable && <div className="table-scroll requirement-table-wrap">
+          <table className="requirement-table">
+            <thead><tr>
+              <th>RID</th><th>Domain</th><th>Priority</th>
+              <th>{A.vendor}</th><th>{B.vendor}</th><th>{"Δ"}</th>
+            </tr></thead>
+            <tbody>
+            {visibleRows.map(r=>(
+              <tr key={r.rid}>
+                <td className="code">{r.rid}</td>
+                <td className="small">{r.domain}</td>
+                <td>{r.priority}</td>
+                {/* A is the join base (mergedRows iterates A.requirement_scores); B may be missing -> "—" */}
+                <td>{r.a || "—"} <span className={"met-"+String(r.met_a||"").replace("/","")} style={{fontSize:11}}>{r.met_a}</span></td>
+                <td>{r.b===null ? "—" : (r.b || "—")} <span className={"met-"+String(r.met_b).replace("/","")} style={{fontSize:11}}>{r.met_b}</span></td>
+                <td>{r.b===null ? "—" : <DeltaChip delta={r.delta}/>}</td>
+              </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
 // ---- methodology / rubric ------------------------------------------------
 function Methodology({kb}){
   if(!kb) return <p className="muted">Loading…</p>;
@@ -781,7 +1107,7 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
@@ -796,6 +1122,7 @@ function App(){
         </div>
 
         {tab==="dashboard" && <Dashboard results={results} onOpen={(v)=>{setOpen(v);setTab("detail");}}/>}
+        {tab==="compare" && <Compare results={results}/>}
         {tab==="detail" && (
           <div>
             <div className="vendor-pills">
