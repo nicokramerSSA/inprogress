@@ -36,6 +36,13 @@ Rebuild the standalone file after changes:
 cd backend && python build_static.py     # → ../FSM_Evaluation_Agent_Standalone.html
 ```
 
+### Environment variables
+- `PORT` (default 8000) — override the default port the Flask server binds to.
+- `ANTHROPIC_API_KEY` — enable Claude models (Opus, Sonnet, Haiku).
+- `OPENAI_API_KEY` — enable GPT-4o and GPT-4o mini.
+- `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` — enable Azure OpenAI models.
+- `RESULTS_MAX_CONCURRENCY` (default 6) — caps how many LLM calls run at once across the whole app (scoring batches + vendors share it); raise it if your provider rate limit has headroom, lower it if you see 429s.
+
 ---
 
 ## What it does
