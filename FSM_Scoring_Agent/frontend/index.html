@@ -292,6 +292,158 @@ function cmpTakeaway(a, b){
 }
 // === COMPARE_HELPERS_END ===
 
+// ---- export helpers ------------------------------------------------------
+// Pure, self-contained (no outer-scope refs) so a Node harness can extract
+// the block between the markers and exercise the ACTUAL shipped logic.
+// === EXPORT_HELPERS_START ===
+function toCSV(rows, headers){
+  const esc = v => {
+    if(v===null || v===undefined) return "";
+    const s = String(v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines = [headers.map(h => esc(h.label)).join(",")];
+  rows.forEach(row => lines.push(headers.map(h => esc(row[h.key])).join(",")));
+  return lines.join("\r\n");
+}
+function csvSlug(s){
+  return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function exportFilename(kind, parts, dateStr){
+  return ["fsm", kind].concat((parts||[]).map(csvSlug)).join("-") + "-" + dateStr + ".csv";
+}
+function rankingRows(results){
+  const ranked = [...results].sort((a,b) =>
+    (a.gating.disqualified - b.gating.disqualified) || (b.weighted_total - a.weighted_total));
+  const headers = [
+    {key:"rank",label:"Rank"},{key:"vendor",label:"Vendor"},{key:"product",label:"Product"},
+    {key:"ssa",label:"SSA score (0-100)"},{key:"cap",label:"§30 capability score (0-100)"},
+    {key:"gate",label:"Gate"},{key:"vote",label:"Vote"},{key:"vote_conf",label:"Vote confidence"},
+    {key:"model",label:"Model"},{key:"demo",label:"Demo?"}];
+  const rows = ranked.map((r,i) => ({
+    rank:i+1, vendor:r.vendor, product:r.product,
+    ssa:_cr1(r.weighted_total), cap:_cr1(r.capability_weighted_total),
+    gate:r.gating.disqualified ? "DISQUALIFIED" : "PASS",
+    vote:r.vote.recommendation, vote_conf:r.vote.confidence,
+    model:r.model_used, demo:r.is_demo ? "yes" : "no"}));
+  return {rows, headers};
+}
+function requirementRows(v){
+  const headers = [
+    {key:"rid",label:"RID"},{key:"domain",label:"Domain"},{key:"capability",label:"Capability"},
+    {key:"priority",label:"Priority"},{key:"met",label:"Met"},{key:"quality",label:"Quality (1-5)"},
+    {key:"code",label:"Response code"},{key:"confidence",label:"Confidence"},{key:"rationale",label:"Rationale"},
+    {key:"ev_quote",label:"Evidence quote"},{key:"ev_source",label:"Evidence source"},{key:"ev_locator",label:"Evidence locator"}];
+  const rows = (v.requirement_scores||[]).map(x => ({
+    rid:x.rid, domain:x.domain, capability:x.capability, priority:x.priority, met:x.met,
+    quality:x.quality, code:x.vendor_code, confidence:x.confidence, rationale:x.rationale,
+    ev_quote:(x.evidence&&x.evidence.quote)||"", ev_source:(x.evidence&&x.evidence.source)||"",
+    ev_locator:(x.evidence&&x.evidence.locator)||"(unlocated)"}));
+  return {rows, headers};
+}
+function compareRows(a, b){
+  const rows = [];
+  const num = (section, metric, av, bv) => rows.push({section, metric, aVal:_cr1(av), bVal:_cr1(bv), delta:_cr1(av-bv)});
+  const txt = (section, metric, av, bv) => rows.push({section, metric, aVal:av, bVal:bv, delta:""});
+  const byKey = (list, k) => { const map={}; (list||[]).forEach(x=>map[x[k]]=x); return map; };
+  num("Headline","SSA score (0-100)", a.weighted_total, b.weighted_total);
+  num("Headline","§30 capability score (0-100)", a.capability_weighted_total, b.capability_weighted_total);
+  txt("Gate","MoSCoW gate", a.gating.disqualified?"DISQUALIFIED":"PASS", b.gating.disqualified?"DISQUALIFIED":"PASS");
+  const bc = byKey(b.capabilities,"code");
+  (a.capabilities||[]).forEach(ca => num("§30 capability", ca.name, ca.score_1_5, (bc[ca.code]||{}).score_1_5||0));
+  const bcat = byKey(b.categories,"name");
+  (a.categories||[]).forEach(ca => num("SSA category", ca.name, ca.raw_1_5, (bcat[ca.name]||{}).raw_1_5||0));
+  const bseg = byKey(b.segment_fit,"segment_name");
+  (a.segment_fit||[]).forEach(s => num("OpCo segment", s.segment_name, s.fit_1_5, (bseg[s.segment_name]||{}).fit_1_5||0));
+  num("Agentic future","Overall", a.agentic_future.score_1_5, b.agentic_future.score_1_5);
+  num("Agentic future","Openness", a.agentic_future.openness_1_5, b.agentic_future.openness_1_5);
+  num("Agentic future","AI capability", a.agentic_future.ai_capability_1_5, b.agentic_future.ai_capability_1_5);
+  txt("Agentic future","Data-control risk", a.agentic_future.data_control_risk, b.agentic_future.data_control_risk);
+  txt("Vote","Recommendation", a.vote.recommendation, b.vote.recommendation);
+  const headers = [
+    {key:"section",label:"Section"},{key:"metric",label:"Metric"},
+    {key:"aVal",label:a.vendor},{key:"bVal",label:b.vendor},{key:"delta",label:"Delta (A-B)"}];
+  return {rows, headers};
+}
+function htmlEsc(s){
+  return String(s===null||s===undefined?"":s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function tableHTML(rows, headers){
+  const head = "<thead><tr>" + headers.map(h => "<th>"+htmlEsc(h.label)+"</th>").join("") + "</tr></thead>";
+  const body = "<tbody>" + rows.map(r =>
+    "<tr>" + headers.map(h => "<td>"+htmlEsc(r[h.key])+"</td>").join("") + "</tr>").join("") + "</tbody>";
+  return "<table>" + head + body + "</table>";
+}
+function brandedDoc(o){
+  const logo = (o.logoSrc && o.logoSrc.length > 0)
+    ? '<img class="logo" src="'+o.logoSrc+'" alt="SSA &amp; Company"/>'
+    : '<div class="wordmark">SSA &amp; Company</div>';
+  const takeaway = o.takeaway ? '<p class="takeaway">'+htmlEsc(o.takeaway)+'</p>' : "";
+  const ctx = o.contextLine ? '<p class="ctx">'+htmlEsc(o.contextLine)+'</p>' : "";
+  return '<!doctype html><html><head><meta charset="utf-8"><title>'+htmlEsc(o.title)+'</title><style>'
+    + '@page{size:A4;margin:18mm}'
+    + 'body{font-family:\'Avenir Next LT Pro\',\'Avenir\',\'Segoe UI\',system-ui,sans-serif;color:#0f1b33;margin:0}'
+    + '.band{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #003399;padding-bottom:8px;margin-bottom:14px}'
+    + '.logo{height:34px}.wordmark{font-weight:700;font-size:18px;color:#003399}'
+    + '.band .meta{text-align:right;color:#5b6677;font-size:12px}'
+    + 'h1{color:#003399;font-size:18px;margin:0 0 2px}'
+    + '.ctx{color:#5b6677;font-size:12px;margin:0 0 10px}'
+    + '.takeaway{background:#003399;color:#fff;padding:8px 12px;border-radius:6px;font-size:13px;margin:0 0 12px}'
+    + 'table{border-collapse:collapse;width:100%;font-size:11px}'
+    + 'thead{display:table-header-group}tr{break-inside:avoid}'
+    + 'th{background:#336179;color:#fff;text-align:left;padding:5px 7px}'
+    + 'td{border:1px solid #E0E4EA;padding:4px 7px;vertical-align:top}'
+    + 'tbody tr:nth-child(even){background:#FAFBFC}'
+    + 'footer{position:fixed;bottom:8mm;left:18mm;right:18mm;color:#8BA4C4;font-size:10px;border-top:1px solid #E0E4EA;padding-top:4px}'
+    + '</style></head><body>'
+    + '<div class="band"><div><div class="meta-logo">'+logo+'</div></div>'
+    + '<div class="meta"><div>'+htmlEsc(o.title)+'</div><div>Generated '+htmlEsc(o.dateStr)+'</div></div></div>'
+    + '<h1>'+htmlEsc(o.title)+'</h1>'+ctx+takeaway+(o.tableHTML||"")
+    + '<footer>SSA &amp; Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr)+'</footer>'
+    + '</body></html>';
+}
+// === EXPORT_HELPERS_END ===
+
+function downloadCSV(filename, rows, headers){
+  const blob = new Blob([toCSV(rows, headers)], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// Resolve the color logo for the print header. Standalone: BOOT.logo_dark.
+// Server: fetch the served color asset. Either may be absent -> wordmark.
+async function resolvePrintLogo(){
+  if(typeof BOOT !== "undefined" && BOOT && BOOT.logo_dark) return BOOT.logo_dark;
+  if(typeof STATIC !== "undefined" && STATIC) return "";
+  try { return (await (await fetch("/ssa_logo_long_b64.txt")).text()).trim(); }
+  catch(e){ return ""; }
+}
+function printViaHiddenContainer(docHTML){
+  // Fallback when popups are blocked: write an iframe, print it, remove it.
+  const iframe = document.createElement("iframe");
+  iframe.style.position="fixed"; iframe.style.right="0"; iframe.style.bottom="0";
+  iframe.style.width="0"; iframe.style.height="0"; iframe.style.border="0";
+  document.body.appendChild(iframe);
+  const d = iframe.contentWindow.document;
+  d.open(); d.write(docHTML); d.close();
+  iframe.contentWindow.focus();
+  setTimeout(()=>{ iframe.contentWindow.print(); setTimeout(()=>iframe.remove(), 1000); }, 200);
+}
+async function printBranded(title, parts){
+  const dateStr = new Date().toISOString().slice(0,10);
+  const logoSrc = await resolvePrintLogo();
+  const docHTML = brandedDoc({title, dateStr, logoSrc,
+    contextLine:parts.contextLine||"", takeaway:parts.takeaway||"", tableHTML:parts.tableHTML||""});
+  const w = window.open("", "_blank");
+  if(!w){ printViaHiddenContainer(docHTML); return; }
+  w.document.open(); w.document.write(docHTML); w.document.close();
+  w.onload = () => { w.focus(); w.print(); };
+}
+
 function CapabilityHeatmap({results}){
   const caps = results[0]?.capabilities || [];
   if(!caps.length) return null;
@@ -377,6 +529,18 @@ function Dashboard({results, onOpen}){
   return (
     <div>
       <div className="section-title">Head-to-head ranking — the agent’s vote</div>
+      <div style={{display:"flex",gap:8,margin:"0 0 10px"}}>
+        <button className="btn small" onClick={()=>{
+          const {rows,headers}=rankingRows(results);
+          downloadCSV(exportFilename("ranking",[],new Date().toISOString().slice(0,10)),rows,headers);
+        }}>Export ranking (CSV)</button>
+        <button className="btn ghost small" onClick={()=>{
+          const {rows,headers}=rankingRows(results);
+          printBranded("Vendor ranking — FSM RFP evaluation",{
+            contextLine:results.length+" vendors evaluated · advisory scoring",
+            tableHTML:tableHTML(rows,headers)});
+        }}>Export ranking (PDF)</button>
+      </div>
       <div className="card" style={{padding:0}}>
         <div className="table-scroll">
         <table className="dashboard-table">
@@ -428,6 +592,10 @@ function VendorDetail({data}){
   const caps=[...new Set(r.requirement_scores.map(x=>x.capability))];
   return (
     <div>
+      <button className="btn small" style={{marginBottom:10}} onClick={()=>{
+        const {rows,headers}=requirementRows(data);
+        downloadCSV(exportFilename("requirements",[data.vendor],new Date().toISOString().slice(0,10)),rows,headers);
+      }}>Export requirements (CSV)</button>
       {/* Headline */}
       <div className="grid detail-hero">
         <div className="card">
@@ -701,6 +869,18 @@ function Compare({results}){
           </select>
         </label>
         {bName === aName && <span className="small" style={{color:"var(--warn)"}}>Pick two different vendors — showing the next one.</span>}
+      </div>
+
+      <div style={{display:"flex",gap:8,margin:"10px 0"}}>
+        <button className="btn small" disabled={!A||!B||A===B} onClick={()=>{
+          const {rows,headers}=compareRows(A,B);
+          downloadCSV(exportFilename("compare",[A.vendor,"vs",B.vendor],new Date().toISOString().slice(0,10)),rows,headers);
+        }}>Export comparison (CSV)</button>
+        <button className="btn ghost small" disabled={!A||!B||A===B} onClick={()=>{
+          const {rows,headers}=compareRows(A,B);
+          printBranded(A.vendor+" vs "+B.vendor+" — FSM RFP comparison",{
+            takeaway:cmpTakeaway(A,B), tableHTML:tableHTML(rows,headers)});
+        }}>Export comparison (PDF)</button>
       </div>
 
       <div className="cmp-takeaway">{cmpTakeaway(A, B)}</div>
