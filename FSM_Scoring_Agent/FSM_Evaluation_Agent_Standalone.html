@@ -1079,22 +1079,30 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
 
 // ---- batch runner: many vendors, one parallel run, live board -------------
 const REQ_TOTAL = 422; // requirements in data/requirements.json; used only for the ~estimate
-function newRow(){ return {id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()), vendor:"", files:[], urls:""}; }
+function newRow(vendor){ return {id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()), vendor:vendor||"", files:[], urls:""}; }
 function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
-  const [rows,setRows]=useState([newRow()]);
+  const [rows,setRows]=useState([]);
   const [confirm,setConfirm]=useState(null); // {text} pre-flight estimate, or null
   const [board,setBoard]=useState(null);     // [{vendor, job_id, stage, scored, total, done, error}]
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState(null);
   const ACCEPT=".pdf,.docx,.xlsx,.xlsm,.txt,.md";
 
+  // Vendors are a fixed, deterministic set: each row picks one from a dropdown and a
+  // vendor can't be chosen in two rows. Seed the first row once the list has loaded.
+  const allNames = vendors.map(v=>v.name);
+  useEffect(()=>{ if(allNames.length && rows.length===0) setRows([newRow(allNames[0])]); },[vendors]);
+  function usedExcept(idx){ return new Set(rows.filter((_,j)=>j!==idx).map(r=>r.vendor)); }
+  function firstUnused(){ const used=new Set(rows.map(r=>r.vendor)); return allNames.find(n=>!used.has(n)) || ""; }
+  const allAdded = !firstUnused();
+
   function setRow(i,patch){ setRows(rs=>rs.map((r,j)=>j===i?{...r,...patch}:r)); }
-  function addRow(){ setRows(rs=>[...rs,newRow()]); }
+  function addRow(){ const n=firstUnused(); if(n) setRows(rs=>[...rs,newRow(n)]); }
   function removeRow(i){ setRows(rs=>rs.length>1?rs.filter((_,j)=>j!==i):rs); }
   function addFiles(i,list){ setRow(i,{files:[...rows[i].files,...Array.from(list)]}); }
   function removeFile(i,k){ setRow(i,{files:rows[i].files.filter((_,j)=>j!==k)}); }
 
-  const valid = rows.filter(r=>r.vendor.trim() && (r.files.length>0 || r.urls.trim().length>0));
+  const valid = rows.filter(r=>r.vendor && (r.files.length>0 || r.urls.trim().length>0));
   const isMock = model==="mock";
 
   function preflight(){
@@ -1160,30 +1168,43 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
         <b className="small" style={{color:"var(--ssa-blue)"}}>Batch evaluate - run several vendors in parallel</b>
         {STATIC && <div className="small muted" style={{marginTop:6}}>Batch runs need the live server (the offline standalone is single-vendor only).</div>}
         {!STATIC && <>
-          <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:10}}>
-            {rows.map((r,i)=>(
-              <div key={r.id} className="grid" style={{gridTemplateColumns:"180px 1fr auto",gap:8,alignItems:"start"}}>
-                <input className="pill" style={{padding:"8px 10px"}} placeholder="Vendor name"
-                       value={r.vendor} onChange={e=>setRow(i,{vendor:e.target.value})}/>
-                <div onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(i,e.dataTransfer.files);}}>
-                  <label className="btn ghost" style={{cursor:"pointer"}}>
-                    + Files
-                    <input type="file" multiple accept={ACCEPT} style={{display:"none"}}
-                           onChange={e=>{addFiles(i,e.target.files); e.target.value="";}}/>
-                  </label>
-                  {r.files.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6}}>
+          <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+            {rows.map((r,i)=>{
+              const opts = vendors.filter(v=>!usedExcept(i).has(v.name));
+              const prod = (vendors.find(v=>v.name===r.vendor)||{}).product;
+              return (
+              <div key={r.id} style={{border:"1px solid var(--line)",borderRadius:10,padding:"12px 14px",position:"relative",background:"#fff"}}>
+                <button onClick={()=>removeRow(i)} disabled={rows.length<=1} title="Remove vendor"
+                  style={{position:"absolute",top:10,right:12,background:"none",border:"none",fontSize:15,lineHeight:1,
+                          color: rows.length<=1?"var(--line)":"var(--muted)", cursor: rows.length<=1?"default":"pointer"}}>&#10005;</button>
+                <div style={{display:"flex",alignItems:"baseline",gap:10,paddingRight:24}}>
+                  <select className="pill" style={{padding:"8px 10px",minWidth:200,fontWeight:600}}
+                          value={r.vendor} onChange={e=>setRow(i,{vendor:e.target.value})}>
+                    {opts.map(v=>(<option key={v.name} value={v.name}>{v.name}</option>))}
+                  </select>
+                  {prod && <span className="small muted" style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{prod}</span>}
+                </div>
+                <div style={{marginTop:10}}
+                     onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(i,e.dataTransfer.files);}}>
+                  <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                    <label className="btn ghost" style={{cursor:"pointer"}}>
+                      + Files
+                      <input type="file" multiple accept={ACCEPT} style={{display:"none"}}
+                             onChange={e=>{addFiles(i,e.target.files); e.target.value="";}}/>
+                    </label>
                     {r.files.map((f,k)=>(<span key={k} className="pill">{f.name} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>removeFile(i,k)}>&#10005;</span></span>))}
-                  </div>}
+                  </div>
                   <textarea value={r.urls} onChange={e=>setRow(i,{urls:e.target.value})} rows={1}
                     placeholder="or paste URL(s) - one per line"
-                    style={{width:"100%",marginTop:6,border:"1px solid var(--line)",borderRadius:8,padding:"6px 8px",fontFamily:"var(--font)",fontSize:13}}/>
+                    style={{width:"100%",marginTop:8,border:"1px solid var(--line)",borderRadius:8,padding:"7px 9px",fontFamily:"var(--font)",fontSize:13,boxSizing:"border-box"}}/>
                 </div>
-                <button className="btn ghost" style={{padding:"6px 10px"}} onClick={()=>removeRow(i)} disabled={rows.length<=1}>Remove</button>
               </div>
-            ))}
+              );
+            })}
           </div>
-          <div style={{marginTop:10,display:"flex",gap:8,alignItems:"center"}}>
-            <button className="btn ghost" onClick={addRow}>+ Add vendor</button>
+          <div style={{marginTop:12,display:"flex",gap:8,alignItems:"center"}}>
+            <button className="btn ghost" onClick={addRow} disabled={allAdded}
+              title={allAdded?"All vendors added":""}>+ Add vendor</button>
             <button className="btn" onClick={preflight} disabled={busy || !valid.length}>Run all ({valid.length})</button>
             {busy && <span className="small"><span className="spin"/> running&#8230;</span>}
           </div>
