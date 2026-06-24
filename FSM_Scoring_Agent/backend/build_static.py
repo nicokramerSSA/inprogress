@@ -25,6 +25,8 @@ with open(os.path.join(HERE, "data", "sample_results.json")) as f:
     results = json.load(f)
 with open(os.path.join(FRONT, "ssa_logo_long_white_b64.txt")) as f:
     logo = f.read().strip()
+with open(os.path.join(FRONT, "ssa_logo_long_b64.txt")) as f:
+    logo_dark = f.read().strip()
 
 boot = {
     "models": available_models(),
@@ -33,6 +35,7 @@ boot = {
     "knowledge": {"persona": kb.persona, "scorecard": kb.scorecard,
                   "capabilities": kb.capabilities, "segments": kb.segments},
     "logo": logo,
+    "logo_dark": logo_dark,
 }
 
 html = open(os.path.join(FRONT, "index.html"), encoding="utf-8").read()
