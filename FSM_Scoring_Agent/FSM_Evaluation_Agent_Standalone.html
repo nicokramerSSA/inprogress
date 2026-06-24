@@ -378,8 +378,8 @@ function tableHTML(rows, headers){
 }
 function brandedDoc(o){
   const logo = (o.logoSrc && o.logoSrc.length > 0)
-    ? '<img class="logo" src="'+o.logoSrc+'" alt="SSA & Company"/>'
-    : '<div class="wordmark">SSA & Company</div>';
+    ? '<img class="logo" src="'+o.logoSrc+'" alt="SSA &amp; Company"/>'
+    : '<div class="wordmark">SSA &amp; Company</div>';
   const takeaway = o.takeaway ? '<p class="takeaway">'+htmlEsc(o.takeaway)+'</p>' : "";
   const ctx = o.contextLine ? '<p class="ctx">'+htmlEsc(o.contextLine)+'</p>' : "";
   return '<!doctype html><html><head><meta charset="utf-8"><title>'+htmlEsc(o.title)+'</title><style>'
@@ -401,7 +401,7 @@ function brandedDoc(o){
     + '<div class="band"><div><div class="meta-logo">'+logo+'</div></div>'
     + '<div class="meta"><div>'+htmlEsc(o.title)+'</div><div>Generated '+htmlEsc(o.dateStr)+'</div></div></div>'
     + '<h1>'+htmlEsc(o.title)+'</h1>'+ctx+takeaway+(o.tableHTML||"")
-    + '<footer>SSA & Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr)+'</footer>'
+    + '<footer>SSA &amp; Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr)+'</footer>'
     + '</body></html>';
 }
 // === EXPORT_HELPERS_END ===
