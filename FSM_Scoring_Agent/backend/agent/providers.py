@@ -19,11 +19,18 @@ import os
 import json
 import re
 import time
+import threading
 from typing import Dict, Any, Tuple, Optional
 
 from .knowledge import get_kb
 
 MOCK_MODEL_ID = "mock"
+
+# Global concurrency ceiling for REAL LLM calls (scoring, vote, chat all share it).
+# One knob bounds how hard we hit every provider at once, which also bounds cost.
+# The mock engine never acquires this gate (it makes no network call).
+MAX_CONCURRENCY = max(1, int(os.environ.get("RESULTS_MAX_CONCURRENCY", "6")))
+_LLM_GATE = threading.BoundedSemaphore(MAX_CONCURRENCY)
 
 
 # --------------------------------------------------------------------------- #
@@ -123,19 +130,25 @@ class LLMClient:
         provider, model = resolve_model(model_id)
         sdk = provider["sdk"]
         last = RuntimeError("generate: no attempt completed")  # defensive: never report NoneType
-        for attempt in range(3):  # 1 try + 2 retries
-            try:
-                if sdk == "anthropic":
-                    return self._anthropic(provider, model, system, user, expect_json, max_tokens, temperature)
-                if sdk in ("openai", "openai_azure"):
-                    return self._openai(provider, model, system, user, expect_json, max_tokens, temperature, azure=(sdk == "openai_azure"))
-                return {"text": "", "provider": provider["id"], "model": model_id,
-                        "ok": False, "error": f"Unsupported sdk {sdk!r}"}
-            except Exception as e:  # fail soft — never take the server down over an API error
-                last = e
-                if not _is_transient(e) or attempt == 2:
-                    break
-                time.sleep(0.8 * (2 ** attempt))  # 0.8s, 1.6s
+        # Hold one global slot across all retries of this single call, so a call that is
+        # backing off on a 429 keeps applying back-pressure instead of letting another
+        # call rush the same rate limit. The mock path returned above, so the gate wraps
+        # real API calls only.
+        with _LLM_GATE:
+            for attempt in range(4):  # 1 try + 3 retries
+                try:
+                    if sdk == "anthropic":
+                        return self._anthropic(provider, model, system, user, expect_json, max_tokens, temperature)
+                    if sdk in ("openai", "openai_azure"):
+                        return self._openai(provider, model, system, user, expect_json, max_tokens, temperature, azure=(sdk == "openai_azure"))
+                    return {"text": "", "provider": provider["id"], "model": model_id,
+                            "ok": False, "error": f"Unsupported sdk {sdk!r}"}
+                except Exception as e:  # fail soft — never take the server down over an API error
+                    last = e
+                    if not _is_transient(e) or attempt == 3:
+                        break
+                    # Exponential backoff with jitter: ~0.5, 1, 2s plus 0-0.4s jitter.
+                    time.sleep(0.5 * (2 ** attempt) + (hash((attempt, id(e))) % 400) / 1000.0)
         return {"text": "", "provider": provider["id"], "model": model.get("id", model_id),
                 "ok": False, "error": f"{type(last).__name__}: {last}"}
 

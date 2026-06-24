@@ -380,6 +380,94 @@ def evaluate_upload():
     return jsonify({"job_id": jid}), 202
 
 
+@app.route("/api/evaluate_batch", methods=["POST"])
+def evaluate_batch():
+    """
+    Evaluate MANY vendors in parallel from uploaded files/URLs (multipart/form-data).
+
+    Shared fields: count, scoring_model, vote_model | vote_dual (JSON), requirement_sample?.
+    Per row i in 0..count-1: vendor_i, files_i (repeatable), urls_i (newline/comma list).
+
+    Launches one background job per valid vendor (the same machinery as the single
+    endpoint); the global concurrency gate in providers.py bounds total in-flight LLM
+    calls across all of them. Rows with no readable source are rejected, not fatal.
+    """
+    try:
+        count = int(request.form.get("count", "0"))
+    except ValueError:
+        count = 0
+    if count <= 0:
+        return jsonify({"error": "count must be a positive integer"}), 400
+
+    scoring_model = request.form.get("scoring_model", "mock")
+    vote_model = request.form.get("vote_model", scoring_model)
+    sample_n = request.form.get("requirement_sample", type=int)
+    vote_dual = None
+    if request.form.get("vote_dual"):
+        try:
+            vote_dual = json.loads(request.form["vote_dual"])
+        except Exception:
+            vote_dual = None
+    pair_ids = [vote_dual[k] for k in ("openai", "anthropic", "synthesizer")
+                if vote_dual.get(k)] if vote_dual else []
+    err = _validate_models(scoring_model, vote_model, *pair_ids)
+    if err:
+        return jsonify({"error": err}), 400
+
+    batch_id = uuid.uuid4().hex[:12]
+    jobs, rejected = [], []
+    for i in range(count):
+        vendor = (request.form.get(f"vendor_{i}") or "").strip()
+        if not vendor:
+            rejected.append({"vendor": f"(row {i})", "reason": "missing vendor name"})
+            continue
+        urls = _split_urls(request.form.get(f"urls_{i}", ""))
+        saved_paths, row_rejected = [], []
+        vdir = os.path.join(UPLOAD_DIR, secure_filename(vendor) or f"vendor_{i}")
+        os.makedirs(vdir, exist_ok=True)
+        for f in request.files.getlist(f"files_{i}"):
+            if not f or not f.filename:
+                continue
+            name = secure_filename(f.filename)
+            ext = os.path.splitext(name)[1].lower()
+            if ext not in ALLOWED_EXTS:
+                row_rejected.append(f.filename)
+                continue
+            dest = os.path.join(vdir, name)
+            try:
+                f.save(dest)
+            except Exception:
+                row_rejected.append(f.filename)
+                continue
+            saved_paths.append(dest)
+        if not saved_paths and not urls:
+            reason = "no file (.pdf/.docx/.xlsx/.txt/.md) or URL provided"
+            if row_rejected:
+                reason += f"; rejected unsupported: {', '.join(row_rejected)}"
+            rejected.append({"vendor": vendor, "reason": reason})
+            continue
+        proposal_text = extract_sources(saved_paths, urls)
+        if not (proposal_text or "").strip():
+            rejected.append({"vendor": vendor, "reason": "no readable text extracted"})
+            continue
+        ingest_meta = {
+            "files": [os.path.basename(p) for p in saved_paths],
+            "urls": urls, "rejected": row_rejected, "chars_extracted": len(proposal_text),
+        }
+        jid = _new_job()
+        with _JOBS_LOCK:
+            _JOBS[jid]["ingest"] = ingest_meta
+        threading.Thread(target=_run_job, kwargs=dict(
+            jid=jid, vendor=vendor, product="", proposal_text=proposal_text,
+            scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
+            vote_dual=vote_dual), daemon=True).start()
+        jobs.append({"vendor": vendor, "job_id": jid})
+
+    if not jobs:
+        return jsonify({"error": "No valid vendors to evaluate.", "jobs": [], "rejected": rejected}), 400
+    return jsonify({"batch_id": batch_id, "jobs": jobs, "rejected": rejected}), 202
+
+
 @app.route("/api/evaluate/status/<job_id>")
 def evaluate_status(job_id):
     with _JOBS_LOCK:

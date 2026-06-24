@@ -32,11 +32,12 @@ Design choices worth noting
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, Callable
 
 from .knowledge import get_kb
-from .providers import client, is_mock, extract_json
+from .providers import client, is_mock, extract_json, MAX_CONCURRENCY
 from .ingest import (build_retrieval_index, relevant_passages,
                      parse_segments, strip_loc_markers, locate_quote)
 from .schemas import (
@@ -160,46 +161,69 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
     strengths = _vendor_cap_strength(vendor)
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
+        # Mock is CPU-only and instant — stay sequential, never touch the executor/gate.
         return [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
 
     kb = get_kb()
     system = kb.persona_system_prompt() + "\n\n" + kb.scoring_context()
-    out: List[RequirementScore] = []
     BATCH = 12
     total = len(reqs)
-    retrieval_index = build_retrieval_index(proposal_text)
-    for i in range(0, total, BATCH):
-        if should_cancel and should_cancel():
-            raise EvaluationCancelled()
-        batch = reqs[i:i + BATCH]
-        # Localize the vendor's most relevant passages for this batch's terms.
+    retrieval_index = build_retrieval_index(proposal_text)  # built once, shared read-only across workers
+
+    # Slice into batches up front; each batch is scored by an independent worker. The
+    # global gate in providers.generate bounds how many actually hit the API at once
+    # (across all vendors); the executor bounds this vendor's own fan-out.
+    batches = [reqs[i:i + BATCH] for i in range(0, total, BATCH)]
+
+    def score_batch(batch):
+        # Returns {rid: row} for the batch, or {} on any failure (caller falls back per row).
         kws = _batch_keywords(batch)
         context = relevant_passages(proposal_text, kws, max_chunks=8, index=retrieval_index)
-
         user = _batch_prompt(vendor, product, batch, context)
         resp = client.generate(system, user, model_id, expect_json=True,
                                max_tokens=8192, temperature=0.15)
-        if resp["ok"]:
+        if not resp["ok"]:
+            return {}
+        try:
+            parsed = extract_json(resp["text"])
+            rows = parsed if isinstance(parsed, list) else parsed.get("scores", [])
+            return {row.get("rid"): row for row in rows}
+        except Exception:
+            return {}
+
+    if should_cancel and should_cancel():
+        raise EvaluationCancelled()
+
+    by_rid: Dict[str, Dict[str, Any]] = {}
+    done_reqs = 0
+    cancelled = False
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENCY) as pool:
+        futures = {pool.submit(score_batch, b): b for b in batches}
+        for fut in as_completed(futures):
+            b = futures[fut]
             try:
-                parsed = extract_json(resp["text"])
-                rows = parsed if isinstance(parsed, list) else parsed.get("scores", [])
-                by_rid = {row.get("rid"): row for row in rows}
+                by_rid.update(fut.result())
             except Exception:
-                by_rid = {}
+                pass  # leave this batch's rids unfilled -> per-row mock fallback below
+            done_reqs += len(b)
+            emit(f"Scored {min(done_reqs, total)}/{total} requirements…",
+                 0.05 + 0.62 * (min(done_reqs, total) / total))
+            if should_cancel and should_cancel():
+                cancelled = True
+                break
+    if cancelled:
+        raise EvaluationCancelled()
+
+    # Build the output in ORIGINAL reqs order (not completion order). Any rid the model
+    # skipped or a failed batch left out falls back to the deterministic engine, so the
+    # rollups never have holes.
+    out: List[RequirementScore] = []
+    for r in reqs:
+        row = by_rid.get(r["rid"])
+        if row:
+            out.append(_row_to_score(r, row, segments))
         else:
-            by_rid = {}
-
-        for r in batch:
-            row = by_rid.get(r["rid"])
-            if row:
-                out.append(_row_to_score(r, row, segments))
-            else:
-                # Fall back to the deterministic engine for any row the model skipped,
-                # so the rollups never have holes (fail soft).
-                out.append(_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments))
-
-        emit(f"Scored {min(i + BATCH, total)}/{total} requirements…",
-             0.05 + 0.62 * (min(i + BATCH, total) / total))
+            out.append(_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments))
     return out
 
 

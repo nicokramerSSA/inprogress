@@ -1077,6 +1077,178 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   );
 }
 
+// ---- batch runner: many vendors, one parallel run, live board -------------
+const REQ_TOTAL = 422; // requirements in data/requirements.json; used only for the ~estimate
+function newRow(vendor){ return {id:(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random()), vendor:vendor||"", files:[], urls:""}; }
+function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
+  const [rows,setRows]=useState([]);
+  const [confirm,setConfirm]=useState(null); // {text} pre-flight estimate, or null
+  const [board,setBoard]=useState(null);     // [{vendor, job_id, stage, scored, total, done, error}]
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  const ACCEPT=".pdf,.docx,.xlsx,.xlsm,.txt,.md";
+
+  // Vendors are a fixed, deterministic set: each row picks one from a dropdown and a
+  // vendor can't be chosen in two rows. Seed the first row once the list has loaded.
+  const allNames = vendors.map(v=>v.name);
+  useEffect(()=>{ if(allNames.length && rows.length===0) setRows([newRow(allNames[0])]); },[vendors]);
+  function usedExcept(idx){ return new Set(rows.filter((_,j)=>j!==idx).map(r=>r.vendor)); }
+  function firstUnused(){ const used=new Set(rows.map(r=>r.vendor)); return allNames.find(n=>!used.has(n)) || ""; }
+  const allAdded = !firstUnused();
+
+  function setRow(i,patch){ setRows(rs=>rs.map((r,j)=>j===i?{...r,...patch}:r)); }
+  function addRow(){ const n=firstUnused(); if(n) setRows(rs=>[...rs,newRow(n)]); }
+  function removeRow(i){ setRows(rs=>rs.length>1?rs.filter((_,j)=>j!==i):rs); }
+  function addFiles(i,list){ setRow(i,{files:[...rows[i].files,...Array.from(list)]}); }
+  function removeFile(i,k){ setRow(i,{files:rows[i].files.filter((_,j)=>j!==k)}); }
+
+  const valid = rows.filter(r=>r.vendor && (r.files.length>0 || r.urls.trim().length>0));
+  const isMock = model==="mock";
+
+  function preflight(){
+    if(!valid.length){ setMsg({ok:false,text:"Add at least one vendor with a file or URL."}); return; }
+    if(isMock){ launch(); return; } // free offline engine - no estimate needed
+    const scoringPer=Math.ceil(REQ_TOTAL/12);
+    const votePer=voteMode==="dual"?3:1;
+    const n=valid.length;
+    const text=`${n} vendor(s) x ~${scoringPer} = ~${n*scoringPer} scoring calls (${model})`
+      +` + ${n*votePer} vote call(s) (${voteMode==="dual"?"dual":voteModel}). Proceed?`;
+    setConfirm({text});
+  }
+
+  async function launch(){
+    setConfirm(null); setBusy(true); setMsg(null);
+    const fd=new FormData();
+    fd.append("count",String(valid.length));
+    fd.append("scoring_model",model);
+    if(voteMode==="dual") fd.append("vote_dual",JSON.stringify(voteDual)); else fd.append("vote_model",voteModel);
+    valid.forEach((r,i)=>{
+      fd.append("vendor_"+i,r.vendor.trim());
+      fd.append("urls_"+i,r.urls);
+      r.files.forEach(f=>fd.append("files_"+i,f));
+    });
+    let res;
+    try{
+      const r=await fetch("/api/evaluate_batch",{method:"POST",body:fd});
+      res=await r.json();
+    }catch(e){ setBusy(false); setMsg({ok:false,text:"Batch upload failed - files may exceed the size limit, or the server is unreachable."}); return; }
+    if(res.error){ setBusy(false); setMsg({ok:false,text:"Error: "+res.error}); return; }
+    const init=res.jobs.map(j=>({...j, stage:"queued", scored:0, total:0, done:false, error:null}));
+    setBoard(init);
+    if(res.rejected && res.rejected.length) setMsg({ok:false,text:"Skipped: "+res.rejected.map(x=>x.vendor+" ("+x.reason+")").join("; ")});
+    pollAll(init);
+  }
+
+  async function pollAll(jobs){
+    const live={}; jobs.forEach(j=>live[j.job_id]=true);
+    try{
+      while(Object.values(live).some(Boolean)){
+        await new Promise(r=>setTimeout(r,900));
+        await Promise.all(jobs.map(async j=>{
+          if(!live[j.job_id]) return;
+          let s;
+          try{ s=await jget("/api/evaluate/status/"+j.job_id); }
+          catch(e){ return; } // transient (network/502): skip this tick, retry next loop
+          if(!s || s.error===undefined && s.stage===undefined && s.done===undefined) return; // unparseable body: retry next loop
+          setBoard(b=>b.map(x=>x.job_id===j.job_id?{...x, stage:s.stage, scored:s.scored, total:s.total, done:s.done, error:s.error}:x));
+          if(s.done || s.error){ live[j.job_id]=false; }
+        }));
+      }
+    } finally {
+      setBusy(false); onDone();
+    }
+  }
+  async function cancelOne(jid){ await jpost("/api/evaluate/cancel/"+jid,{}); }
+
+  const doneCount = board ? board.filter(b=>b.done).length : 0;
+
+  return (
+    <div>
+      <div className="card" style={{marginBottom:14}}>
+        <b className="small" style={{color:"var(--ssa-blue)"}}>Batch evaluate - run several vendors in parallel</b>
+        {STATIC && <div className="small muted" style={{marginTop:6}}>Batch runs need the live server (the offline standalone is single-vendor only).</div>}
+        {!STATIC && <>
+          <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:10}}>
+            {rows.map((r,i)=>{
+              const opts = vendors.filter(v=>!usedExcept(i).has(v.name));
+              const prod = (vendors.find(v=>v.name===r.vendor)||{}).product;
+              return (
+              <div key={r.id} style={{border:"1px solid var(--line)",borderRadius:10,padding:"12px 14px",position:"relative",background:"#fff"}}>
+                <button onClick={()=>removeRow(i)} disabled={rows.length<=1} title="Remove vendor"
+                  style={{position:"absolute",top:10,right:12,background:"none",border:"none",fontSize:15,lineHeight:1,
+                          color: rows.length<=1?"var(--line)":"var(--muted)", cursor: rows.length<=1?"default":"pointer"}}>&#10005;</button>
+                <div style={{display:"flex",alignItems:"baseline",gap:10,paddingRight:24}}>
+                  <select className="pill" style={{padding:"8px 10px",minWidth:200,fontWeight:600}}
+                          value={r.vendor} onChange={e=>setRow(i,{vendor:e.target.value})}>
+                    {opts.map(v=>(<option key={v.name} value={v.name}>{v.name}</option>))}
+                  </select>
+                  {prod && <span className="small muted" style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{prod}</span>}
+                </div>
+                <div style={{marginTop:10}}
+                     onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(i,e.dataTransfer.files);}}>
+                  <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                    <label className="btn ghost" style={{cursor:"pointer"}}>
+                      + Files
+                      <input type="file" multiple accept={ACCEPT} style={{display:"none"}}
+                             onChange={e=>{addFiles(i,e.target.files); e.target.value="";}}/>
+                    </label>
+                    {r.files.map((f,k)=>(<span key={k} className="pill">{f.name} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>removeFile(i,k)}>&#10005;</span></span>))}
+                  </div>
+                  <textarea value={r.urls} onChange={e=>setRow(i,{urls:e.target.value})} rows={1}
+                    placeholder="or paste URL(s) - one per line"
+                    style={{width:"100%",marginTop:8,border:"1px solid var(--line)",borderRadius:8,padding:"7px 9px",fontFamily:"var(--font)",fontSize:13,boxSizing:"border-box"}}/>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+          <div style={{marginTop:12,display:"flex",gap:8,alignItems:"center"}}>
+            <button className="btn ghost" onClick={addRow} disabled={allAdded}
+              title={allAdded?"All vendors added":""}>+ Add vendor</button>
+            <button className="btn" onClick={preflight} disabled={busy || !valid.length}>Run all ({valid.length})</button>
+            {busy && <span className="small"><span className="spin"/> running&#8230;</span>}
+          </div>
+          {isMock && valid.length>0 && <div className="small" style={{color:"var(--warn)",marginTop:8}}>
+            &#9888; A live model is recommended for real proposals - the offline "mock" engine doesn't read uploaded content deeply.
+          </div>}
+          {msg && <div className="small" style={{marginTop:8,color:msg.ok?"var(--good)":"var(--bad)"}}>{msg.text}</div>}
+        </>}
+      </div>
+
+      {confirm && <div className="card" style={{marginBottom:14,borderColor:"var(--ssa-blue)"}}>
+        <div className="small">{confirm.text}</div>
+        <div style={{marginTop:8,display:"flex",gap:8}}>
+          <button className="btn" onClick={launch}>Run all</button>
+          <button className="btn ghost" onClick={()=>setConfirm(null)}>Cancel</button>
+        </div>
+      </div>}
+
+      {board && <div className="card">
+        <b className="small">Batch run - {doneCount} of {board.length} done</b>
+        <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:8}}>
+          {board.map(b=>{
+            const pct = b.total ? Math.round(100*b.scored/b.total) : (b.done?100:4);
+            const state = b.error ? "error" : (b.done ? "done" : (b.stage||"queued"));
+            return (
+              <div key={b.job_id} className="grid" style={{gridTemplateColumns:"160px 1fr 120px",gap:10,alignItems:"center"}}>
+                <span className="small" style={{fontWeight:600}}>{b.vendor}</span>
+                <div style={{background:"var(--line)",borderRadius:6,height:10,overflow:"hidden"}}>
+                  <div style={{width:pct+"%",height:"100%",background:b.error?"var(--bad)":"var(--ssa-blue)"}}/>
+                </div>
+                <span className="small muted">
+                  {b.error ? ("error") :
+                    b.done ? (<a href="#" onClick={e=>{e.preventDefault(); onDone();}}>done - view in Dashboard</a>) :
+                    (<>{b.total?`${b.scored}/${b.total}`:state} <span style={{cursor:"pointer",color:"var(--bad)"}} onClick={()=>cancelOne(b.job_id)}>&#10005;</span></>)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>}
+    </div>
+  );
+}
+
 // ---- app -----------------------------------------------------------------
 function App(){
   const [tab,setTab]=useState("dashboard");
@@ -1129,7 +1301,7 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
@@ -1145,6 +1317,7 @@ function App(){
 
         {tab==="dashboard" && <Dashboard results={results} onOpen={(v)=>{setOpen(v);setTab("detail");}}/>}
         {tab==="compare" && <Compare results={results}/>}
+        {tab==="batch" && <BatchRunner vendors={vendors} model={model} voteMode={voteMode} voteModel={voteModel} voteDual={voteDual} onDone={loadResults}/>}
         {tab==="detail" && (
           <div>
             <div className="vendor-pills">
