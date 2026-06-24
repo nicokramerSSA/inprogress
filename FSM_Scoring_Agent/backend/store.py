@@ -43,6 +43,9 @@ def save(result: Dict[str, Any]) -> None:
     """Persist one evaluation dict atomically as versioned JSON. Writes
     {schema_version, saved_at, result} to <STORE_DIR>/<slug>.json via a temp file
     + os.replace, so a crash never leaves a half-written file in place."""
+    if not result.get("vendor"):
+        _log.warning("save() called with a result that has no vendor; skipping persist")
+        return
     os.makedirs(STORE_DIR, exist_ok=True)
     record = {
         "schema_version": SCHEMA_VERSION,
@@ -65,8 +68,11 @@ def save(result: Dict[str, Any]) -> None:
 
 def _migrate(record: Dict[str, Any]) -> Dict[str, Any]:
     """Forward-migrate an on-disk record to the current schema. v1 = passthrough;
-    future additive field changes (e.g. evidence drill-down) are absorbed here
-    without a data migration."""
+    future additive field changes are absorbed here without a data migration."""
+    v = record.get("schema_version", 1)
+    if v > SCHEMA_VERSION:
+        _log.warning("result record schema_version %s is newer than supported %s; loading as-is",
+                     v, SCHEMA_VERSION)
     return record
 
 
