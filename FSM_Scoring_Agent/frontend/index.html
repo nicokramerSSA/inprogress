@@ -312,6 +312,59 @@ function csvSlug(s){
 function exportFilename(kind, parts, dateStr){
   return ["fsm", kind].concat((parts||[]).map(csvSlug)).join("-") + "-" + dateStr + ".csv";
 }
+function rankingRows(results){
+  const ranked = [...results].sort((a,b) =>
+    (a.gating.disqualified - b.gating.disqualified) || (b.weighted_total - a.weighted_total));
+  const headers = [
+    {key:"rank",label:"Rank"},{key:"vendor",label:"Vendor"},{key:"product",label:"Product"},
+    {key:"ssa",label:"SSA score (0-100)"},{key:"cap",label:"§30 capability score (0-100)"},
+    {key:"gate",label:"Gate"},{key:"vote",label:"Vote"},{key:"vote_conf",label:"Vote confidence"},
+    {key:"model",label:"Model"},{key:"demo",label:"Demo?"}];
+  const rows = ranked.map((r,i) => ({
+    rank:i+1, vendor:r.vendor, product:r.product,
+    ssa:_cr1(r.weighted_total), cap:_cr1(r.capability_weighted_total),
+    gate:r.gating.disqualified ? "DISQUALIFIED" : "PASS",
+    vote:r.vote.recommendation, vote_conf:r.vote.confidence,
+    model:r.model_used, demo:r.is_demo ? "yes" : "no"}));
+  return {rows, headers};
+}
+function requirementRows(v){
+  const headers = [
+    {key:"rid",label:"RID"},{key:"domain",label:"Domain"},{key:"capability",label:"Capability"},
+    {key:"priority",label:"Priority"},{key:"met",label:"Met"},{key:"quality",label:"Quality (1-5)"},
+    {key:"code",label:"Response code"},{key:"confidence",label:"Confidence"},{key:"rationale",label:"Rationale"},
+    {key:"ev_quote",label:"Evidence quote"},{key:"ev_source",label:"Evidence source"},{key:"ev_locator",label:"Evidence locator"}];
+  const rows = (v.requirement_scores||[]).map(x => ({
+    rid:x.rid, domain:x.domain, capability:x.capability, priority:x.priority, met:x.met,
+    quality:x.quality, code:x.vendor_code, confidence:x.confidence, rationale:x.rationale,
+    ev_quote:(x.evidence&&x.evidence.quote)||"", ev_source:(x.evidence&&x.evidence.source)||"",
+    ev_locator:(x.evidence&&x.evidence.locator)||"(unlocated)"}));
+  return {rows, headers};
+}
+function compareRows(a, b){
+  const rows = [];
+  const num = (section, metric, av, bv) => rows.push({section, metric, aVal:_cr1(av), bVal:_cr1(bv), delta:_cr1(av-bv)});
+  const txt = (section, metric, av, bv) => rows.push({section, metric, aVal:av, bVal:bv, delta:""});
+  const byKey = (list, k) => { const map={}; (list||[]).forEach(x=>map[x[k]]=x); return map; };
+  num("Headline","SSA score (0-100)", a.weighted_total, b.weighted_total);
+  num("Headline","§30 capability score (0-100)", a.capability_weighted_total, b.capability_weighted_total);
+  txt("Gate","MoSCoW gate", a.gating.disqualified?"DISQUALIFIED":"PASS", b.gating.disqualified?"DISQUALIFIED":"PASS");
+  const bc = byKey(b.capabilities,"code");
+  (a.capabilities||[]).forEach(ca => num("§30 capability", ca.name, ca.score_1_5, (bc[ca.code]||{}).score_1_5||0));
+  const bcat = byKey(b.categories,"name");
+  (a.categories||[]).forEach(ca => num("SSA category", ca.name, ca.raw_1_5, (bcat[ca.name]||{}).raw_1_5||0));
+  const bseg = byKey(b.segment_fit,"segment_name");
+  (a.segment_fit||[]).forEach(s => num("OpCo segment", s.segment_name, s.fit_1_5, (bseg[s.segment_name]||{}).fit_1_5||0));
+  num("Agentic future","Overall", a.agentic_future.score_1_5, b.agentic_future.score_1_5);
+  num("Agentic future","Openness", a.agentic_future.openness_1_5, b.agentic_future.openness_1_5);
+  num("Agentic future","AI capability", a.agentic_future.ai_capability_1_5, b.agentic_future.ai_capability_1_5);
+  txt("Agentic future","Data-control risk", a.agentic_future.data_control_risk, b.agentic_future.data_control_risk);
+  txt("Vote","Recommendation", a.vote.recommendation, b.vote.recommendation);
+  const headers = [
+    {key:"section",label:"Section"},{key:"metric",label:"Metric"},
+    {key:"aVal",label:a.vendor},{key:"bVal",label:b.vendor},{key:"delta",label:"Delta (A-B)"}];
+  return {rows, headers};
+}
 // === EXPORT_HELPERS_END ===
 
 function downloadCSV(filename, rows, headers){
