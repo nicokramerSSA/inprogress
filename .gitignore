@@ -19,3 +19,6 @@ scratchpad/
 # Local secrets — never commit (also asserted in Task 2)
 backend/.env
 .env
+
+# Runtime evaluation store (durable-latest; not source)
+FSM_Scoring_Agent/backend/data/store/
