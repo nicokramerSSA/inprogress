@@ -72,6 +72,8 @@ from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources
 from agent.sample import sample_proposal_text
 
+import store  # app-layer disk persistence for runtime evaluations (sibling module)
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(os.path.dirname(_HERE), "frontend")
 DATA_DIR = os.path.join(_HERE, "data")
@@ -121,6 +123,13 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
     result = ev.to_dict()
     with _RESULTS_LOCK:
         _RESULTS[vendor] = result
+    # Persist outside the in-memory lock (disk I/O must not be held under it). A
+    # failed write must not fail an evaluation the user already paid for — the
+    # result is still served from memory and will persist on the next success.
+    try:
+        store.save(result)
+    except Exception as e:
+        app.logger.warning("Could not persist result for %s: %s", vendor, e)
     return result
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
@@ -184,6 +193,8 @@ def _run_job(jid, **kw):
 
 
 def _seed_results():
+    # 1) Read-only demo seed (the five bundled vendors) so the UI has content on
+    #    first boot / fresh checkout.
     if os.path.exists(SAMPLE_RESULTS):
         try:
             with open(SAMPLE_RESULTS, "r", encoding="utf-8") as f:
@@ -191,6 +202,14 @@ def _seed_results():
                     _RESULTS[ev["vendor"]] = ev
         except Exception as e:
             app.logger.warning("Could not seed sample results: %s", e)
+    # 2) Overlay persisted runtime evaluations (durable-latest). The store wins
+    #    over the demo seed: once the operator runs an evaluation, that is the
+    #    real result. A store problem must never block boot.
+    try:
+        for vendor, result in store.load_all().items():
+            _RESULTS[vendor] = result
+    except Exception as e:
+        app.logger.warning("Could not load persisted results: %s", e)
 
 
 # --------------------------------------------------------------------------- #
