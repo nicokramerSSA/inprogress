@@ -134,6 +134,8 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
     return result
 
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+# Build stamp surfaced on /api/health so a deploy can be confirmed in production.
+APP_VERSION = "2026.06.25"
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
@@ -232,7 +234,7 @@ def health():
     models = available_models()
     any_key = any(p["key_present"] and p["id"] != "mock" for p in models["providers"])
     return jsonify({"ok": True, "live_models_available": any_key,
-                    "n_results": len(_RESULTS)})
+                    "n_results": len(_RESULTS), "version": APP_VERSION})
 
 
 @app.route("/api/models")
