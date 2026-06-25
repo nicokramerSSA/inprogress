@@ -90,6 +90,10 @@
   .met-Yes{color:var(--good);font-weight:600}.met-Partial{color:var(--warn);font-weight:600}
   .met-No{color:var(--bad);font-weight:600}.met-NA{color:var(--steel)}
   .conf-Low{color:var(--bad)}.conf-Medium{color:var(--warn)}.conf-High{color:var(--good)}
+  .cb-track{height:10px;background:#eef2f7;border-radius:6px;overflow:hidden}
+  .cb-fill{height:100%}
+  .cb-ok{background:var(--good)}
+  .cb-low{background:var(--warn)}
   /* Buttons */
   .btn{background:var(--ssa-blue);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-family:var(--font);font-size:13px;cursor:pointer}
   .btn:hover{background:#00257a}
@@ -729,6 +733,16 @@ function VendorDetail({data}){
           {r.gating.architectural_gate_flags.map((f,i)=>(<div key={i} className="small" style={{color:"var(--warn)",marginTop:6}}>⚑ {f}</div>))}
         </div>
       </div>
+
+      {(()=>{const c=deriveCompleteness(r);return (
+        <div className="card" style={{marginTop:12}}>
+          <h3>Response completeness</h3>
+          <div className="cb-track"><div className={c.low?"cb-fill cb-low":"cb-fill cb-ok"} style={{width:c.coverage_pct+"%"}}/></div>
+          <p className="small" style={{marginTop:6}}>Addressed <b>{c.coverage_pct}%</b> of {c.total} scored requirements — {c.addressed} addressed ({c.partial} partial), {c.not_addressed} not addressed.</p>
+          {c.by_domain_gaps.length>0 && <p className="small">Biggest unaddressed areas: {c.by_domain_gaps.slice(0,4).map(g=>`${g.domain} (${g.count})`).join(", ")}.</p>}
+          {c.missing_musts.length>0 && <p className="small met-No">{c.missing_musts.length} Must requirement(s) not addressed: {c.missing_musts.slice(0,8).map(m=>m.rid).join(", ")}.</p>}
+        </div>
+      );})()}
 
       {/* The vote */}
       <div className="section-title">The agent’s vote</div>
