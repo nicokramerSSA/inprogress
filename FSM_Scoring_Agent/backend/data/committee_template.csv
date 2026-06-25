@@ -1,0 +1,16 @@
+evaluator,vendor,score,verdict
+Nick,IFS,82,Recommend
+Nick,BuildOps,74,Shortlist
+Nick,ServiceTitan,72,Shortlist
+Nick,Salesforce,68,Reject
+Nick,ServiceMax,61,Reject
+Jeff,IFS,79,Recommend
+Jeff,BuildOps,76,Shortlist
+Jeff,ServiceTitan,71,Shortlist
+Jeff,Salesforce,70,Reject
+Jeff,ServiceMax,58,Reject
+Fred,IFS,80,Recommend
+Fred,BuildOps,73,Shortlist
+Fred,ServiceTitan,74,Shortlist
+Fred,Salesforce,66,Reject
+Fred,ServiceMax,60,Reject
