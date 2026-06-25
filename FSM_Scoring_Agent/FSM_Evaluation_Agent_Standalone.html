@@ -1649,7 +1649,7 @@ function Committee({results}){
       <div className="card" style={{margin:"10px 0"}}>
         <h3>Upload committee scores</h3>
         <p className="small muted">CSV with columns <code>evaluator, vendor, score</code> (optional <code>verdict</code> and category columns). <a href="/api/committee/template">Download template</a></p>
-        <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={e=>{ if(e.target.files[0]) upload(e.target.files[0]); }}/>
+        <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={e=>{ if(e.target.files[0]) upload(e.target.files[0]); e.target.value=""; }}/>
         {msg && <div className={"small "+(msg.ok?"met-Yes":"met-No")} style={{marginTop:6}}>{msg.text}</div>}
         {agg&&agg.warnings&&agg.warnings.length>0 && <ul className="small muted" style={{marginTop:6}}>{agg.warnings.slice(0,5).map((w,i)=><li key={i}>{w}</li>)}</ul>}
       </div>
