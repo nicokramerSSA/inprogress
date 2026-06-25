@@ -640,7 +640,7 @@ function Dashboard({results, onOpen}){
     <div>
       <AdvisoryRead results={results}/>
       <RedFlags results={results}/>
-      <div className="section-title">Head-to-head ranking — the agent’s vote</div>
+      <div className="section-title">Head-to-head ranking — the agent’s advisory vote</div>
       <div style={{display:"flex",gap:8,margin:"0 0 10px"}}>
         <button className="btn small" onClick={()=>{
           const {rows,headers}=rankingRows(results);
