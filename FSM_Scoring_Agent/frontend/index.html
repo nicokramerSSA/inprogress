@@ -89,6 +89,7 @@
   .tag{font-size:10px;padding:1px 6px;border-radius:4px;background:#eef1f6;color:var(--muted)}
   .met-Yes{color:var(--good);font-weight:600}.met-Partial{color:var(--warn);font-weight:600}
   .met-No{color:var(--bad);font-weight:600}.met-NA{color:var(--steel)}
+  .committee input[type=file]{font-size:13px}
   .conf-Low{color:var(--bad)}.conf-Medium{color:var(--warn)}.conf-High{color:var(--good)}
   .cb-track{height:10px;background:#eef2f7;border-radius:6px;overflow:hidden}
   .cb-fill{height:100%}
@@ -1620,6 +1621,71 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
   );
 }
 
+// ---- committee -----------------------------------------------------------
+function Committee({results}){
+  const [agg,setAgg]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  useEffect(()=>{ if(STATIC) return; jget("/api/committee").then(d=>{ if(d&&d.vendors&&d.vendors.length) setAgg(d); }).catch(()=>{}); },[]);
+  async function upload(file){
+    if(STATIC){ setMsg({ok:false,text:"Run the Flask server to ingest committee scores — the offline build can't upload."}); return; }
+    setBusy(true); setMsg(null);
+    const fd=new FormData(); fd.append("file",file);
+    try{
+      const res=await fetch("/api/committee",{method:"POST",body:fd});
+      const d=await res.json();
+      if(d.error){ setMsg({ok:false,text:d.error}); }
+      else{ setAgg(d); setMsg({ok:true,text:`Loaded ${d.n_evaluators_total} evaluator-scores across ${d.vendors.length} vendor(s).`+(d.warnings&&d.warnings.length?` ${d.warnings.length} row warning(s).`:"")}); }
+    }catch(e){ setMsg({ok:false,text:"Upload failed — check the file format (CSV recommended)."}); }
+    setBusy(false);
+  }
+  const byVendor={}; results.forEach(r=>byVendor[(r.vendor||"").toLowerCase().trim()]=r);
+  const side = agg ? [...agg.vendors].sort((a,b)=>b.mean_score-a.mean_score)
+                       .map(cv=>({cv, agent:byVendor[(cv.vendor||"").toLowerCase().trim()]||null})) : [];
+  return (
+    <div className="committee">
+      <div className="advisory-line">{ADVISORY_LINE}</div>
+      <div className="card" style={{margin:"10px 0"}}>
+        <h3>Upload committee scores</h3>
+        <p className="small muted">CSV with columns <code>evaluator, vendor, score</code> (optional <code>verdict</code> and category columns). <a href="/api/committee/template">Download template</a></p>
+        <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={e=>{ if(e.target.files[0]) upload(e.target.files[0]); }}/>
+        {msg && <div className={"small "+(msg.ok?"met-Yes":"met-No")} style={{marginTop:6}}>{msg.text}</div>}
+        {agg&&agg.warnings&&agg.warnings.length>0 && <ul className="small muted" style={{marginTop:6}}>{agg.warnings.slice(0,5).map((w,i)=><li key={i}>{w}</li>)}</ul>}
+      </div>
+      {agg && <div>
+        <div className="section-title">Committee consensus</div>
+        <div className="card" style={{padding:0}}><div className="table-scroll"><table className="dashboard-table">
+          <thead><tr><th>Vendor</th><th>Mean score (n)</th><th>Spread</th><th>Verdict distribution</th></tr></thead>
+          <tbody>{[...agg.vendors].sort((a,b)=>b.mean_score-a.mean_score).map(v=>(
+            <tr key={v.vendor}>
+              <td><b>{v.vendor}</b></td>
+              <td>{fmt(v.mean_score)} <span className="muted small">(n={v.n_evaluators})</span></td>
+              <td className="muted small">{fmt(v.min)}–{fmt(v.max)}</td>
+              <td className="small">{Object.keys(v.verdict_counts||{}).map(k=>`${k}: ${v.verdict_counts[k]}`).join(" · ")||"—"}</td>
+            </tr>
+          ))}</tbody>
+        </table></div></div>
+
+        <div className="section-title">Committee vs the agent — side by side</div>
+        <p className="small muted">Two independent views. The shortlist is the committee's; the agent sits beside it as one more voice. No blended score.</p>
+        <div className="card" style={{padding:0}}><div className="table-scroll"><table className="dashboard-table">
+          <thead><tr><th>Vendor</th><th>Committee mean</th><th>Committee verdict</th><th>Agent score</th><th>Agent vote</th><th>Agent gate</th></tr></thead>
+          <tbody>{side.map(({cv,agent})=>(
+            <tr key={cv.vendor}>
+              <td><b>{cv.vendor}</b></td>
+              <td>{fmt(cv.mean_score)} <span className="muted small">(n={cv.n_evaluators})</span></td>
+              <td className="small">{cv.modal_verdict||"—"}</td>
+              <td>{agent?fmt(agent.weighted_total):"—"}</td>
+              <td>{agent?<span className={recoClass(agent.vote.recommendation)}>{agent.vote.recommendation}</span>:<span className="muted">—</span>}</td>
+              <td>{agent?(agent.gating.disqualified?<span className="met-No">{agent.gating.unmet_must_count} unmet</span>:<span className="met-Yes">pass</span>):<span className="muted">—</span>}</td>
+            </tr>
+          ))}</tbody>
+        </table></div></div>
+      </div>}
+    </div>
+  );
+}
+
 // ---- app -----------------------------------------------------------------
 function App(){
   const [tab,setTab]=useState("dashboard");
@@ -1672,7 +1738,7 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"],["committee","Committee scores"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
@@ -1705,6 +1771,7 @@ function App(){
         )}
         {tab==="method" && <Methodology kb={kb}/>}
         {tab==="chat" && <Chat model={model}/>}
+        {tab==="committee" && <Committee results={results}/>}
       </div>
 
       <footer className="app">
