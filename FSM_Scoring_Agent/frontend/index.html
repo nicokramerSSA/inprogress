@@ -89,7 +89,12 @@
   .tag{font-size:10px;padding:1px 6px;border-radius:4px;background:#eef1f6;color:var(--muted)}
   .met-Yes{color:var(--good);font-weight:600}.met-Partial{color:var(--warn);font-weight:600}
   .met-No{color:var(--bad);font-weight:600}.met-NA{color:var(--steel)}
+  .committee input[type=file]{font-size:13px}
   .conf-Low{color:var(--bad)}.conf-Medium{color:var(--warn)}.conf-High{color:var(--good)}
+  .cb-track{height:10px;background:#eef2f7;border-radius:6px;overflow:hidden}
+  .cb-fill{height:100%}
+  .cb-ok{background:var(--good)}
+  .cb-low{background:var(--warn)}
   /* Buttons */
   .btn{background:var(--ssa-blue);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-family:var(--font);font-size:13px;cursor:pointer}
   .btn:hover{background:#00257a}
@@ -103,6 +108,22 @@
   .msg.user{margin-left:auto;background:var(--ssa-blue);color:#fff;border-bottom-right-radius:3px}
   .msg.bot{background:#fff;border:1px solid var(--line);border-bottom-left-radius:3px}
   .msg .ground{margin-top:8px;font-size:10.5px;color:var(--muted)}
+  /* Markdown rendered inside bot messages */
+  .msg .md{white-space:normal}
+  .msg .md>:first-child{margin-top:0}
+  .msg .md>:last-child{margin-bottom:0}
+  .md-p{margin:8px 0}
+  .md-h{margin:12px 0 6px;font-weight:700;line-height:1.3}
+  .md-h1{font-size:16px} .md-h2{font-size:15px} .md-h3{font-size:14px}
+  .md-ul,.md-ol{margin:6px 0;padding-left:20px}
+  .md-ul li,.md-ol li{margin:3px 0}
+  .md-tablewrap{overflow-x:auto;margin:8px 0}
+  .md-table{border-collapse:collapse;font-size:12.5px}
+  .md-table th,.md-table td{border:1px solid var(--line);padding:4px 9px;text-align:left;white-space:nowrap}
+  .md-table th{background:#f5f7fa;font-weight:700}
+  .msg .md code{background:#eef1f5;padding:1px 5px;border-radius:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+  .msg .md a{color:var(--ssa-blue)}
+  .msg .md blockquote{margin:8px 0;padding:2px 12px;border-left:3px solid var(--line);color:var(--muted)}
   .chat .inputrow{display:flex;gap:8px;margin-top:12px}
   .chat input{flex:1;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:14px}
   /* Footer */
@@ -169,6 +190,18 @@
   .requirement-table details.evidence{margin-top:4px}
   .requirement-table details.evidence>summary{cursor:pointer;color:var(--ssa-blue);font-size:12px}
   .requirement-table details.evidence blockquote{margin:4px 0;padding:4px 8px;border-left:3px solid var(--ssa-blue);background:rgba(0,0,0,.03);font-style:italic;font-size:12px}
+  .advisory{border-left:4px solid var(--ssa-blue);margin-bottom:12px}
+  .advisory-line{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .advisory-head{font-size:15px;margin-bottom:8px}
+  .advisory-cols{display:flex;gap:24px;flex-wrap:wrap}
+  .advisory-cols .lbl{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+  .chip{display:inline-block;background:#eef2f7;border-radius:12px;padding:2px 10px;margin:2px 4px 2px 0;font-size:12px}
+  .chip.dq{background:#fae6e4;color:var(--bad)}
+  .redflags{border-left:4px solid var(--bad);margin-bottom:12px}
+  .redflag-row{margin:6px 0}
+  .redflag-row ul{margin:2px 0 0 16px;padding:0}
+  .rf-disqualified{color:var(--bad);font-weight:600}
+  .rf-coverage,.rf-missing_must{color:var(--warn)}
 </style>
 </head>
 <body>
@@ -207,6 +240,50 @@ async function jpost(u,b){
   const r=await fetch(API+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return r.json();
 }
 const recoClass = r => "badge b-"+(r||"").replace(/[^A-Za-z]/g,"");
+
+// ---- demo-feedback derivations (pure; safe offline) ----------------------
+const LOW_COVERAGE_PCT = 85;
+const ADVISORY_LINE = "The agent's advisory view — one input to your decision, not the decision. Built to be challenged.";
+
+function deriveCompleteness(r){
+  const scores=(r.requirement_scores||[]).filter(s=>s.met!=="N/A");
+  const total=scores.length;
+  const notAddr=scores.filter(s=>s.met==="No" && !((typeof s.evidence==="string"?s.evidence:(s.evidence&&s.evidence.quote)||"").trim()));
+  const partial=scores.filter(s=>s.met==="Partial").length;
+  const addressed=total-notAddr.length;
+  const coverage_pct=total?Math.round(addressed/total*100):0;
+  const byDom={};
+  notAddr.forEach(s=>{const d=(s.domain||"").split(":")[0].trim(); byDom[d]=(byDom[d]||0)+1;});
+  const by_domain_gaps=Object.keys(byDom).map(d=>({domain:d,count:byDom[d]})).sort((a,b)=>b.count-a.count);
+  const missing_musts=notAddr.filter(s=>s.priority==="Must").map(s=>({rid:s.rid,domain:(s.domain||"").split(":")[0].trim()}));
+  return {coverage_pct,total,addressed,partial,not_addressed:notAddr.length,by_domain_gaps,missing_musts,low:coverage_pct<LOW_COVERAGE_PCT};
+}
+
+function deriveRedFlags(results){
+  const flagged=[], clear=[];
+  results.forEach(r=>{
+    const c=deriveCompleteness(r);
+    const dq=!!(r.gating&&r.gating.disqualified);
+    const flags=[];
+    if(dq) flags.push({type:"disqualified",
+      text:`DISQUALIFIED — ${r.gating.unmet_must_count} unmet Must requirement(s)`,
+      detail:(r.gating.unmet_musts||[]).slice(0,3).map(m=>m.rid+(m.capability?` (${m.capability})`:"")).join(", ")});
+    if(c.low) flags.push({type:"coverage",
+      text:`Addressed ${c.coverage_pct}% of requirements`,
+      detail:c.by_domain_gaps.slice(0,3).map(g=>g.domain).join(", ")});
+    if(c.missing_musts.length && !dq) flags.push({type:"missing_must",
+      text:`${c.missing_musts.length} Must requirement(s) not addressed`,
+      detail:c.missing_musts.slice(0,3).map(m=>m.rid).join(", ")});
+    if(flags.length) flagged.push({vendor:r.vendor,flags}); else clear.push(r.vendor);
+  });
+  return {flagged,clear};
+}
+
+function deriveAdvisoryRead(results){
+  const passing=results.filter(r=>!(r.gating&&r.gating.disqualified)).sort((a,b)=>b.weighted_total-a.weighted_total);
+  const disqualified=results.filter(r=>r.gating&&r.gating.disqualified).sort((a,b)=>b.weighted_total-a.weighted_total);
+  return {winner:passing[0]||null, shortlist:passing.slice(0,3), disqualified, allDisqualified:passing.length===0};
+}
 
 // ---- score bar row -------------------------------------------------------
 function BarRow({label, value, max=5, suffix="/5"}){
@@ -521,6 +598,40 @@ function ModelControls({models, scoring, setScoring, voteMode, setVoteMode, vote
   );
 }
 
+// ---- advisory read + red flags ------------------------------------------
+function AdvisoryRead({results}){
+  const {winner,shortlist,disqualified,allDisqualified}=deriveAdvisoryRead(results);
+  return (
+    <div className="card advisory">
+      <div className="advisory-line">{ADVISORY_LINE}</div>
+      {allDisqualified
+        ? <div className="advisory-head">Every vendor is disqualified on the Must gate — no standing recommendation.</div>
+        : <div className="advisory-head">Agent's pick: <b>{winner.vendor}</b> — {fmt(winner.weighted_total)}/100, {winner.vote.recommendation}.</div>}
+      <div className="advisory-cols">
+        {shortlist.length>0 && <div><span className="lbl">Shortlist</span>{shortlist.map(r=><span key={r.vendor} className="chip">{r.vendor} · {fmt(r.weighted_total)}</span>)}</div>}
+        {disqualified.length>0 && <div><span className="lbl">Disqualified</span>{disqualified.map(r=><span key={r.vendor} className="chip dq">{r.vendor} · {r.gating.unmet_must_count} unmet</span>)}</div>}
+      </div>
+    </div>
+  );
+}
+
+function RedFlags({results}){
+  const {flagged,clear}=deriveRedFlags(results);
+  if(!flagged.length) return null;
+  return (
+    <div className="card redflags">
+      <div className="section-title" style={{marginTop:0}}>Red flags — deal-breakers &amp; gaps</div>
+      {flagged.map(f=>(
+        <div key={f.vendor} className="redflag-row">
+          <b>{f.vendor}</b>
+          <ul>{f.flags.map((fl,i)=>(<li key={i} className={"rf-"+fl.type}>{fl.text}{fl.detail?<span className="muted small"> — {fl.detail}</span>:null}</li>))}</ul>
+        </div>
+      ))}
+      {clear.length>0 && <div className="small muted" style={{marginTop:6}}>{clear.length} vendor(s) clear the gate with no major gaps: {clear.join(", ")}.</div>}
+    </div>
+  );
+}
+
 // ---- dashboard (head-to-head) -------------------------------------------
 function Dashboard({results, onOpen}){
   const ranked = useMemo(()=>[...results].sort((a,b)=>
@@ -528,7 +639,9 @@ function Dashboard({results, onOpen}){
   if(!results.length) return <p className="muted">No evaluations yet. Use "Run evaluation" above.</p>;
   return (
     <div>
-      <div className="section-title">Head-to-head ranking — the agent’s vote</div>
+      <AdvisoryRead results={results}/>
+      <RedFlags results={results}/>
+      <div className="section-title">Head-to-head ranking — the agent’s advisory vote</div>
       <div style={{display:"flex",gap:8,margin:"0 0 10px"}}>
         <button className="btn small" onClick={()=>{
           const {rows,headers}=rankingRows(results);
@@ -621,6 +734,16 @@ function VendorDetail({data}){
           {r.gating.architectural_gate_flags.map((f,i)=>(<div key={i} className="small" style={{color:"var(--warn)",marginTop:6}}>⚑ {f}</div>))}
         </div>
       </div>
+
+      {(()=>{const c=deriveCompleteness(r);return (
+        <div className="card" style={{marginTop:12}}>
+          <h3>Response completeness</h3>
+          <div className="cb-track"><div className={c.low?"cb-fill cb-low":"cb-fill cb-ok"} style={{width:c.coverage_pct+"%"}}/></div>
+          <p className="small" style={{marginTop:6}}>Addressed <b>{c.coverage_pct}%</b> of {c.total} scored requirements — {c.addressed} addressed ({c.partial} partial), {c.not_addressed} not addressed.</p>
+          {c.by_domain_gaps.length>0 && <p className="small">Biggest unaddressed areas: {c.by_domain_gaps.slice(0,4).map(g=>`${g.domain} (${g.count})`).join(", ")}.</p>}
+          {c.missing_musts.length>0 && <p className="small met-No">{c.missing_musts.length} Must requirement(s) not addressed: {c.missing_musts.slice(0,8).map(m=>m.rid).join(", ")}.</p>}
+        </div>
+      );})()}
 
       {/* The vote */}
       <div className="section-title">The agent’s vote</div>
@@ -1080,6 +1203,76 @@ function Methodology({kb}){
   );
 }
 
+// ---- lightweight markdown renderer ---------------------------------------
+// The chat model replies in markdown (tables, **bold**, headings, lists).
+// We parse it to React elements (never innerHTML, so no injection surface) so
+// the offline standalone build needs no external markdown library.
+function mdInline(text){
+  const nodes=[]; let rest=String(text); let k=0;
+  const re=/(\*\*([^*]+)\*\*)|(`([^`]+)`)|(\*([^*]+)\*)|(_([^_]+)_)|(\[([^\]]+)\]\(([^)\s]+)\))/;
+  while(rest.length){
+    const m=re.exec(rest);
+    if(!m){ nodes.push(rest); break; }
+    if(m.index>0) nodes.push(rest.slice(0,m.index));
+    if(m[1]) nodes.push(<strong key={k++}>{m[2]}</strong>);
+    else if(m[3]) nodes.push(<code key={k++}>{m[4]}</code>);
+    else if(m[5]) nodes.push(<em key={k++}>{m[6]}</em>);
+    else if(m[7]) nodes.push(<em key={k++}>{m[8]}</em>);
+    else if(m[9]) nodes.push(<a key={k++} href={m[11]} target="_blank" rel="noreferrer">{m[10]}</a>);
+    rest=rest.slice(m.index+m[0].length);
+  }
+  return nodes;
+}
+function mdSplitRow(line){
+  let s=line.trim();
+  if(s.startsWith("|")) s=s.slice(1);
+  if(s.endsWith("|")) s=s.slice(0,-1);
+  return s.split("|").map(c=>c.trim());
+}
+function mdToReact(src){
+  const lines=String(src==null?"":src).replace(/\r\n/g,"\n").split("\n");
+  const isSep=s=>/^\s*\|?[\s:|-]+\|?\s*$/.test(s) && s.includes("-") && s.includes("|");
+  const isBlockStart=(s,nextIsSep)=>/^\s*$/.test(s)||/^#{1,6}\s+/.test(s)||/^\s*[-*+]\s+/.test(s)||/^\s*\d+\.\s+/.test(s)||/^\s*>\s?/.test(s)||(s.includes("|")&&nextIsSep);
+  const out=[]; let i=0, key=0;
+  while(i<lines.length){
+    const line=lines[i];
+    if(/^\s*$/.test(line)){ i++; continue; }
+    const h=/^(#{1,6})\s+(.*)$/.exec(line);
+    if(h){ const lvl=Math.min(h[1].length,3); out.push(React.createElement("div",{key:key++,className:"md-h md-h"+lvl},mdInline(h[2]))); i++; continue; }
+    if(line.includes("|") && i+1<lines.length && isSep(lines[i+1])){
+      const header=mdSplitRow(line); i+=2; const rows=[];
+      while(i<lines.length && lines[i].includes("|") && !/^\s*$/.test(lines[i])){ rows.push(mdSplitRow(lines[i])); i++; }
+      out.push(
+        <div key={key++} className="md-tablewrap"><table className="md-table">
+          <thead><tr>{header.map((c,j)=><th key={j}>{mdInline(c)}</th>)}</tr></thead>
+          <tbody>{rows.map((r,ri)=><tr key={ri}>{header.map((_,j)=><td key={j}>{mdInline(r[j]||"")}</td>)}</tr>)}</tbody>
+        </table></div>);
+      continue;
+    }
+    if(/^\s*>\s?/.test(line)){
+      const buf=[];
+      while(i<lines.length && /^\s*>\s?/.test(lines[i])){ buf.push(lines[i].replace(/^\s*>\s?/,"")); i++; }
+      out.push(<blockquote key={key++}>{mdInline(buf.join(" "))}</blockquote>); continue;
+    }
+    if(/^\s*[-*+]\s+/.test(line)){
+      const items=[];
+      while(i<lines.length && /^\s*[-*+]\s+/.test(lines[i])){ items.push(lines[i].replace(/^\s*[-*+]\s+/,"")); i++; }
+      out.push(<ul key={key++} className="md-ul">{items.map((it,j)=><li key={j}>{mdInline(it)}</li>)}</ul>); continue;
+    }
+    if(/^\s*\d+\.\s+/.test(line)){
+      const items=[];
+      while(i<lines.length && /^\s*\d+\.\s+/.test(lines[i])){ items.push(lines[i].replace(/^\s*\d+\.\s+/,"")); i++; }
+      out.push(<ol key={key++} className="md-ol">{items.map((it,j)=><li key={j}>{mdInline(it)}</li>)}</ol>); continue;
+    }
+    const para=[line]; i++;
+    while(i<lines.length && !isBlockStart(lines[i], i+1<lines.length && isSep(lines[i+1]))){ para.push(lines[i]); i++; }
+    out.push(<p key={key++} className="md-p">{para.map((p,j)=>(
+      <React.Fragment key={j}>{j>0 && <br/>}{mdInline(p)}</React.Fragment>
+    ))}</p>);
+  }
+  return out;
+}
+
 // ---- chat ----------------------------------------------------------------
 function Chat({model}){
   const [log,setLog]=useState([{role:"bot",content:"Ask me anything about the evaluation — why a vendor scored as it did, how the Must gate works, which platform fits the small low-maturity OpCos, the agentic-future read, etc. I answer grounded in the knowledge base and this session’s results."}]);
@@ -1100,7 +1293,7 @@ function Chat({model}){
       <div className="log">
         {log.map((m,i)=>(
           <div key={i} className={"msg "+(m.role==="user"?"user":"bot")}>
-            {m.content}
+            {m.role==="bot" ? <div className="md">{mdToReact(m.content)}</div> : m.content}
             {m.ground && <div className="ground">grounded in: {m.ground.join(", ")}{m.demo?" · demo (no model key)":""}</div>}
           </div>
         ))}
@@ -1428,6 +1621,71 @@ function BatchRunner({vendors, model, voteMode, voteModel, voteDual, onDone}){
   );
 }
 
+// ---- committee -----------------------------------------------------------
+function Committee({results}){
+  const [agg,setAgg]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState(null);
+  useEffect(()=>{ if(STATIC) return; jget("/api/committee").then(d=>{ if(d&&d.vendors&&d.vendors.length) setAgg(d); }).catch(()=>{}); },[]);
+  async function upload(file){
+    if(STATIC){ setMsg({ok:false,text:"Run the Flask server to ingest committee scores — the offline build can't upload."}); return; }
+    setBusy(true); setMsg(null);
+    const fd=new FormData(); fd.append("file",file);
+    try{
+      const res=await fetch("/api/committee",{method:"POST",body:fd});
+      const d=await res.json();
+      if(d.error){ setMsg({ok:false,text:d.error}); }
+      else{ setAgg(d); setMsg({ok:true,text:`Loaded ${d.n_evaluators_total} evaluator-scores across ${d.vendors.length} vendor(s).`+(d.warnings&&d.warnings.length?` ${d.warnings.length} row warning(s).`:"")}); }
+    }catch(e){ setMsg({ok:false,text:"Upload failed — check the file format (CSV recommended)."}); }
+    setBusy(false);
+  }
+  const byVendor={}; results.forEach(r=>byVendor[(r.vendor||"").toLowerCase().trim()]=r);
+  const side = agg ? [...agg.vendors].sort((a,b)=>b.mean_score-a.mean_score)
+                       .map(cv=>({cv, agent:byVendor[(cv.vendor||"").toLowerCase().trim()]||null})) : [];
+  return (
+    <div className="committee">
+      <div className="advisory-line">{ADVISORY_LINE}</div>
+      <div className="card" style={{margin:"10px 0"}}>
+        <h3>Upload committee scores</h3>
+        <p className="small muted">CSV with columns <code>evaluator, vendor, score</code> (optional <code>verdict</code> and category columns). <a href="/api/committee/template">Download template</a></p>
+        <input type="file" accept=".csv,.xlsx" disabled={busy} onChange={e=>{ if(e.target.files[0]) upload(e.target.files[0]); e.target.value=""; }}/>
+        {msg && <div className={"small "+(msg.ok?"met-Yes":"met-No")} style={{marginTop:6}}>{msg.text}</div>}
+        {agg&&agg.warnings&&agg.warnings.length>0 && <ul className="small muted" style={{marginTop:6}}>{agg.warnings.slice(0,5).map((w,i)=><li key={i}>{w}</li>)}</ul>}
+      </div>
+      {agg && <div>
+        <div className="section-title">Committee consensus</div>
+        <div className="card" style={{padding:0}}><div className="table-scroll"><table className="dashboard-table">
+          <thead><tr><th>Vendor</th><th>Mean score (n)</th><th>Spread</th><th>Verdict distribution</th></tr></thead>
+          <tbody>{[...agg.vendors].sort((a,b)=>b.mean_score-a.mean_score).map(v=>(
+            <tr key={v.vendor}>
+              <td><b>{v.vendor}</b></td>
+              <td>{fmt(v.mean_score)} <span className="muted small">(n={v.n_evaluators})</span></td>
+              <td className="muted small">{fmt(v.min)}–{fmt(v.max)}</td>
+              <td className="small">{Object.keys(v.verdict_counts||{}).map(k=>`${k}: ${v.verdict_counts[k]}`).join(" · ")||"—"}</td>
+            </tr>
+          ))}</tbody>
+        </table></div></div>
+
+        <div className="section-title">Committee vs the agent — side by side</div>
+        <p className="small muted">Two independent views. The shortlist is the committee's; the agent sits beside it as one more voice. No blended score.</p>
+        <div className="card" style={{padding:0}}><div className="table-scroll"><table className="dashboard-table">
+          <thead><tr><th>Vendor</th><th>Committee mean</th><th>Committee verdict</th><th>Agent score</th><th>Agent vote</th><th>Agent gate</th></tr></thead>
+          <tbody>{side.map(({cv,agent})=>(
+            <tr key={cv.vendor}>
+              <td><b>{cv.vendor}</b></td>
+              <td>{fmt(cv.mean_score)} <span className="muted small">(n={cv.n_evaluators})</span></td>
+              <td className="small">{cv.modal_verdict||"—"}</td>
+              <td>{agent?fmt(agent.weighted_total):"—"}</td>
+              <td>{agent?<span className={recoClass(agent.vote.recommendation)}>{agent.vote.recommendation}</span>:<span className="muted">—</span>}</td>
+              <td>{agent?(agent.gating.disqualified?<span className="met-No">{agent.gating.unmet_must_count} unmet</span>:<span className="met-Yes">pass</span>):<span className="muted">—</span>}</td>
+            </tr>
+          ))}</tbody>
+        </table></div></div>
+      </div>}
+    </div>
+  );
+}
+
 // ---- app -----------------------------------------------------------------
 function App(){
   const [tab,setTab]=useState("dashboard");
@@ -1480,7 +1738,7 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"],["committee","Committee scores"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
@@ -1513,6 +1771,7 @@ function App(){
         )}
         {tab==="method" && <Methodology kb={kb}/>}
         {tab==="chat" && <Chat model={model}/>}
+        {tab==="committee" && <Committee results={results}/>}
       </div>
 
       <footer className="app">

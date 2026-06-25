@@ -71,6 +71,7 @@ from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources
 from agent.sample import sample_proposal_text
+from agent.committee import parse_committee_file, aggregate_committee
 
 import store  # app-layer disk persistence for runtime evaluations (sibling module)
 
@@ -139,6 +140,9 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 # In-memory results store: vendor name -> evaluation dict. Seeded from disk on boot.
 _RESULTS: dict[str, dict] = {}
 _RESULTS_LOCK = threading.Lock()
+
+# Latest uploaded committee aggregate; in-memory only (no disk persistence needed).
+_COMMITTEE = {"aggregate": None}
 
 # Job registry for background evaluations: job_id -> job state dict.
 _JOBS: dict[str, dict] = {}
@@ -257,6 +261,37 @@ def vendors():
 def results():
     with _RESULTS_LOCK:
         return jsonify(list(_RESULTS.values()))
+
+
+@app.route("/api/committee", methods=["GET"])
+def committee_get():
+    return jsonify(_COMMITTEE["aggregate"] or {"vendors": [], "n_evaluators_total": 0, "warnings": []})
+
+
+@app.route("/api/committee", methods=["POST"])
+def committee_post():
+    f = request.files.get("file")
+    if not f:
+        return jsonify({"error": "No file uploaded."}), 400
+    parsed = parse_committee_file(f.read(), f.filename or "")
+    if parsed.get("error"):
+        return jsonify({"error": parsed["error"]}), 400
+    agg = aggregate_committee(parsed["rows"])
+    agg["warnings"] = parsed.get("warnings", [])
+    _COMMITTEE["aggregate"] = agg
+    return jsonify(agg)
+
+
+@app.route("/api/committee", methods=["DELETE"])
+def committee_delete():
+    _COMMITTEE["aggregate"] = None
+    return jsonify({"ok": True})
+
+
+@app.route("/api/committee/template")
+def committee_template():
+    return send_from_directory(DATA_DIR, "committee_template.csv",
+                               as_attachment=True, download_name="committee_template.csv")
 
 
 # --------------------------------------------------------------------------- #
