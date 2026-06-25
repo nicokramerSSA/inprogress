@@ -1,0 +1,40 @@
+# Render Blueprint for the FSM RFP Evaluation Agent.
+# Mirrors the live service `fsm-rfp-evaluation-agent` (srv-d8u43fegvqtc739c85kg)
+# so its config lives in code and merges to `main` redeploy on their own.
+#
+# The repo hosts more than one app; `rootDir` is what scopes this service to
+# the FSM agent. Secrets (LLM API keys) are NOT stored here — they stay in the
+# Render dashboard. `sync: false` declares the var without committing its value.
+#
+# Adopting this Blueprint is a one-time dashboard step (see the PR description):
+# committing the file alone does not retroactively link the existing service.
+services:
+  - type: web
+    name: fsm-rfp-evaluation-agent
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: FSM_Scoring_Agent/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 app.py
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # LLM provider keys — read at call time by providers.py; set in the
+      # dashboard. The app soft-fails on a missing key (offline "mock" engine),
+      # so none are strictly required to boot.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      # Caps concurrent LLM calls across scoring batches + vendors (default 6).
+      - key: RESULTS_MAX_CONCURRENCY
+        sync: false
+      # Max proposal upload size in MB (default 25).
+      - key: MAX_UPLOAD_MB
+        sync: false
