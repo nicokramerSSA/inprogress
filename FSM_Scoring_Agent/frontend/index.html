@@ -224,6 +224,50 @@ async function jpost(u,b){
 }
 const recoClass = r => "badge b-"+(r||"").replace(/[^A-Za-z]/g,"");
 
+// ---- demo-feedback derivations (pure; safe offline) ----------------------
+const LOW_COVERAGE_PCT = 85;
+const ADVISORY_LINE = "The agent's advisory view — one input to your decision, not the decision. Built to be challenged.";
+
+function deriveCompleteness(r){
+  const scores=(r.requirement_scores||[]).filter(s=>s.met!=="N/A");
+  const total=scores.length;
+  const notAddr=scores.filter(s=>s.met==="No" && !((typeof s.evidence==="string"?s.evidence:(s.evidence&&s.evidence.quote)||"").trim()));
+  const partial=scores.filter(s=>s.met==="Partial").length;
+  const addressed=total-notAddr.length;
+  const coverage_pct=total?Math.round(addressed/total*100):0;
+  const byDom={};
+  notAddr.forEach(s=>{const d=(s.domain||"").split(":")[0].trim(); byDom[d]=(byDom[d]||0)+1;});
+  const by_domain_gaps=Object.keys(byDom).map(d=>({domain:d,count:byDom[d]})).sort((a,b)=>b.count-a.count);
+  const missing_musts=notAddr.filter(s=>s.priority==="Must").map(s=>({rid:s.rid,domain:(s.domain||"").split(":")[0].trim()}));
+  return {coverage_pct,total,addressed,partial,not_addressed:notAddr.length,by_domain_gaps,missing_musts,low:coverage_pct<LOW_COVERAGE_PCT};
+}
+
+function deriveRedFlags(results){
+  const flagged=[], clear=[];
+  results.forEach(r=>{
+    const c=deriveCompleteness(r);
+    const dq=!!(r.gating&&r.gating.disqualified);
+    const flags=[];
+    if(dq) flags.push({type:"disqualified",
+      text:`DISQUALIFIED — ${r.gating.unmet_must_count} unmet Must requirement(s)`,
+      detail:(r.gating.unmet_musts||[]).slice(0,3).map(m=>m.rid+(m.capability?` (${m.capability})`:"")).join(", ")});
+    if(c.low) flags.push({type:"coverage",
+      text:`Addressed ${c.coverage_pct}% of requirements`,
+      detail:c.by_domain_gaps.slice(0,3).map(g=>g.domain).join(", ")});
+    if(c.missing_musts.length && !dq) flags.push({type:"missing_must",
+      text:`${c.missing_musts.length} Must requirement(s) not addressed`,
+      detail:c.missing_musts.slice(0,3).map(m=>m.rid).join(", ")});
+    if(flags.length) flagged.push({vendor:r.vendor,flags}); else clear.push(r.vendor);
+  });
+  return {flagged,clear};
+}
+
+function deriveAdvisoryRead(results){
+  const passing=results.filter(r=>!(r.gating&&r.gating.disqualified)).sort((a,b)=>b.weighted_total-a.weighted_total);
+  const disqualified=results.filter(r=>r.gating&&r.gating.disqualified).sort((a,b)=>b.weighted_total-a.weighted_total);
+  return {winner:passing[0]||null, shortlist:passing.slice(0,3), disqualified, allDisqualified:passing.length===0};
+}
+
 // ---- score bar row -------------------------------------------------------
 function BarRow({label, value, max=5, suffix="/5"}){
   const pct = Math.max(0, Math.min(100, (value/max)*100));
