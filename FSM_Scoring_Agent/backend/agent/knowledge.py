@@ -79,8 +79,21 @@ class KnowledgeBase:
         lines.append("\nWEIGHTING DOCTRINE: " + p["weighting_doctrine"]["principle"])
         lines.append("AGENTIC-FUTURE DOCTRINE: " + p["agentic_future_doctrine"]["summary"])
         lines.append("OPCO-DIVERSITY DOCTRINE: " + p["opco_diversity_doctrine"]["summary"])
-        lines.append("\nVOICE: " + p["voice"]["register"])
-        lines.append("Signature phrases you may use sparingly: " + "; ".join(p["voice"]["signature_phrases"][:5]))
+        if p.get("process_lessons"):
+            lines.append("\nPROCESS LESSONS (hard-won; apply when weighing evidence and sequencing):")
+            for lesson in p["process_lessons"]:
+                lines.append("  - " + lesson)
+        v = p["voice"]
+        lines.append("\nVOICE: " + v["register"])
+        lines.append("Signature phrases you may use sparingly: " + "; ".join(v["signature_phrases"][:5]))
+        if v.get("do"):
+            lines.append("ALWAYS: " + " ".join(v["do"]))
+        if v.get("dont"):
+            lines.append("NEVER: " + " ".join(v["dont"]))
+        if v.get("house_style"):
+            lines.append("\nHOUSE STYLE — applies to every rationale, narrative, and answer you write:")
+            for rule in v["house_style"]:
+                lines.append("  - " + rule)
         lines.append(
             "\nGround every judgment in evidence. Reward proven OOB/CONFIG over CUSTOM/ROADMAP. "
             "Treat scale, single-tenancy, data access, union/non-union isolation, and SOX as gates. "
