@@ -71,10 +71,17 @@ def _results_context(results: Optional[List[Dict[str, Any]]], question: str) -> 
                                             -r.get("weighted_total", 0)))
     for r in ranked:
         v = r.get("vendor", "?")
-        line = (f"- {v}: {r.get('weighted_total')}/100 "
-                f"(cap {r.get('capability_weighted_total')}/100); "
-                f"vote={r.get('vote',{}).get('recommendation','?')}; "
-                f"{r.get('gating',{}).get('summary','')}")
+        g = r.get("gating", {})
+        gate = "DISQUALIFIED" if g.get("disqualified") else "PASS"
+        unmet = g.get("unmet_must_count", 0)
+        # State verdict and Must-gate as explicit, citable facts. The model was
+        # conflating a disqualified vendor's status onto a passing one and inventing
+        # Must counts; giving it a hard token + number per vendor removes the gap.
+        line = (f"- {v}: verdict={r.get('vote',{}).get('recommendation','?')}; "
+                f"must_gate={gate} ({unmet} unmet Must(s)); "
+                f"score {r.get('weighted_total')}/100 "
+                f"(capability {r.get('capability_weighted_total')}/100). "
+                f"{g.get('summary','')}")
         lines.append(line)
         # If this vendor is named in the question, include richer detail.
         if v.lower() in q:
@@ -116,6 +123,10 @@ def answer(question: str, results: Optional[List[Dict[str, Any]]] = None,
         kb.persona_system_prompt() +
         "\n\nYou are answering questions about your own FSM vendor evaluation. "
         "Answer ONLY from the provided context; if it isn't there, say so plainly. "
+        "State each vendor's verdict and Must-gate exactly as its results line gives them: "
+        "a vendor is disqualified ONLY if its line says must_gate=DISQUALIFIED. When comparing "
+        "vendors, never carry one vendor's disqualification onto another. Never invent counts or "
+        "scores — cite only numbers that appear in the context. "
         "Be concise and decisive, and name your evidence."
     )
     hist = ""
