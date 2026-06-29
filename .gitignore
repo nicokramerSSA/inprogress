@@ -22,3 +22,9 @@ backend/.env
 
 # Runtime evaluation store (durable-latest; not source)
 FSM_Scoring_Agent/backend/data/store/
+
+# Local dependency target used when system venv support is unavailable
+FSM_Scoring_Agent/backend/.deps/
+
+# Uploaded proposal files are runtime input, not source
+FSM_Scoring_Agent/backend/data/uploads/

@@ -109,18 +109,18 @@ Filenames are deterministic and dated: `fsm-ranking-YYYY-MM-DD.csv`,
 
 One row per evaluated vendor, in the same sort order the Dashboard shows.
 
-| Column | Source |
-|---|---|
-| Rank | 1-based position in the dashboard's sort |
-| Vendor | `vendor` |
-| Product | `product` |
-| SSA score (0–100) | `weighted_total` |
-| §30 capability score (0–100) | `capability_weighted_total` |
-| Gate | `DISQUALIFIED` if `gating.disqualified` else `PASS` |
-| Vote | `vote.recommendation` |
-| Vote confidence | `vote.confidence` |
-| Model | `model_used` |
-| Demo? | `is_demo` → `yes`/`no` |
+| Column                       | Source                                              |
+| ---------------------------- | --------------------------------------------------- |
+| Rank                         | 1-based position in the dashboard's sort            |
+| Vendor                       | `vendor`                                            |
+| Product                      | `product`                                           |
+| SSA score (0–100)            | `weighted_total`                                    |
+| §30 capability score (0–100) | `capability_weighted_total`                         |
+| Gate                         | `DISQUALIFIED` if `gating.disqualified` else `PASS` |
+| Vote                         | `vote.recommendation`                               |
+| Vote confidence              | `vote.confidence`                                   |
+| Model                        | `model_used`                                        |
+| Demo?                        | `is_demo` → `yes`/`no`                              |
 
 ### 5.2 Head-to-head compare (Compare)
 
@@ -141,19 +141,19 @@ Columns: `Section, Metric, <VendorA name>, <VendorB name>, Delta (A−B)`.
 
 The 422-row audit backbone, canonical RID order.
 
-| Column | Source (`RequirementScore`) |
-|---|---|
-| RID | `rid` |
-| Domain | `domain` |
-| Capability | `capability` |
-| Priority | `priority` |
-| Met | `met` |
-| Quality (1–5) | `quality` |
-| Response code | `vendor_code` |
-| Confidence | `confidence` |
-| Rationale | `rationale` |
-| Evidence quote | `evidence.quote` or empty |
-| Evidence source | `evidence.source` or empty |
+| Column           | Source (`RequirementScore`)                                 |
+| ---------------- | ----------------------------------------------------------- |
+| RID              | `rid`                                                       |
+| Domain           | `domain`                                                    |
+| Capability       | `capability`                                                |
+| Priority         | `priority`                                                  |
+| Met              | `met`                                                       |
+| Quality (1–5)    | `quality`                                                   |
+| Response code    | `vendor_code`                                               |
+| Confidence       | `confidence`                                                |
+| Rationale        | `rationale`                                                 |
+| Evidence quote   | `evidence.quote` or empty                                   |
+| Evidence source  | `evidence.source` or empty                                  |
 | Evidence locator | `evidence.locator` or `(unlocated)` per existing convention |
 
 ## 6. PDF specification (SSA-branded, client-side print-to-PDF)
