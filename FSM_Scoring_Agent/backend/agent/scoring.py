@@ -106,7 +106,7 @@ def evaluate_vendor(
     _emit(f"Scoring {len(reqs)} requirements for {vendor}…", 0.05)
 
     # 1) Per-requirement scoring (batched) -----------------------------------
-    req_scores = _score_requirements(vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel, segments)
+    req_scores, score_stats = _score_requirements(vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel, segments)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
     gating = _compute_gating(req_scores, clean_text)
@@ -135,11 +135,38 @@ def evaluate_vendor(
 
     research = kb.vendor_profile(vendor)
 
+    # Live-vs-fallback bookkeeping. For an explicit offline-mock run score_stats is None
+    # and is_demo is simply True. For a live-model run, surface any silent fallback: a
+    # FULL fallback means the headline numbers are really offline-demo output (so flag
+    # is_demo too), a PARTIAL fallback means the score is a blend worth warning about.
+    is_demo = is_mock(scoring_model)
+    live_count = fallback_count = 0
+    engine_warning = ""
+    if score_stats is not None:
+        live_count = score_stats["live"]
+        fallback_count = score_stats["fallback"]
+        if fallback_count:
+            total = live_count + fallback_count
+            reason = ("; ".join(score_stats["errors"])) or "live model calls failed"
+            if live_count == 0:
+                is_demo = True
+                engine_warning = (
+                    f"Live model '{scoring_model}' could not score any requirement — all "
+                    f"{total} fell back to the OFFLINE DEMO ENGINE, so these scores are NOT a "
+                    f"live read. Reason: {reason}."
+                )
+            else:
+                engine_warning = (
+                    f"{fallback_count} of {total} requirements fell back to the offline demo "
+                    f"engine ('{scoring_model}' failed on those); the headline score is a blend "
+                    f"of live and demo output. Reason: {reason}."
+                )
+
     return VendorEvaluation(
         vendor=vendor,
         product=product or research.get("product", ""),
         model_used=scoring_model,
-        is_demo=is_mock(scoring_model),
+        is_demo=is_demo,
         evaluated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         weighted_total=weighted_total,
         capability_weighted_total=cap_total,
@@ -151,18 +178,25 @@ def evaluate_vendor(
         vote=None,  # filled by vote.py after this returns
         external_research=research,
         requirement_scores=req_scores,
+        scoring_live_count=live_count,
+        scoring_fallback_count=fallback_count,
+        engine_warning=engine_warning,
     )
 
 
 # --------------------------------------------------------------------------- #
 # 1) Per-requirement scoring                                                  #
 # --------------------------------------------------------------------------- #
-def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None, segments=None) -> List[RequirementScore]:
+def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None, segments=None):
+    """Score every requirement. Returns (scores, stats) where stats is None for an
+    explicit offline-mock run, or {live, fallback, errors} for a live-model run so the
+    caller can surface any silent fallback to the deterministic engine."""
     strengths = _vendor_cap_strength(vendor)
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
         # Mock is CPU-only and instant — stay sequential, never touch the executor/gate.
-        return [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
+        scores = [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
+        return scores, None
 
     kb = get_kb()
     system = kb.persona_system_prompt() + "\n\n" + kb.scoring_context()
@@ -176,25 +210,27 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
     batches = [reqs[i:i + BATCH] for i in range(0, total, BATCH)]
 
     def score_batch(batch):
-        # Returns {rid: row} for the batch, or {} on any failure (caller falls back per row).
+        # Returns (rows_by_rid, error). On any failure rows is {} and error is a short
+        # string the caller aggregates, so a silent mock fallback never goes unreported.
         kws = _batch_keywords(batch)
         context = relevant_passages(proposal_text, kws, max_chunks=8, index=retrieval_index)
         user = _batch_prompt(vendor, product, batch, context)
         resp = client.generate(system, user, model_id, expect_json=True,
                                max_tokens=8192, temperature=0.15)
         if not resp["ok"]:
-            return {}
+            return {}, (resp.get("error") or "live model call failed")
         try:
             parsed = extract_json(resp["text"])
             rows = parsed if isinstance(parsed, list) else parsed.get("scores", [])
-            return {row.get("rid"): row for row in rows}
+            return {row.get("rid"): row for row in rows}, None
         except Exception:
-            return {}
+            return {}, "live model response was not parseable JSON"
 
     if should_cancel and should_cancel():
         raise EvaluationCancelled()
 
     by_rid: Dict[str, Dict[str, Any]] = {}
+    errors: List[str] = []
     done_reqs = 0
     cancelled = False
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENCY) as pool:
@@ -202,9 +238,13 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
         for fut in as_completed(futures):
             b = futures[fut]
             try:
-                by_rid.update(fut.result())
-            except Exception:
-                pass  # leave this batch's rids unfilled -> per-row mock fallback below
+                rows, err = fut.result()
+                by_rid.update(rows)
+                if err:
+                    errors.append(err)
+            except Exception as e:
+                # leave this batch's rids unfilled -> per-row mock fallback below
+                errors.append(f"{type(e).__name__}: {e}")
             done_reqs += len(b)
             emit(f"Scored {min(done_reqs, total)}/{total} requirements…",
                  0.05 + 0.62 * (min(done_reqs, total) / total))
@@ -216,15 +256,20 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
 
     # Build the output in ORIGINAL reqs order (not completion order). Any rid the model
     # skipped or a failed batch left out falls back to the deterministic engine, so the
-    # rollups never have holes.
+    # rollups never have holes — but we COUNT those so the caller can flag it.
     out: List[RequirementScore] = []
+    live = fallback = 0
     for r in reqs:
         row = by_rid.get(r["rid"])
         if row:
             out.append(_row_to_score(r, row, segments))
+            live += 1
         else:
             out.append(_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments))
-    return out
+            fallback += 1
+    # De-duplicate error strings, keep the first few distinct ones for the warning.
+    distinct_errors = list(dict.fromkeys(errors))[:3]
+    return out, {"live": live, "fallback": fallback, "errors": distinct_errors}
 
 
 def _batch_keywords(batch: List[Dict[str, Any]]) -> List[str]:

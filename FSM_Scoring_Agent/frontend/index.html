@@ -132,6 +132,7 @@
   /* Footer */
   footer.app{padding:24px 22px;color:var(--muted);font-size:11.5px;text-align:center;border-top:1px solid var(--line);margin-top:30px}
   .demowarn{background:#fff7e6;border:1px solid #f0d9a8;color:#8a5a00;font-size:12px;padding:8px 12px;border-radius:8px;margin:14px 0}
+  .enginewarn{background:#fdecea;border:1px solid #f1aeb5;color:#8a1c1c;font-size:12px;padding:8px 12px;border-radius:8px;margin:14px 0;font-weight:600}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--ssa-light);border-top-color:var(--ssa-blue);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle}
   @keyframes sp{to{transform:rotate(360deg)}}
   .kpi{display:flex;gap:18px 28px;flex-wrap:wrap}
@@ -728,9 +729,11 @@ function VendorDetail({data}){
             <div className="score-tile"><span className={recoClass(r.vote.recommendation)} style={{fontSize:14,alignSelf:"flex-start"}}>{r.vote.recommendation}</span>
                  <div className="den">vote · {r.vote.confidence} confidence</div></div>
           </div>
-          <div style={{marginTop:10}} className={"demowarn"} hidden={!r.is_demo}>
-            Offline demo engine (no model key). Scores are grounded in the research dossier, not a live read of a real proposal.
-          </div>
+          {r.engine_warning
+            ? <div style={{marginTop:10}} className={"enginewarn"}>&#9888; {r.engine_warning}</div>
+            : <div style={{marginTop:10}} className={"demowarn"} hidden={!r.is_demo}>
+                Offline demo engine (no model key). Scores are grounded in the research dossier, not a live read of a real proposal.
+              </div>}
         </div>
         <div className="card">
           <h3>Gate</h3>

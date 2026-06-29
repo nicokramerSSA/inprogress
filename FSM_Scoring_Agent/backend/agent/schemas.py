@@ -125,7 +125,9 @@ class VendorEvaluation:
     vendor: str
     product: str
     model_used: str               # which LLM/provider produced this evaluation
-    is_demo: bool                 # True if produced by the offline mock engine
+    is_demo: bool                 # True if the numbers came from the offline mock engine
+                                  # (explicit 'mock' selection OR a live model that fully
+                                  #  fell back — see engine_warning)
     evaluated_at: str
 
     weighted_total: float         # 0-100, headline SSA-category score
@@ -138,6 +140,13 @@ class VendorEvaluation:
     vote: Vote = None
     external_research: Dict[str, Any] = field(default_factory=dict)
     requirement_scores: List[RequirementScore] = field(default_factory=list)
+
+    # Live-vs-fallback bookkeeping (non-mock runs only). When a live model is selected
+    # but some/all per-requirement scoring calls fail, those requirements fall back to
+    # the deterministic offline engine. These fields make that visible instead of silent.
+    scoring_live_count: int = 0       # requirements actually scored by the live model
+    scoring_fallback_count: int = 0   # requirements that fell back to the offline engine
+    engine_warning: str = ""          # human-readable warning when fallback occurred
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)

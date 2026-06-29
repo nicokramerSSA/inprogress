@@ -108,6 +108,35 @@ def _is_transient(e: Exception) -> bool:
     return status in (408, 409, 429, 500, 502, 503, 504, 529)
 
 
+def _openai_kwargs(model: Dict[str, Any], system: str, user: str,
+                   expect_json: bool, max_tokens: int, temperature: float) -> Dict[str, Any]:
+    """
+    Build the chat.completions.create kwargs for one OpenAI/Azure model.
+
+    Reasoning models (GPT-5 family, o-series) reject the classic sampling/token params:
+    they require `max_completion_tokens` (not `max_tokens`) and only accept the default
+    temperature of 1 — sending `max_tokens` or a custom temperature 400s the request,
+    which previously fell back silently to the offline engine. We key this off the same
+    `sampling_params: false` flag used for Anthropic's reasoning models in models.json:
+    when set, omit temperature and use `max_completion_tokens`.
+    """
+    reasoning_model = model.get("sampling_params", True) is False
+    token_cap = min(max_tokens, model.get("max_output_tokens", max_tokens))
+    kwargs: Dict[str, Any] = {
+        "model": model["id"],
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+    }
+    if reasoning_model:
+        kwargs["max_completion_tokens"] = token_cap
+    else:
+        kwargs["max_tokens"] = token_cap
+        kwargs["temperature"] = temperature
+    if expect_json:
+        kwargs["response_format"] = {"type": "json_object"}
+    return kwargs
+
+
 # --------------------------------------------------------------------------- #
 # The client                                                                  #
 # --------------------------------------------------------------------------- #
@@ -196,14 +225,7 @@ class LLMClient:
         else:
             from openai import OpenAI
             client = OpenAI(api_key=key)
-        kwargs = dict(
-            model=model["id"],
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            max_tokens=min(max_tokens, model.get("max_output_tokens", max_tokens)),
-            temperature=temperature,
-        )
-        if expect_json:
-            kwargs["response_format"] = {"type": "json_object"}
+        kwargs = _openai_kwargs(model, system, user, expect_json, max_tokens, temperature)
         resp = client.chat.completions.create(**kwargs)
         text = resp.choices[0].message.content or ""
         return {"text": text, "provider": provider["id"], "model": model["id"], "ok": True, "error": None}

@@ -21,7 +21,7 @@
       "endpoint": "https://api.openai.com/v1/chat/completions",
       "sdk": "openai",
       "models": [
-        {"id": "gpt-5.5", "label": "GPT-5.5", "tier": "frontier", "best_for": "OpenAI side of the dual-provider vote. VERIFY this exact model id against OpenAI's current model list before first live use.", "max_output_tokens": 8192, "verify_id": true},
+        {"id": "gpt-5.5", "label": "GPT-5.5", "tier": "frontier", "best_for": "OpenAI flagship reasoning model. Live scoring and the OpenAI side of the dual-provider vote.", "max_output_tokens": 8192, "sampling_params": false},
         {"id": "gpt-4o", "label": "GPT-4o", "tier": "frontier", "best_for": "Alternative frontier reasoning; cross-check a second opinion against the primary model.", "max_output_tokens": 8192},
         {"id": "gpt-4o-mini", "label": "GPT-4o mini", "tier": "fast", "best_for": "Fast/cheap chat and bulk scoring.", "max_output_tokens": 4096}
       ]
