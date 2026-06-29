@@ -1,0 +1,210 @@
+Camp Hagood | 00:00
+Hey, how's it going?
+Nick Kramer | 00:03
+It's going right. How are you? Can you hear me? Hello? Hey, can you guys hear me?
+Camp Hagood | 00:16
+Hey, Sam, can you hear Nick?
+Nick Kramer | 00:19
+Can you hear me?
+Samantha Adiwidjaja | 00:21
+No, I can hear him. Yep, he's gone.
+Camp Hagood | 00:24
+We've got to fix this... There we go. I should be able to hear you now.
+Samantha Adiwidjaja | 00:41
+You are okay.
+Nick Kramer | 00:46
+Can you hear me?
+Camp Hagood | 00:47
+Yes, sorry, it was on my end.
+Nick Kramer | 00:47
+Yeah, okay, I it was a bluetooth thing.
+Camp Hagood | 00:57
+Yeah. Surprisingly, it was a Krisp thing.
+Nick Kramer | 01:11
+I'm in Birmingham, Alabama, waiting for a news.
+Samantha Adiwidjaja | 01:15
+Why are you in Birmingham?
+Nick Kramer | 01:17
+Alabama for protective life. We've got a Sterco meeting today.
+Samantha Adiwidjaja | 01:23
+Okay.
+Nick Kramer | 01:24
+Data and AI and acceleration work experience. It could be cool. Yeah, luckily it's not too hot.
+Samantha Adiwidjaja | 01:33
+I did a lot of work in the South in my last job, and Birmingham, Alabama, ended up being one of my favorite cities, which is a very strange thing to say. Probably for most people, I'm better than Miami.
+Nick Kramer | 01:47
+Wow. I mean, I. Well. We're on the we're in the suburbs, okay? But, yeah, my father lived in Birmingham, so I've been here a few times, and I always really liked that. It's a like a surprisingly good food scene.
+Yeah. And I mean, you know, it has a feel like it's easy to forget what an important city it was for so long, but. So there is a certain. Even if it's even, you know, if it's gone through rough times, there's a certain, like historically like a culture here that's pretty, that's different from other places.
+Samantha Adiwidjaja | 02:24
+So culture and the people for sure. I remember the people that were just fantastic. Very... I was probably the most Asian person in the entire city.
+Nick Kramer | 02:33
+So it's the other one is that's interesting is Huntsville, Alabama, because there's like so... The US and the Soviet Union both retired. Yeah, exactly. So they ended up in Huntsville, Alabama. Most of them.
+Jeff Brown | 02:57
+My great uncle.
+Nick Kramer | 02:59
+My great uncle was one of them.
+Jeff Brown | 03:02
+I've tried to get on the clearance Apache program, Fred, a long time ago.
+Fred Asbeck | 03:12
+I think...
+Jeff Brown | 03:14
+It was, wasn't it, Perse? Did the government work? No, you might be right.
+Fred Asbeck | 03:17
+You might be right. All right, what are we got there? What are we talking about? By the way? That was... As we just had on CRM... Jeff, and if you're good, I like that scoping session to set the... Whatever the hell they need.
+Jeff Brown | 03:30
+Yep. No, he's back in alignment. He went off, he recognized it, he you know, we got him back.
+Fred Asbeck | 03:36
+He's... [Laughter] Don't worry, we're not to be like... Good, I have like five more... [Laughter].
+Jeff Brown | 03:42
+All right? We're good. Yeah.
+Nick Kramer | 03:44
+Well. So we're not squeezing in another project into this. Okay? So we're having a good discussion.
+Fred Asbeck | 03:51
+Which I think that might lead to... As with Kim the other day... That's perfect. Great.
+Nick Kramer | 03:58
+Awesome. Okay, so, yeah. So what this meeting is going to be for is to show you guys the work. The field service management RFP evaluation agent. And I mean, agent is probably a bit of a... Generous term, but we'll go with it because it sounds cool.
+So essentially what this agent is designed to do is to ingest RFP responses from the five vendors and to provide an objective evaluation and scoring of those responses. And so, you know, as its source, we. Of course, it has the it's built on the RFP that we built.
+It's got. You know, I had a look at all of the historical data and transcripts and things like that to sort of like be home in on what's important and to give more context around the requirements. Augmented with some external research into the vendors.
+So that it had a certain baseline of what their public persona says. And then, you know, and then, happily turned that over to camp to really improve. The other thing that I did was I used like. Like it created like an evaluator based on, you know, on a digital twin, so to speak, of myself.
+And then after reading some stuff around oppositional debate agents and augmenting quality, ask Camp to add into scoring agents or scoring, yeah, scoring subagents that would then provide their own independent evaluation.
+And then at the end, you essentially have an arbitration between those three sort of scores and ends up with a best of slash composite. And so yeah.
+Fred Asbeck | 06:13
+The column SA total is that the participant total? Not SA.
+Camp Hagood | 06:19
+Yes, sorry. Let me just go ahead and I can dive into that. I think I may flash a little too quickly, so...
+Fred Asbeck | 06:24
+I'm sorry if I jumped then. Nick, I apologize.
+Camp Hagood | 06:29
+No, you're good.
+Nick Kramer | 06:29
+But. Yeah, the I mean the last thing I'll say yes, that's perfect timing because I mean this what we're going to look at right now is really just the output of the scoring, with the assumption that, you know, and that the score sees the scoring has already been adjusted.
+Camp Hagood | 06:31
+It's...
+Nick Kramer | 06:44
+Part of what the Codex did was generate some sample data in the back end so that you could seed at the front end. So this is all fake data. Don't like, read anything into the numbers. Just it's really for to give you a kind of feel for what it what the output is.
+Camp Hagood | 07:05
+Yeah, and I can get...
+Nick Kramer | 07:06
+Okay, Camp, how are you now?
+Camp Hagood | 07:07
+I can get specific with that. So basically, as Nick said, an agent is a bit of a stretch. This is really a web app that has capabilities where we're able to upload the various files that we're going to receive from each vendor and then run a comparison based on a set methodology and rubric.
+So, essentially, we're going to be looking at these specific categories. So understanding of service logic, completeness of response, vendor platform architecture, vendor qualifications, the requirement alignment, and then financials and commercial model, each with a unique weighting.
+Then we're going to be looking at the different capabilities as well. So these capabilities will be able to be viewed in a really easy rubric with... Which then creates the composite score based off of the weighting that you'll see here for both the SA total and the capability.
+So by SA total, this essentially means our weighting system based off of the output from the LLM. Yeah, essentially it has the ability to evaluate all of them at once. So you can batch upload all the files for each vendor, assigning which vendor would be corresponding to which files, and then has a nice comparison view where it'll pull in the top two contenders and then you can go down for each metric and see that comparison.
+Then you have the ability to extract as a CSV or a PDF for the overall dashboard, the vendor detail and then that comparison as well. There's this built-in agent that allows you to just ask questions in natural language for any of the data that you upload and then compare.
+Then, as Nick was saying, we have two different opinions created. So when you use the dual model, we can use ChatGPT and Claude, and then we'll have a summarizer that goes through and creates one unified response based off of those two unique responses.
+So it's not just relying on a single model... The idea there... Yeah, please let me know if you guys have any questions.
+Jeff Brown | 09:35
+Yeah, I have a question.
+Camp Hagood | 09:35
+Have this... Yeah, so...
+Jeff Brown | 09:36
+Do we have anywhere in here where it's like if a response clearly lacks something like if they don't submit technical architecture like, is that clearly called out? What?
+Because we want to know the red flags. Like that needs to be front and center because if there's something to either disqualify a vendor like we want to know that quickly because we don't want to spend a ton of effort debating if build up says we can't do the security architecture, the way you define it.
+Nick Kramer | 10:06
+You're out.
+Camp Hagood | 10:07
+Yes, a hundred percent. So this one immediately if it's disqualified, it lists all disqualified unmet metrics. Just by looking at the vendor detail and clicking on the name, you can see that here immediately you can see that there are five unmet that don't pass for our gate.
+On that you can again click the detail. You can see why it's disqualified. Gives you a summary as to why it's disqualified as well, including the top risks and then evidence to disclose in the demos.
+Then that again you can see here, and then below as well, if you want to dive into it more, you have this comparison table so you can filter by the different capabilities. These again are here.
+So you worked cache? Yeah. Then you can if you want to splice and dice in a familiar environment, you can just export the CSV loaded into Excel and see how that looks as well, in a way that's familiar to you. The...
+Nick Kramer | 11:11
+That is something that we might want to add upfront is a response completeness check. So not even like saying disqualified for X, but it's like to Jeff's point, that didn't include this. Yeah.
+Jeff Brown | 11:23
+Yeah, that's a good point. Yeah, response completeness is probably a better way to think about it at first. Another question, Nick, how do we want to approach... Say, service or Salesforce has a really good response, but they completely lack something important, so they score... Is it possible for them to score the highest but then have an unmet?
+Are we automatically disqualifying or is it... Could it say, "Disqualified," but you have a score of 95?
+Nick Kramer | 11:55
+That's a good question. I'm not sure if we look at Salesforce. I mean, they... I think they were disqualified, right? So yeah, but I think they do still have a score.
+Jeff Brown | 12:06
+If I'm not... It is higher. So it will rank it higher. Okay, yeah, and that's what I think we want to show. It was like, "Yes, this product scored really well, but you have this requirement for an unmet." Then we can have that conversation with... So you know... Sure, okay, perfect. It doesn't... Automatically zero something now. Cool.
+Nick Kramer | 12:28
+Exactly. Yeah.
+Jeff Brown | 12:29
+Exactly it is. How were we going to.
+Fred Asbeck | 12:34
+I see how we're going to use this, but how are we going to infuse this in the conversation? This is a really cool thing that shows cool functionality, but I want to make sure we don't get to Dave's... On this.
+Look at the school functionality when they're like, "Yeah, that's great. What's the answer?"
+Nick Kramer | 12:51
+Yeah, well, I mean, it gives the answer. And that's kind of how I look at it as it's like, okay, you know, this is one more voice and sort of sanity check. And one of the things that I asked him to... That I think would be a good add-on to this is the ability to load all the scores in and then provide essentially an analysis and dashboard of all the overall scores to say clearly, "This is the winner."
+Jeff Brown | 13:22
+Yeah, I would say that for the last piece is what Nick said is that this is meant to be our view, SSA's view.
+Nick Kramer | 13:29
+So our view. This is the agent's view.
+Jeff Brown | 13:32
+Yeah, but I'm saying that we shouldn't...
+Nick Kramer | 13:33
+Even represent it as our view.
+Jeff Brown | 13:35
+And, yeah, like we called the AP, but like, Nick, you're not filling out a scorecard. Fred, you're not filling out scorecard. I'm not filling out score cards. The agent does the scorecard. And then, like, that's just the view.
+And then they have all of their scores. So yeah, if we have this is meant to kind of help them. I think, you know, like here is a, you know, pure factual evaluation of it. And then we if we have like if.
+Yeah, if we have a way to ingest, you know, that's not an excel. I mean, excel will work, but a way to have all the scores and then have the final. Hey, here's where it. This is what all discre led to. Here's what you say is your short list.
+And then we have the conversation of do we notify the two that are disqualified? Okay, so, look.
+Fred Asbeck | 14:24
+I think the simpler the better, as we can explain it. So they go... Yep, got it, and they just move on versus Wade because Kimmal Perse on that right. She's all about the portfolio experience.
+Jeff Brown | 14:41
+Yeah, no, this is good.
+Nick Kramer | 14:44
+Yeah, this is definitely not meant to represent the wisest voice or anything. It's one more voice and a sanity check.
+Jeff Brown | 14:54
+Yeah, that's how we pitched it with Tam. This is a voice for them to look at and understand. Obviously, they're going to score that before we share this correct mix. We don't buy... We don't influence.
+So yeah.
+Nick Kramer | 15:06
+Yeah, absolutely.
+Jeff Brown | 15:07
+So it's like we'll present this after they've submitted their scores, like, hey, here's like this. And then we'll walk through all the scores and say, you know, the aggregates and say, here's the totals, blah.
+Nick Kramer | 15:16
+So, yeah.
+Jeff Brown | 15:18
+Cool. Yeah, honestly, like, I think this. I think we're in a good spot for, like, the scoring and all that. I just realized, like, I may need to chat with you tomorrow on, like, how we gather all of the information.
+So like, when they're uploading it, just to make sure my thought process is correct because, like, Kevin set up a share point file. But I'm like, yeah, but then, like, everyone's going to see other people's responses.
+So I think I have to think through, like, how do we keep the upload anonymous?
+Nick Kramer | 15:48
+So, yeah, that's a really good point. Yes.
+Jeff Brown | 15:51
+So I got to think through that. I'll probably shoot you them over tomorrow just to chat with what I'm thinking that you can say check it.
+Nick Kramer | 15:58
+Yeah, just any time that I'm free on my calendar. I think my flight lands at 09:30, so I guess not before nine.
+Jeff Brown | 16:08
+Cool. Sounds good.
+Nick Kramer | 16:09
+Unless you want to do it at, like. I could do it at like 06:30 am if you're at but I mean.
+Jeff Brown | 16:16
+I am but I may not want to be on a phone call.
+Nick Kramer | 16:19
+Totally understood. Yeah, totally understood, but if you're... Yeah, but that would be an option because my flight doesn't leave till 7:00 am Eastern.
+Jeff Brown | 16:28
+Okay, cool. Yeah, but that's one of the last things right around the ERP. I think we got a good understanding of everything else. It's just making sure we've got those mechanics done.
+Fred Asbeck | 16:38
+Okay, that agrees. Okay, so everyone...
+Jeff Brown | 16:49
+We do. I do still expect people to read the RFPs and camp. Yeah, as well. This doesn't get you out of reading the RFP, Emily made that point to me when I said I'll skip through the RFPs. She said, "No. You're going to read it."
+So we all want to make sure we're sharp because I imagine we're all there for the demos. So camp, you're going to be traveling the week of the 13th. Clear your schedules, clear everything off of your internal schedules as well. Tuesdays, Wednesdays, and Thursdays are complete full days, so we'll all have duties.
+Then Nick and Fred... I mean, you guys are optional, but I'm sure they'll want you down there at some point.
+Fred Asbeck | 17:36
+You should just assume we'll be there and put that in the comment too. It'll just be good. Then I can visit...
+Nick Kramer | 17:45
+Okay, cool, all very good, thank you.
+Camp Hagood | 17:53
+Thank you.
+Jeff Brown | 17:53
+Same camp. Hold on a second, are you guys working on something right now or...?
+Samantha Adiwidjaja | 18:00
+I was just updating the org design stuff.
+Jeff Brown | 18:05
+Yeah.
+Samantha Adiwidjaja | 18:07
+On the B8 deck.
+Camp Hagood | 18:07
+I was planning on making the updates from this right after this.
+Jeff Brown | 18:10
+Okay, yeah, if you have time, let me know. I just need somebody to help make edits on something today for the RFP. So when you're free up, just why don't you pay me when you're finished with what you're working on right now?
+Samantha Adiwidjaja | 18:24
+I can do that, since mine's not urgent anyway.
+Jeff Brown | 18:27
+I'll... Yeah, I'll show you a note so I can finish up yours and then, yeah, Sam, you can say on camp, you're good.
+Samantha Adiwidjaja | 18:35
+That's good.
+Camp Hagood | 18:35
+Right? Sounds good. Thank you.
+Jeff Brown | 18:36
+Thanks, Manam.

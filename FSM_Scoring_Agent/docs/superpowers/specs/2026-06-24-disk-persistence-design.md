@@ -115,20 +115,25 @@ Pure functions over a directory; no knowledge of Flask, scoring, or the engine.
 
 1. **Import:** `import store` (sibling module; `app.py` already runs from
    `backend/`).
+
 2. **Boot overlay.** In `_seed_results()` (still called from `__main__`), after
    the existing demo seed loop, overlay the store:
+   
    ```python
    for vendor, result in store.load_all().items():
        _RESULTS[vendor] = result   # store wins over the demo seed
    ```
+   
    Wrapped in try/except with a logged warning so a store problem never blocks
    boot (mirrors the existing seed's soft-fail).
+
 3. **Persist on completion.** In `_run_and_cache`, after the `with _RESULTS_LOCK:`
    block that sets `_RESULTS[vendor] = result`, call `store.save(result)`
    **outside** the lock (disk I/O must not be held under the in-memory lock).
    Wrap in try/except + warning: a failed disk write must not fail the
    evaluation the user already paid for — the result is still served from memory;
    it just is not durable until the next successful save.
+
 4. **`.gitignore`:** add `backend/data/store/`.
 
 ## 7. Error handling & edge cases

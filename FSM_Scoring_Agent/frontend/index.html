@@ -154,8 +154,10 @@
   .delta-down{color:var(--bad);font-weight:600}
   .delta-zero{color:var(--muted)}
   @media (max-width:1080px){ .cmp-colhead,.cmp-metric{grid-template-columns:minmax(120px,1fr) 1fr 52px 1fr} }
+  .evaluate-compose{display:grid;grid-template-columns:minmax(520px,max-content) minmax(420px,1fr);gap:14px 18px;align-items:start}
   .runbar-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .source-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+  .source-grid{grid-template-columns:minmax(230px,1fr) minmax(260px,340px);gap:14px;align-items:start}
+  .source-grid textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--font);font-size:13px;resize:vertical}
   .research-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 24px}
   .heatmap-card{padding:18px;overflow:auto}
   .heatmap{display:grid;gap:8px}
@@ -173,7 +175,7 @@
   .heat-warn{background:#fff5df;border-color:#edd6a8}
   .heat-low{background:#fae8e6;border-color:#ecc2bd}
   @media (max-width: 1080px){
-    .detail-hero,.detail-grid,.vote-columns,.source-grid,.research-grid{grid-template-columns:1fr!important}
+    .detail-hero,.detail-grid,.vote-columns,.evaluate-compose,.source-grid,.research-grid{grid-template-columns:1fr!important}
     .score-stack{grid-template-columns:repeat(3,minmax(0,1fr))}
     .rowbar{grid-template-columns:minmax(150px,220px) 1fr 58px}
   }
@@ -1401,7 +1403,8 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
 
   return (
     <div>
-      <div className="runbar-controls" style={{marginBottom:hasSources||!STATIC?12:0}}>
+      <div className="evaluate-compose">
+        <div className="runbar-controls">
         <b className="small" style={{color:"var(--ssa-blue)"}}>Evaluate a vendor</b>
         <select className="pill" style={{padding:"7px 10px"}} value={vendor} onChange={e=>setVendor(e.target.value)}>
           {vendors.map(v=>(<option key={v.name} value={v.name}>{v.name}</option>))}
@@ -1420,11 +1423,11 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
           <span className="spin"/>{prog||"Working…"}
           <button className="btn ghost" onClick={cancel} style={{padding:"4px 10px"}}>Cancel</button>
         </span>}
-      </div>
+        </div>
 
-      {!STATIC && (
-        <div className="grid source-grid"
-             onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(e.dataTransfer.files);}}>
+        {!STATIC && (
+          <div className="grid source-grid"
+               onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault(); addFiles(e.dataTransfer.files);}}>
           <div>
             <div className="small muted" style={{marginBottom:4}}>Accepted: PDF, DOCX, XLSX, TXT, MD — drag &amp; drop or use the button. Multiple files per vendor OK.</div>
             {files.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -1434,11 +1437,11 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
           <div>
             <div className="small muted" style={{marginBottom:4}}>…or paste vendor URL(s) — one per line (portal link, shared doc, hosted PDF).</div>
             <textarea value={urls} onChange={e=>setUrls(e.target.value)} rows={2}
-              placeholder="https://vendor.com/our-response.pdf"
-              style={{width:"100%",border:"1px solid var(--line)",borderRadius:8,padding:"8px 10px",fontFamily:"var(--font)",fontSize:13}}/>
+              placeholder="https://vendor.com/our-response.pdf"/>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       {isMock && !STATIC && hasSources && <div className="small" style={{color:"var(--warn)",marginTop:8}}>
         &#9888; A live model is recommended for real proposals — the offline "mock" engine doesn’t read uploaded content deeply. Pick a model (top-right).
