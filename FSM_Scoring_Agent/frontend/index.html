@@ -39,7 +39,10 @@
   header.app .title small{display:block;font-weight:400;opacity:.8;font-size:12px}
   header.app .spacer{flex:1}
   /* Model selector */
-  .modelsel{display:flex;align-items:center;gap:8px;font-size:12px}
+  .modelsel{display:grid;gap:10px;font-size:12px;justify-items:end}
+  .modelsel-row{display:flex;align-items:center;gap:14px;justify-content:flex-end}
+  .modelsel-control{display:flex;align-items:center;gap:6px}
+  .modelsel-bottom{justify-self:end}
   .modelsel select{font-family:var(--font);font-size:12px;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff}
   .modelsel select option{color:#000}
   .modelsel label{opacity:.85}
@@ -576,26 +579,30 @@ function Picker({models,value,onChange,title}){
 function ModelControls({models, scoring, setScoring, voteMode, setVoteMode, voteModel, setVoteModel, voteDual, setVoteDual}){
   if(!models) return null;
   return (
-    <div className="modelsel" style={{gap:12,flexWrap:"wrap"}}>
-      <span style={{display:"flex",alignItems:"center",gap:6}}>
-        <label>Scoring</label><Picker models={models} value={scoring} onChange={setScoring}/>
-      </span>
-      <span style={{display:"flex",alignItems:"center",gap:6}}>
-        <label>Vote</label>
-        <select value={voteMode} onChange={e=>setVoteMode(e.target.value)}
-                style={{fontSize:12,padding:"6px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.12)",color:"#fff"}}>
-          <option value="single" style={{color:"#000"}}>Single model</option>
-          <option value="dual" style={{color:"#000"}}>Dual (two-model read)</option>
-        </select>
-      </span>
-      {voteMode==="single"
-        ? <Picker models={models} value={voteModel} onChange={setVoteModel} title="Vote model"/>
-        : <span style={{display:"flex",alignItems:"center",gap:6}}>
-            <Picker models={models} value={voteDual.openai} onChange={v=>setVoteDual({...voteDual,openai:v})} title="OpenAI vote model"/>
-            <span style={{opacity:.7}}>+</span>
-            <Picker models={models} value={voteDual.anthropic} onChange={v=>setVoteDual({...voteDual,anthropic:v})} title="Anthropic vote model"/>
-            <span className="keypill" title="Reconciler (fixed)">&#8635; Opus 4.8 reconciles</span>
-          </span>}
+    <div className="modelsel">
+      <div className="modelsel-row modelsel-top">
+        <span className="modelsel-control">
+          <label>Scoring</label><Picker models={models} value={scoring} onChange={setScoring}/>
+        </span>
+        <span className="modelsel-control">
+          <label>Vote</label>
+          <select value={voteMode} onChange={e=>setVoteMode(e.target.value)}
+                  style={{fontSize:12,padding:"6px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.12)",color:"#fff"}}>
+            <option value="single" style={{color:"#000"}}>Single model</option>
+            <option value="dual" style={{color:"#000"}}>Dual (two-model read)</option>
+          </select>
+        </span>
+      </div>
+      <div className="modelsel-row modelsel-bottom">
+        {voteMode==="single"
+          ? <Picker models={models} value={voteModel} onChange={setVoteModel} title="Vote model"/>
+          : <>
+              <Picker models={models} value={voteDual.openai} onChange={v=>setVoteDual({...voteDual,openai:v})} title="OpenAI vote model"/>
+              <span style={{opacity:.7}}>+</span>
+              <Picker models={models} value={voteDual.anthropic} onChange={v=>setVoteDual({...voteDual,anthropic:v})} title="Anthropic vote model"/>
+              <span className="keypill" title="Reconciler (fixed)">Final synthesis: Opus 4.8</span>
+            </>}
+      </div>
     </div>
   );
 }
