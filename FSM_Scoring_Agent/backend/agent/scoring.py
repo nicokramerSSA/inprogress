@@ -221,8 +221,12 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
             return {}, (resp.get("error") or "live model call failed")
         try:
             parsed = extract_json(resp["text"])
-            rows = parsed if isinstance(parsed, list) else parsed.get("scores", [])
-            return {row.get("rid"): row for row in rows}, None
+            rows = _rows_from_parsed(parsed)
+            if not rows:
+                # Parsed fine but yielded no scorable rows (e.g. an unexpected shape) —
+                # report it instead of silently dropping the whole batch to the mock engine.
+                return {}, "live model returned JSON with no scorable rows"
+            return {row.get("rid"): row for row in rows if isinstance(row, dict)}, None
         except Exception:
             return {}, "live model response was not parseable JSON"
 
@@ -272,6 +276,28 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
     return out, {"live": live, "fallback": fallback, "errors": distinct_errors}
 
 
+def _rows_from_parsed(parsed: Any) -> List[Dict[str, Any]]:
+    """Extract the list of per-requirement score rows from a model's parsed JSON,
+    tolerating provider-specific shapes:
+      * a bare array (Anthropic, when it obeys "array")
+      * {"scores": [...]} (the wrapper we now request — required for OpenAI json_object mode)
+      * any object whose single list value is the rows
+      * a lone score object (json_object mode collapsing to one requirement) -> wrap it
+    """
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        scores = parsed.get("scores")
+        if isinstance(scores, list):
+            return scores
+        if "rid" in parsed:                      # a single score object
+            return [parsed]
+        for v in parsed.values():                # any list-valued key
+            if isinstance(v, list) and v and isinstance(v[0], dict):
+                return v
+    return []
+
+
 def _batch_keywords(batch: List[Dict[str, Any]]) -> List[str]:
     """Return de-duplicated, high-signal requirement terms for retrieval."""
     seen = set()
@@ -311,7 +337,8 @@ def _batch_prompt(vendor, product, batch, context) -> str:
         f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
         f"Partial/No with Low confidence and name the gap.\n\n"
         f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
-        f"Return ONLY a JSON array, one object per requirement, keys: "
+        f"Return ONLY a JSON object with a single key \"scores\" whose value is an array with "
+        f"ONE object per requirement above (same count, same order), each object having keys: "
         f"rid, met, quality, vendor_code, confidence, rationale, evidence_gap, evidence_quote."
     )
 
