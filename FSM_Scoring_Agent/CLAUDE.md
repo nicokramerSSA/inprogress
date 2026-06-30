@@ -116,6 +116,12 @@ urls, scoring_model, vote_model`); `POST /api/chat {question, model_id, history}
   rules-based fallback so the demo runs with no network. Don't break it.
 - **Two scoring lenses stay independent.** SSA scorecard categories vs. RFP §30
   capabilities are separate views of the same requirement scores.
+- **Auth gates the hosted app, not the data model.** `auth.py` owns the hashed-password
+  user store (`USERS_FILE`) and a `require_auth` decorator on every `/api/*` route except
+  health/login/logout/session. Sessions are Flask signed cookies keyed by `SESSION_SECRET`.
+  Passwords are PBKDF2 hashes (werkzeug) — never plaintext, never returned by an endpoint.
+  STATIC standalone builds bypass auth. The shared result store is unchanged — no per-user
+  data partitioning.
 - **No DB / no tests.** Results are cached in-memory and re-evaluating a vendor replaces
   its cached result. Verification is manual (offline demo + inspection).
 

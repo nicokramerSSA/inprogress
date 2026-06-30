@@ -208,6 +208,16 @@
   .redflag-row ul{margin:2px 0 0 16px;padding:0}
   .rf-disqualified{color:var(--bad);font-weight:600}
   .rf-coverage,.rf-missing_must{color:var(--warn)}
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;padding:24px;}
+  .login-card{background:#fff;border-radius:14px;padding:32px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:10px;}
+  .login-card h1{font-size:18px;margin:6px 0 0;}
+  .login-logo{height:34px;align-self:flex-start;margin-bottom:6px;}
+  .login-card label{display:flex;flex-direction:column;font-size:13px;font-weight:600;gap:4px;margin-top:6px;}
+  .login-card input{padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;}
+  .login-card button{margin-top:14px;padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;}
+  .login-card button:disabled{opacity:.6;cursor:default;}
+  .login-err{color:#b91c1c;font-size:13px;}
+  .login-ok{color:#15803d;font-size:13px;}
 </style>
 </head>
 <body>
@@ -236,7 +246,9 @@ async function jget(u){
     if(u.endsWith("/health")) return {ok:true,live_models_available:false,n_results:BOOT.results.length};
     return {};
   }
-  const r=await fetch(API+u);return r.json();
+  const r=await fetch(API+u,{credentials:"same-origin"});
+  if(r.status===401){ if(window.__onAuthExpired) window.__onAuthExpired(); return {}; }
+  return r.json();
 }
 async function jpost(u,b){
   if(STATIC){
@@ -244,7 +256,9 @@ async function jpost(u,b){
     if(u.endsWith("/evaluate")){ const r=BOOT.results.find(x=>x.vendor===b.vendor); return r||{error:"Run the server to evaluate new vendors."}; }
     return {};
   }
-  const r=await fetch(API+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return r.json();
+  const r=await fetch(API+u,{method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",body:JSON.stringify(b)});
+  if(r.status===401){ if(window.__onAuthExpired) window.__onAuthExpired(); return {}; }
+  return r.json();
 }
 const recoClass = r => "badge b-"+(r||"").replace(/[^A-Za-z]/g,"");
 
@@ -1700,9 +1714,79 @@ function Committee({results}){
   );
 }
 
+function Login({onAuthed}){
+  const [email,setEmail]=useState("");
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [logo,setLogo]=useState("");
+  useEffect(()=>{ (async()=>{ try{ const t=await (await fetch("/ssa_logo_long_white_b64.txt")).text(); setLogo(t.trim()); }catch(e){} })(); },[]);
+  async function submit(e){
+    e.preventDefault(); setErr(""); setBusy(true);
+    try{
+      const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},
+        credentials:"same-origin",body:JSON.stringify({email,password:pw})});
+      if(!r.ok){ const d=await r.json().catch(()=>({})); setErr(d.error||"Login failed."); setBusy(false); return; }
+      onAuthed(await r.json());
+    }catch(e){ setErr("Network error — is the server running?"); setBusy(false); }
+  }
+  return (
+    <div className="login-wrap">
+      <form className="login-card" onSubmit={submit}>
+        {logo ? <img src={logo} alt="SSA & Company" className="login-logo"/> : <b style={{fontSize:18}}>SSA &amp; Company</b>}
+        <h1>FSM RFP Evaluation Agent</h1>
+        <p className="small muted">Service Logic · sign in to continue</p>
+        <label>Email<input type="email" value={email} autoFocus autoComplete="username"
+          onChange={e=>setEmail(e.target.value)} required/></label>
+        <label>Password<input type="password" value={pw} autoComplete="current-password"
+          onChange={e=>setPw(e.target.value)} required/></label>
+        {err && <div className="login-err">{err}</div>}
+        <button type="submit" disabled={busy}>{busy?"Signing in…":"Sign in"}</button>
+      </form>
+    </div>
+  );
+}
+
+function Account({user,onLogout}){
+  const [cur,setCur]=useState("");
+  const [nw,setNw]=useState("");
+  const [conf,setConf]=useState("");
+  const [msg,setMsg]=useState(null);
+  const [busy,setBusy]=useState(false);
+  async function submit(e){
+    e.preventDefault(); setMsg(null);
+    if(nw.length<8){ setMsg({ok:false,text:"New password must be at least 8 characters."}); return; }
+    if(nw!==conf){ setMsg({ok:false,text:"New password and confirmation do not match."}); return; }
+    setBusy(true);
+    let r;
+    try{ r=await jpost("/api/account/password",{current:cur,new:nw}); }
+    catch(e){ setBusy(false); setMsg({ok:false,text:"Network error — is the server running?"}); return; }
+    setBusy(false);
+    if(r&&r.ok){ setMsg({ok:true,text:"Password updated."}); setCur("");setNw("");setConf(""); }
+    else { setMsg({ok:false,text:(r&&r.error)||"Could not update password."}); }
+  }
+  async function logout(){ await jpost("/api/logout",{}); onLogout(); }
+  return (
+    <div className="card">
+      <h2>Account</h2>
+      <p className="small muted">Signed in as <b>{user.name}</b> · {user.email} · {user.org}</p>
+      <form onSubmit={submit} style={{maxWidth:420}}>
+        <label>Current password<input type="password" value={cur} autoComplete="current-password" onChange={e=>setCur(e.target.value)} required/></label>
+        <label>New password<input type="password" value={nw} autoComplete="new-password" onChange={e=>setNw(e.target.value)} required/></label>
+        <label>Confirm new password<input type="password" value={conf} autoComplete="new-password" onChange={e=>setConf(e.target.value)} required/></label>
+        {msg && <div className={msg.ok?"login-ok":"login-err"}>{msg.text}</div>}
+        <button type="submit" disabled={busy}>{busy?"Saving…":"Change password"}</button>
+      </form>
+      <hr style={{margin:"18px 0",border:"none",borderTop:"1px solid #e5e7eb"}}/>
+      <button onClick={logout}>Log out</button>
+    </div>
+  );
+}
+
 // ---- app -----------------------------------------------------------------
 function App(){
   const [tab,setTab]=useState("dashboard");
+  const [auth,setAuth]=useState(null); // null=loading, false=logged out, object=user
   const [models,setModels]=useState(null);
   const [model,setModel]=useState("mock");        // scoring model
   const [voteMode,setVoteMode]=useState("single"); // "single" | "dual"
@@ -1715,7 +1799,15 @@ function App(){
   const [logo,setLogo]=useState("");
 
   async function loadResults(){ setResults(await jget("/api/results")); }
+  useEffect(()=>{ window.__onAuthExpired=()=>setAuth(false); return ()=>{ window.__onAuthExpired=null; }; },[]);
+  useEffect(()=>{(async()=>{
+    if(STATIC){ setAuth({name:"Demo User",email:"demo",org:"Demo",must_change:false}); return; }
+    try{ const r=await fetch("/api/session",{credentials:"same-origin"});
+      setAuth(r.ok ? await r.json() : false);
+    }catch(e){ setAuth(false); }
+  })();},[]);
   useEffect(()=>{
+    if(!auth) return;
     (async()=>{
       const m=await jget("/api/models"); setModels(m);
       setModel(m.task_defaults?.scoring && m.providers.some(p=>p.key_present&&p.models.some(x=>x.id===m.task_defaults.scoring)) ? m.task_defaults.scoring : m.default_model);
@@ -1729,13 +1821,16 @@ function App(){
       if(STATIC){ setLogo(BOOT.logo||""); }
       else { try{ const t=await (await fetch("/ssa_logo_long_white_b64.txt")).text(); setLogo(t.trim()); }catch(e){} }
     })();
-  },[]);
+  },[auth]);
   useEffect(()=>{
     if(results.length && !results.some(r=>r.vendor===open)) setOpen(results[0].vendor);
   },[results,open]);
 
   const openData = open ? results.find(r=>r.vendor===open) : null;
   const anyLive = models?.providers?.some(p=>p.key_present && p.id!=="mock");
+
+  if(auth===null) return <div className="login-wrap"><div className="login-card"><p className="small muted">Loading…</p></div></div>;
+  if(auth===false) return <Login onAuthed={(rec)=>setAuth(rec)}/>;
 
   return (
     <div>
@@ -1752,12 +1847,13 @@ function App(){
       </header>
 
       <nav className="tabs"><div className="inner">
-        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"],["committee","Committee scores"]].map(([k,l])=>(
+        {[["dashboard","Dashboard"],["detail","Vendor detail"],["compare","Compare"],["batch","Batch evaluate"],["method","Methodology & rubric"],["chat","Ask the agent"],["committee","Committee scores"],["account","Account"]].map(([k,l])=>(
           <button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>
         ))}
       </div></nav>
 
       <div className="wrap" style={{paddingTop:18,paddingBottom:30}}>
+        {auth && auth.must_change && <div className="demowarn">You're still on the temporary password — set your own under the <b>Account</b> tab.</div>}
         {!anyLive && <div className="demowarn">
           No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier (clearly labelled "demo"). Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read. Vendor proposals are due July 2; until then the app runs on synthetic sample proposals.
         </div>}
@@ -1786,6 +1882,7 @@ function App(){
         {tab==="method" && <Methodology kb={kb}/>}
         {tab==="chat" && <Chat model={model}/>}
         {tab==="committee" && <Committee results={results}/>}
+        {tab==="account" && <Account user={auth} onLogout={()=>{setAuth(false);setTab("dashboard");}}/>}
       </div>
 
       <footer className="app">
