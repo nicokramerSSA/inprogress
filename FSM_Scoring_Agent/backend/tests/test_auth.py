@@ -24,7 +24,8 @@ class AuthStoreTests(unittest.TestCase):
 
     def test_seed_passwords_are_hashed_not_plaintext(self):
         users = self.auth.load_users()
-        raw = open(os.environ["USERS_FILE"], encoding="utf-8").read()
+        with open(os.environ["USERS_FILE"], encoding="utf-8") as f:
+            raw = f.read()
         self.assertNotIn(self.auth.TEMP_PASSWORD, raw)
         self.assertTrue(users["nkramer@ssaandco.com"]["password_hash"].startswith("pbkdf2:"))
 

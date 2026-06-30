@@ -151,9 +151,21 @@ def get_secret_key() -> str:
             if k:
                 return k
         k = secrets.token_hex(32)
-        os.makedirs(os.path.dirname(key_path), exist_ok=True)
-        with open(key_path, "w", encoding="utf-8") as f:
-            f.write(k)
+        # Atomic write (temp + os.replace), consistent with the user store: a crash
+        # mid-write must not leave a truncated key that silently invalidates sessions.
+        d = os.path.dirname(key_path)
+        os.makedirs(d, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=d, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(k)
+            os.replace(tmp, key_path)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
         return k
     except Exception as e:
         _log.warning("could not persist secret key (%s); using ephemeral key", e)
