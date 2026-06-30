@@ -1757,7 +1757,9 @@ function Account({user,onLogout}){
     if(nw.length<8){ setMsg({ok:false,text:"New password must be at least 8 characters."}); return; }
     if(nw!==conf){ setMsg({ok:false,text:"New password and confirmation do not match."}); return; }
     setBusy(true);
-    const r=await jpost("/api/account/password",{current:cur,new:nw});
+    let r;
+    try{ r=await jpost("/api/account/password",{current:cur,new:nw}); }
+    catch(e){ setBusy(false); setMsg({ok:false,text:"Network error — is the server running?"}); return; }
     setBusy(false);
     if(r&&r.ok){ setMsg({ok:true,text:"Password updated."}); setCur("");setNw("");setConf(""); }
     else { setMsg({ok:false,text:(r&&r.error)||"Could not update password."}); }
