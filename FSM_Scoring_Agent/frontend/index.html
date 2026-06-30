@@ -789,7 +789,7 @@ function VendorDetail({data}){
           <b>Dissent (steel-manned counter-argument):</b> {r.vote.dissent}</div>}
         {r.vote.note && <div className="small muted" style={{marginTop:8}}>&#8505; {r.vote.note}</div>}
         {r.vote.mode==="dual" && r.vote.raw_votes && r.vote.raw_votes.length>0 && <div style={{marginTop:14}}>
-          <div className="section-title" style={{marginTop:0}}>Two-model read</div>
+          <div className="section-title" style={{marginTop:0}}>How the panel debated this vendor</div>
           <div className="grid vote-columns">
             {r.vote.raw_votes.map((rv,i)=>(
               <div key={i} className="card" style={{padding:14}}>
@@ -810,7 +810,7 @@ function VendorDetail({data}){
       {/* Categories + capabilities */}
       <div className="grid detail-grid">
         <div className="card">
-          <div className="section-title" style={{marginTop:0}}>SSA scorecard categories</div>
+          <div className="section-title" style={{marginTop:0}}>Scorecard categories</div>
           {r.categories.map(c=>(
             <div key={c.id}>
               <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
@@ -1080,7 +1080,7 @@ function Compare({results}){
       </div>
 
       {/* SSA categories */}
-      <div className="section-title">SSA scorecard categories</div>
+      <div className="section-title">Scorecard categories</div>
       <div className="card">
         {A.categories.map(ca=>{
           const cb = B.categories.find(x=>x.id===ca.id) || {raw_1_5:0};
@@ -1197,11 +1197,12 @@ function Methodology({kb}){
         <p className="small"><b>Weighting doctrine:</b> {p.weighting_doctrine.principle}</p>
         <p className="small"><b>Agentic-future doctrine:</b> {p.agentic_future_doctrine.summary}</p>
         <p className="small"><b>OpCo-diversity doctrine:</b> {p.opco_diversity_doctrine.summary}</p>
+        <p className="small"><b>How it scores:</b> {p.scoring_method_doctrine.summary}</p>
       </div>
 
       <div className="grid detail-grid">
         <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Scoring rubric — SSA categories</div>
+          <div className="section-title" style={{marginTop:0}}>Scoring rubric — categories</div>
           {sc.categories.map(c=>(<div className="rowbar" key={c.id} style={{gridTemplateColumns:"1fr 60px"}}>
             <div className="lbl">{c.name}</div><div className="val">{Math.round(c.weight*100)}%</div></div>))}
           <p className="small muted" style={{marginTop:8}}>Quality 1–5 per requirement; Musts weighted 3× (decision leverage). {sc.gating_rules.description}</p>

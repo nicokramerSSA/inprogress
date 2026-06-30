@@ -6,8 +6,8 @@ Render** at https://fsm-rfp-evaluation-agent.onrender.com — and still runs end
 locally.
 
 **What the app is:** an advisory AI agent that scores vendor responses to the Service
-Logic FSM platform RFP (all 422 requirements), reasons in Nick Kramer's "digital‑twin"
-persona, and casts an independent vote — with two scoring lenses, MoSCoW/architectural
+Logic FSM platform RFP (all 422 requirements), reasons as an evidence-first multi-analyst panel,
+and casts an independent vote — with two scoring lenses, MoSCoW/architectural
 gating, OpCo‑segment fit, an "agentic‑future" read, head‑to‑head compare, and a
 retrieval‑grounded chat assistant. Python/Flask backend + single‑file React (CDN) front
 end. No database, no build toolchain, no test suite — all knowledge is editable JSON and

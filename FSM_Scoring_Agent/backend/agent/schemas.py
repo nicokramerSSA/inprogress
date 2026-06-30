@@ -104,7 +104,7 @@ class Vote:
     """The agent's final, independent vote."""
     recommendation: str           # Recommend / Shortlist / Reject / Disqualified
     confidence: str               # High / Medium / Low
-    narrative: str                # in Nick's voice
+    narrative: str                # in the panel's reconciled voice
     dissent: str                  # the strongest counter-argument to the recommendation
     top_risks: List[str] = field(default_factory=list)
     evidence_to_close: List[str] = field(default_factory=list)  # validate in Charlotte demos / refs

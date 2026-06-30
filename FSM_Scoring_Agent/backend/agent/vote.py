@@ -6,7 +6,7 @@ auditable numbers (weighted total, capability scores, gating, segment fit, agent
 future). This module turns those numbers into a senior-partner judgment:
 
   * recommendation : Recommend / Shortlist / Reject / Disqualified
-  * narrative      : the "lead with the verdict, then the why" rationale, in Nick's voice
+  * narrative      : the "lead with the verdict, then the why" rationale, in the panel's reconciled voice
   * dissent        : the strongest honest counter-argument to that recommendation
   * top_risks      : the few risks that actually matter
   * evidence_to_close : what must be proven in the July 13-16 Charlotte demos / references
@@ -191,7 +191,7 @@ def _reconcile(ev, reco, band_reason, findings, raw_votes, synthesizer_model) ->
     system = kb.persona_system_prompt()
     user = (
         f"Two AI analysts independently voted on vendor {ev.vendor} ({ev.product}). The deterministic "
-        f"rubric says {reco} ({band_reason}). Reconcile their votes into ONE final vote in Nick Kramer's "
+        f"rubric says {reco} ({band_reason}). Reconcile their votes into ONE final vote in the panel's reconciled "
         f"voice, and surface where they materially disagreed.\n\n"
         f"DETERMINISTIC FINDINGS:\n{json.dumps(findings, indent=2)}\n\n"
         f"ANALYST VOTES:\n{json.dumps(raw_votes, indent=2)}\n\n"

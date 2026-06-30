@@ -264,10 +264,34 @@
         "Confirm PJE depth in the Charlotte demo / references.",
         "Confirm RLC depth in the Charlotte demo / references — hard requirement (AIA/WIP/ASC-606 or CBA/certified-payroll)."
       ],
-      "mode": "single",
-      "raw_votes": [],
+      "mode": "dual",
       "note": "",
-      "disagreements": []
+      "raw_votes": [
+        {
+          "provider": "openai",
+          "model": "gpt-5.5",
+          "recommendation": "Recommend",
+          "narrative": "[demo] Recommend. IFS is a front-runner on breadth — strong on RLC, CXR, and SCL, passes the Must gate, no architectural flags. The composite (81.1/100 SSA-weighted) holds up. PJE at 3.0/5 is the soft spot, but it's configurable and shouldn't block advancing to demos.",
+          "dissent": "The score rewards coverage. If references show shallow Work-to-Cash depth, the headline flatters the platform.",
+          "top_risks": ["Project Execution & Financial Control weak at 3.0/5 (weight 15%)."]
+        },
+        {
+          "provider": "anthropic",
+          "model": "claude-opus-4-8",
+          "recommendation": "Recommend",
+          "narrative": "[demo] Recommend, with a caveat. The breadth is real and the gate is clean, so this advances. But PJE 3.0/5 on AIA/WIP/ASC-606 and certified-payroll is a genuine risk for the project-heavy OpCos, and offline mobile adoption is unproven in the response. Recommend on breadth; prove the depth before calling it the winner.",
+          "dissent": "A narrower vendor that is deeper on Work-to-Cash and offline mobile could deliver more real value than this composite implies.",
+          "top_risks": ["PJE depth on AIA/WIP/ASC-606 unproven for project-heavy OpCos.", "Offline mobile adoption not evidenced in the response."]
+        }
+      ],
+      "disagreements": [
+        {
+          "dimension": "Project execution depth (PJE)",
+          "openai_position": "A manageable, configurable gap that doesn't hold back a Recommend.",
+          "anthropic_position": "A real risk for project-heavy OpCos that should temper confidence until proven.",
+          "resolution": "Recommend stands. PJE depth (AIA/WIP/ASC-606, certified payroll) is the top item to prove in the Charlotte demo; confidence held High on breadth with PJE flagged."
+        }
+      ]
     },
     "external_research": {
       "name": "IFS",

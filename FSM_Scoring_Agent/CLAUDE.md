@@ -6,8 +6,8 @@ write-up, read `docs/DESIGN.md`; for run instructions read `README.md`.
 ## What this is
 
 An AI agent that scores vendor responses to the **Service Logic FSM platform RFP** and
-casts an independent, **advisory** vote in vendor selection. It reasons in the voice of
-Nick Kramer (SSA & Company) — a "digital twin" persona encoded as JSON, not hard-coded logic — augmented with HVAC/mechanical field-service domain knowledge. The agent is **advisory**: it augments the human selection committee, shows its work, and is meant to be challenged.
+casts an independent, **advisory** vote in vendor selection. It reasons as
+an evidence-first FSM evaluator — a persona encoded as JSON, not hard-coded logic — built as a multi-analyst panel that scores independently and debates to one verdict, augmented with HVAC/mechanical field-service domain knowledge. The agent is **advisory**: it augments the human selection committee, shows its work, and is meant to be challenged.
 
 What it produces per vendor:
 
@@ -47,7 +47,7 @@ backend/
     chat.py           Retrieval-grounded Q&A over knowledge base + completed evaluations
     sample.py         Synthetic vendor proposals for the offline demo (until real proposals arrive)
   config/             The agent's editable "character" — tune without touching code
-    persona.json      Nick Kramer digital twin: decision style, priorities, red flags, voice
+    persona.json      The evaluator's character: decision style, priorities, red flags, voice
     scorecard.json    SSA categories, quality scale, response codes, MoSCoW, gating rules, confidence
     capabilities.json RFP §30 business capabilities (W2C/TPA/PJE/ACQ/EVG/RLC/CXR/SCL) + weights
     segments.json     Six OpCo archetypes + capability emphasis multipliers
