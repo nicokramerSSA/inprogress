@@ -444,7 +444,7 @@ Claude-Session: https://claude.ai/code/session_01E5dcoxCZ1QpgfcNZnbQ6h5"
 
 - [ ] **Full scrub grep** (only the login account may remain):
   `grep -rIn "Nick Kramer\|digital twin\|Nick's\|as Nick" backend/ frontend/ README.md CLAUDE.md docs/DESIGN.md docs/DEMO_GUIDE.md docs/CHANGES_SUMMARY.md` → only `auth.py` / tests hits, nothing else.
-- [ ] **Auth untouched:** `cd backend/tests && python3 -m unittest -q` → all green (login account intact).
+- [ ] **Auth untouched:** `cd backend && python3 -m unittest discover -s tests -q` → all green (login account intact).
 - [ ] **Both JSON files parse:** persona.json and sample_results.json (covered in Tasks 1 & 5).
 - [ ] **Manual server pass** (mock, no keys): persona panel shows the new headline + "How it scores" line, the three category labels read without "SSA", and IFS detail shows "How the panel debated this vendor" with two analyst reads and one disagreement.
 - [ ] **Standalone pass:** open `FSM_Evaluation_Agent_Standalone.html` directly — same persona text and the IFS dual-mode debate render offline.

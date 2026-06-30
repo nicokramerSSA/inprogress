@@ -178,7 +178,7 @@ No test suite exists; verification is manual plus targeted greps.
    in those three spots.
 5. Open the chosen demo vendor's detail: the "How the panel debated this vendor" block
    shows two analyst reads and a real disagreement, with no keys set.
-6. Re-run the existing auth tests (`python3 -m unittest` in `backend/tests`) — still green
+6. Re-run the existing auth tests (`cd backend && python3 -m unittest discover -s tests`) — still green
    (confirms the login account was not disturbed).
 7. Open the rebuilt `FSM_Evaluation_Agent_Standalone.html` directly — same persona text
    and the dual-mode debate render offline.
