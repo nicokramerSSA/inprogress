@@ -45,6 +45,34 @@ cd backend && python build_static.py     # → ../FSM_Evaluation_Agent_Standalon
 
 ---
 
+## Access control (hosted app)
+
+The hosted app is gated by email + password. Seven seed accounts (six named reviewers
+across SSA and Bain Capital, plus a Demo User) all start on the temporary password
+**`ServiceLogic2026!`**. Log in with your email, then change your password under the
+**Account** tab (Log out lives there too). All reviewers share one evaluation dataset —
+a run by one user is visible to everyone.
+
+The double-clickable `FSM_Evaluation_Agent_Standalone.html` has no server and is **not**
+gated.
+
+### Render setup (one-time)
+1. Add a disk: mount `/var/data`, 1 GB.
+2. Set env vars: `RESULTS_STORE_DIR=/var/data/results`, `USERS_FILE=/var/data/users.json`,
+   `SESSION_SECRET=<token_hex(32)>`.
+3. Redeploy. The user store seeds on first boot and persists across deploys.
+
+### Recovering a locked-out user
+There is no email reset. An admin edits `users.json` on the disk: delete that user's
+entry (it re-seeds to the temp password with `must_change` on next boot) or replace
+their `password_hash`.
+
+### Local testing
+Run with `SESSION_COOKIE_SECURE=0 python3 app.py` so the browser stores the session
+cookie over http.
+
+---
+
 ## What it does
 
 - **Scores all 422 RFP requirements** per vendor (Met? + Quality 1–5 + response code +

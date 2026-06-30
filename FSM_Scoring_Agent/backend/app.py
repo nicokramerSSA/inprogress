@@ -29,6 +29,7 @@ import re
 import json
 import threading
 import uuid
+from datetime import timedelta
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, send_from_directory
 
@@ -74,6 +75,7 @@ from agent.sample import sample_proposal_text
 from agent.committee import parse_committee_file, aggregate_committee
 
 import store  # app-layer disk persistence for runtime evaluations (sibling module)
+import auth   # authentication: user store, sessions, require_auth gate
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(os.path.dirname(_HERE), "frontend")
@@ -138,6 +140,18 @@ app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
 APP_VERSION = "2026.06.25"
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+
+# --- Authentication: signed-cookie sessions over a hashed-password user store --- #
+app.secret_key = auth.get_secret_key()
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    # Secure by default (Render serves HTTPS). Set SESSION_COOKIE_SECURE=0 for local
+    # http testing so the browser/test client will store the cookie.
+    SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE", "1") != "0",
+    SESSION_COOKIE_SAMESITE="Lax",
+    PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+)
+auth.load_users()  # seed users.json on boot (idempotent; works under gunicorn too)
 
 # In-memory results store: vendor name -> evaluation dict. Seeded from disk on boot.
 _RESULTS: dict[str, dict] = {}
@@ -227,6 +241,50 @@ def index():
 
 
 # --------------------------------------------------------------------------- #
+# Auth endpoints (open: login/logout/session)                                 #
+# --------------------------------------------------------------------------- #
+@app.route("/api/login", methods=["POST"])
+def login():
+    body = request.get_json(force=True) or {}
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    rec = auth.verify(email, password)
+    if not rec:
+        # Generic message + same status for unknown-email vs wrong-password (no enumeration).
+        return jsonify({"error": "Invalid email or password."}), 401
+    auth.login_user(rec)
+    return jsonify(auth.public_view(rec))
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    auth.logout_user()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/session")
+def session_whoami():
+    rec = auth.current_user()
+    if not rec:
+        return jsonify({"error": "auth required"}), 401
+    return jsonify(auth.public_view(rec))
+
+
+@app.route("/api/account/password", methods=["POST"])
+@auth.require_auth
+def account_password():
+    body = request.get_json(force=True) or {}
+    user = auth.current_user()
+    if not auth.verify(user["email"], body.get("current") or ""):
+        return jsonify({"error": "Current password is incorrect."}), 400
+    try:
+        auth.set_password(user["email"], body.get("new") or "")
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True})
+
+
+# --------------------------------------------------------------------------- #
 # Read endpoints                                                              #
 # --------------------------------------------------------------------------- #
 @app.route("/api/health")
@@ -238,11 +296,13 @@ def health():
 
 
 @app.route("/api/models")
+@auth.require_auth
 def models():
     return jsonify(available_models())
 
 
 @app.route("/api/knowledge")
+@auth.require_auth
 def knowledge():
     kb = get_kb()
     return jsonify({
@@ -254,23 +314,27 @@ def knowledge():
 
 
 @app.route("/api/vendors")
+@auth.require_auth
 def vendors():
     kb = get_kb()
     return jsonify(kb.vendor_research)
 
 
 @app.route("/api/results")
+@auth.require_auth
 def results():
     with _RESULTS_LOCK:
         return jsonify(list(_RESULTS.values()))
 
 
 @app.route("/api/committee", methods=["GET"])
+@auth.require_auth
 def committee_get():
     return jsonify(_COMMITTEE["aggregate"] or {"vendors": [], "n_evaluators_total": 0, "warnings": []})
 
 
 @app.route("/api/committee", methods=["POST"])
+@auth.require_auth
 def committee_post():
     f = request.files.get("file")
     if not f:
@@ -285,12 +349,14 @@ def committee_post():
 
 
 @app.route("/api/committee", methods=["DELETE"])
+@auth.require_auth
 def committee_delete():
     _COMMITTEE["aggregate"] = None
     return jsonify({"ok": True})
 
 
 @app.route("/api/committee/template")
+@auth.require_auth
 def committee_template():
     return send_from_directory(DATA_DIR, "committee_template.csv",
                                as_attachment=True, download_name="committee_template.csv")
@@ -300,6 +366,7 @@ def committee_template():
 # Action endpoints                                                            #
 # --------------------------------------------------------------------------- #
 @app.route("/api/evaluate", methods=["POST"])
+@auth.require_auth
 def evaluate():
     """
     Evaluate one vendor from a JSON body. Proposal source (in priority order):
@@ -346,6 +413,7 @@ def evaluate():
 
 
 @app.route("/api/evaluate_upload", methods=["POST"])
+@auth.require_auth
 def evaluate_upload():
     """
     Evaluate one vendor from UPLOADED FILES and/or URLs (multipart/form-data).
@@ -418,6 +486,7 @@ def evaluate_upload():
 
 
 @app.route("/api/evaluate_batch", methods=["POST"])
+@auth.require_auth
 def evaluate_batch():
     """
     Evaluate MANY vendors in parallel from uploaded files/URLs (multipart/form-data).
@@ -506,6 +575,7 @@ def evaluate_batch():
 
 
 @app.route("/api/evaluate/status/<job_id>")
+@auth.require_auth
 def evaluate_status(job_id):
     with _JOBS_LOCK:
         j = _JOBS.get(job_id)
@@ -515,6 +585,7 @@ def evaluate_status(job_id):
 
 
 @app.route("/api/evaluate/cancel/<job_id>", methods=["POST"])
+@auth.require_auth
 def evaluate_cancel(job_id):
     with _JOBS_LOCK:
         j = _JOBS.get(job_id)
@@ -525,6 +596,7 @@ def evaluate_cancel(job_id):
 
 
 @app.route("/api/chat", methods=["POST"])
+@auth.require_auth
 def chat():
     body = request.get_json(force=True) or {}
     question = (body.get("question") or "").strip()
