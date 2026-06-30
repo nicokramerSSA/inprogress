@@ -208,16 +208,20 @@
   .redflag-row ul{margin:2px 0 0 16px;padding:0}
   .rf-disqualified{color:var(--bad);font-weight:600}
   .rf-coverage,.rf-missing_must{color:var(--warn)}
-  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;padding:24px;}
-  .login-card{background:#fff;border-radius:14px;padding:32px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:10px;}
-  .login-card h1{font-size:18px;margin:6px 0 0;}
-  .login-logo{height:34px;align-self:flex-start;margin-bottom:6px;}
-  .login-card label{display:flex;flex-direction:column;font-size:13px;font-weight:600;gap:4px;margin-top:6px;}
-  .login-card input{padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;}
-  .login-card button{margin-top:14px;padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer;}
-  .login-card button:disabled{opacity:.6;cursor:default;}
-  .login-err{color:#b91c1c;font-size:13px;}
-  .login-ok{color:#15803d;font-size:13px;}
+  /* Login screen (server mode only; standalone bypasses auth) — brand-aligned */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--ssa-blue),var(--ssa-teal));padding:24px}
+  .login-card{background:#fff;border-radius:10px;padding:30px;width:100%;max-width:380px;box-shadow:0 14px 44px rgba(0,0,0,.28);display:flex;flex-direction:column;gap:13px}
+  .login-logo{height:30px;align-self:flex-start}
+  .login-card h1{font-size:17px;margin:2px 0 0;color:var(--ssa-blue)}
+  .login-card .btn{width:100%;margin-top:4px;padding:11px}
+  /* Stacked form fields shared by the login screen and the Account tab */
+  .field{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--ink)}
+  .field input{padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font);font-size:14px;font-weight:400;color:var(--ink)}
+  .field input:focus{outline:none;border-color:var(--ssa-blue);box-shadow:0 0 0 3px rgba(0,51,153,.12)}
+  .account-form{display:flex;flex-direction:column;gap:14px;max-width:380px;margin-top:14px}
+  .form-err{color:var(--bad);font-size:12.5px}
+  .form-ok{color:var(--good);font-size:12.5px}
+  .account-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -1719,7 +1723,7 @@ function Login({onAuthed}){
   const [err,setErr]=useState("");
   const [busy,setBusy]=useState(false);
   const [logo,setLogo]=useState("");
-  useEffect(()=>{ (async()=>{ try{ const t=await (await fetch("/ssa_logo_long_white_b64.txt")).text(); setLogo(t.trim()); }catch(e){} })(); },[]);
+  useEffect(()=>{ (async()=>{ try{ const t=await (await fetch("/ssa_logo_long_b64.txt")).text(); setLogo(t.trim()); }catch(e){} })(); },[]);
   async function submit(e){
     e.preventDefault(); setErr(""); setBusy(true);
     try{
@@ -1732,15 +1736,15 @@ function Login({onAuthed}){
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
-        {logo ? <img src={logo} alt="SSA & Company" className="login-logo"/> : <b style={{fontSize:18}}>SSA &amp; Company</b>}
+        {logo ? <img src={logo} alt="SSA & Company" className="login-logo"/> : <b style={{fontSize:18,color:"var(--ssa-blue)"}}>SSA &amp; Company</b>}
         <h1>FSM RFP Evaluation Agent</h1>
         <p className="small muted">Service Logic · sign in to continue</p>
-        <label>Email<input type="email" value={email} autoFocus autoComplete="username"
+        <label className="field">Email<input type="email" value={email} autoFocus autoComplete="username"
           onChange={e=>setEmail(e.target.value)} required/></label>
-        <label>Password<input type="password" value={pw} autoComplete="current-password"
+        <label className="field">Password<input type="password" value={pw} autoComplete="current-password"
           onChange={e=>setPw(e.target.value)} required/></label>
-        {err && <div className="login-err">{err}</div>}
-        <button type="submit" disabled={busy}>{busy?"Signing in…":"Sign in"}</button>
+        {err && <div className="form-err">{err}</div>}
+        <button type="submit" className="btn" disabled={busy}>{busy?"Signing in…":"Sign in"}</button>
       </form>
     </div>
   );
@@ -1767,17 +1771,18 @@ function Account({user,onLogout}){
   async function logout(){ await jpost("/api/logout",{}); onLogout(); }
   return (
     <div className="card">
-      <h2>Account</h2>
-      <p className="small muted">Signed in as <b>{user.name}</b> · {user.email} · {user.org}</p>
-      <form onSubmit={submit} style={{maxWidth:420}}>
-        <label>Current password<input type="password" value={cur} autoComplete="current-password" onChange={e=>setCur(e.target.value)} required/></label>
-        <label>New password<input type="password" value={nw} autoComplete="new-password" onChange={e=>setNw(e.target.value)} required/></label>
-        <label>Confirm new password<input type="password" value={conf} autoComplete="new-password" onChange={e=>setConf(e.target.value)} required/></label>
-        {msg && <div className={msg.ok?"login-ok":"login-err"}>{msg.text}</div>}
-        <button type="submit" disabled={busy}>{busy?"Saving…":"Change password"}</button>
+      <h3>Account</h3>
+      <p className="sub">Signed in as <b>{user.name}</b> · {user.email} · {user.org}</p>
+      <form className="account-form" onSubmit={submit}>
+        <label className="field">Current password<input type="password" value={cur} autoComplete="current-password" onChange={e=>setCur(e.target.value)} required/></label>
+        <label className="field">New password<input type="password" value={nw} autoComplete="new-password" onChange={e=>setNw(e.target.value)} required/></label>
+        <label className="field">Confirm new password<input type="password" value={conf} autoComplete="new-password" onChange={e=>setConf(e.target.value)} required/></label>
+        {msg && <div className={msg.ok?"form-ok":"form-err"}>{msg.text}</div>}
+        <button type="submit" className="btn" disabled={busy} style={{alignSelf:"flex-start"}}>{busy?"Saving…":"Change password"}</button>
       </form>
-      <hr style={{margin:"18px 0",border:"none",borderTop:"1px solid #e5e7eb"}}/>
-      <button onClick={logout}>Log out</button>
+      <div className="account-actions">
+        <button className="btn ghost" onClick={logout}>Log out</button>
+      </div>
     </div>
   );
 }
