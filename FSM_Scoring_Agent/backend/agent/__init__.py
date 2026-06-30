@@ -1,5 +1,5 @@
 """
-FSM RFP Evaluation Agent — a 'digital twin' of Nick Kramer (SSA & Company) with
+FSM RFP Evaluation Agent — an evidence-first, multi-analyst FSM evaluator with
 deep HVAC field-service domain experience, used to score vendor RFP responses and
 cast an independent, well-reasoned vote in the Service Logic FSM platform selection.
 

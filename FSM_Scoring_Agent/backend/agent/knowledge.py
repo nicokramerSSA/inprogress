@@ -63,7 +63,7 @@ class KnowledgeBase:
     def persona_system_prompt(self) -> str:
         """
         Compact, prompt-ready rendering of the persona. Injected as the system prompt
-        for every scoring / vote / chat call so each LLM interaction reasons "as Nick".
+        for every scoring / vote / chat call so each LLM interaction reasons from the same evidence-first doctrine.
         """
         p = self.persona
         lines = []

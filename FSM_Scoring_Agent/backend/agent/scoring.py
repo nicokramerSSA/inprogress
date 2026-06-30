@@ -23,7 +23,7 @@ Design choices worth noting
 ---------------------------
 * The 1-5 category score is the MEAN requirement quality for that category's
   requirements, but 'Must' requirements are weighted 3x and 'Should' 2x ('Could' 1x)
-  so the score reflects what actually matters — Nick's "weight by decision leverage".
+  so the score reflects what actually matters — the "weight by decision leverage" doctrine.
 * Confidence is rolled up by majority/worst-case: a category with many Low-confidence
   items inherits Low confidence and surfaces the evidence gaps to close in the demo.
 * Gating is computed from the requirement scores directly (not the LLM's opinion), so
