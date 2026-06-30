@@ -7,7 +7,7 @@ demo; the headers double as your demo beats. Audience: consultants, not engineer
 
 ## The 20-second version (say this first)
 
-This tool reads a vendor's RFP response and scores it the way Nick Kramer would — across all 422 requirements — then casts a vote: **Recommend, Shortlist, Reject, or Disqualified.**
+This tool reads a vendor's RFP response and scores it the way a seasoned FSM evaluator would — across all 422 requirements — then casts a vote: **Recommend, Shortlist, Reject, or Disqualified.**
 
 
 It is **advisory**. It does not pick the winner. It gives the selection committee a fast,
@@ -49,14 +49,14 @@ things to make each vendor prove in person.
 
 ---
 
-## Why it's "Nick in a box," not a rules engine (the digital-twin angle)
+## Why it's a character in editable JSON, not a rules engine
 
 This is the part that makes the tool different from a spreadsheet, so spend a minute here.
 
-The agent's judgment lives in a set of plain-English **JSON files** — a "digital twin" of
-Nick's decision style: what he prioritizes, what he treats as a red flag, how he weighs
-architecture against price, even his voice. Nothing about *how to judge a vendor* is buried
-in code. If the committee says "Nick would never weight financials that lightly," we open
+The agent's judgment lives in a set of plain-English **JSON files** — a character capturing
+an evidence-first decision style: what it prioritizes, what it treats as a red flag, how it weighs
+architecture against price, even its voice. Nothing about *how to judge a vendor* is buried
+in code. If the committee says "this would never weight financials that lightly," we open
 the file, change the number, and re-run. No developer, no rebuild.
 
 Two consequences worth saying out loud:
@@ -99,7 +99,7 @@ Get ahead of the obvious objections — it builds credibility:
   challenged. If we ever treat its vote as the answer, we're using it wrong.
 - **Today's numbers run on synthetic proposals.** Real vendor responses are due **July 2, 2026.** Until then, the inputs are realistic mock-ups grounded in our external research dossier — good enough to demo the machinery, not the verdict. Say "demo data" out loud.
 - **It shows its work so you can find its mistakes.** Every score has a rationale and a named evidence gap. When it's wrong, you'll be able to point at where.
-- **It reasons in Nick's voice, which is a strength and a bias.** That's the design. The
+- **It reasons in one consistent evaluator voice, which is a strength and a bias.** That's the design. The
   persona is explicit and editable precisely so the bias is visible and adjustable, not
   hidden.
 

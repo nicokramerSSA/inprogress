@@ -3,7 +3,7 @@
 **Client:** Service Logic (Bain Capital portfolio) · **Engagement:** SSA & Company
 **Purpose:** An AI agent that scores vendor responses to the Service Logic Field Service
 Management (FSM) platform RFP and casts an **independent, well-reasoned advisory vote** in
-the vendor-selection process. It is built to reason like Nick Kramer (SSA), augmented with
+the vendor-selection process. It is built to reason as an evidence-first multi-analyst panel, augmented with
 deep HVAC/mechanical field-service domain experience.
 
 > The agent is **advisory** — one more seat at the table, not the decision-maker. Its job is
@@ -31,14 +31,14 @@ A **head-to-head ranking** and a **grounded chat assistant** sit on top of these
 
 ---
 
-## 2. The "character" — how the agent reasons like Nick
+## 2. The "character" — how the agent reasons
 
 The agent's personality and judgment live entirely in editable JSON (`backend/config/`),
 not in code, so SSA can tune the agent without touching the engine. The persona was mined
 from ~3 months of Service Logic engagement transcripts and the RFP scorecard. Its core
 doctrines, each of which changes the math or the narrative:
 
-| Doctrine | Source (Nick, verbatim) | How it's encoded |
+| Doctrine | Source (engagement transcripts, verbatim) | How it's encoded |
 |---|---|---|
 | **Weight by decision leverage, not nominal importance** | "the weighting really is not how important each one is, it's how much it factors into our decision" | Musts weighted 3×, Shoulds 2× in every rollup; capabilities everyone meets equally barely move the score. |
 | **Data/integration & a clean common model first** | "the only thing you can really commonalize is the data" | Openness/data-access dominates the agentic-future score (60/40 over shipped AI). |
@@ -57,7 +57,7 @@ The persona is injected as the **system prompt** on every LLM call (scoring, vot
 All under `backend/config/` and `backend/data/`:
 
 - **`persona.json`** — decision style, ranked priorities, red flags, weighting/agentic/OpCo
-  doctrines, voice. (The "digital twin".)
+  doctrines, voice. (The evaluator's character.)
 - **`scorecard.json`** — the six SSA categories + weights, quality scale, Met? values,
   response codes, MoSCoW, **gating rules**, confidence model. (From the SSA Vendor Scorecard.)
 - **`capabilities.json`** — the eight RFP business capabilities + weights + what-good-looks-like.

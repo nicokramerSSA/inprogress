@@ -1,8 +1,8 @@
 # FSM RFP Evaluation Agent
 
 An AI agent that scores vendor responses to the **Service Logic FSM platform RFP** and casts
-an independent, well-reasoned **advisory vote** in vendor selection. It reasons like Nick Kramer
-(SSA & Company), augmented with deep HVAC/mechanical field-service domain experience.
+an independent, well-reasoned **advisory vote** in vendor selection. It reasons as an evidence-first
+multi-analyst panel, augmented with deep HVAC/mechanical field-service domain experience.
 
 Built for SSA & Company. See **`docs/DESIGN.md`** for the full logic & design write-up.
 
