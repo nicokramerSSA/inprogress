@@ -38,6 +38,31 @@ class MatrixRidJoinTests(unittest.TestCase):
         self.assertEqual(m["FSM-001"]["source"], "resp.xlsx")
         self.assertEqual(m["FSM-001"]["sheet"], "Requirements")
 
+    def test_content_match_fallback_with_section_row_between_header_and_data(self):
+        # RID column header is unrecognized ("Ref"), and a section row sits
+        # between the real header row and the first data row — a realistic
+        # vendor-matrix shape. The content-matching fallback must still find
+        # the header row (not the section row) so response columns resolve.
+        # Response columns are NOT the last two columns, so the header-keyword
+        # match ("response" in header text) must be used to find them — the
+        # trailing "Notes" column would be picked instead if the fallback
+        # (last-two-filled-columns) logic kicks in due to reading the wrong
+        # (section) row as the header.
+        header = ["Ref", "Domain", "Requirement", "Priority", "Cap.",
+                  "Vendor Response", "Vendor RFP Response", "Notes"]
+        rows = [
+            ["Domain A: FSM", None, None, None, None, None, None, None],   # section row
+            ["FSM-001", "A", "create work orders", "Must", "W2C", "OOB", "Generally available in base", "n/a"],
+            ["FSM-003", "A", "configurable types", "Must", "W2C", "CONFIG", "Supported via configuration", "n/a"],
+            ["PJM-050", "A", "flag prevailing wage", "Should", "PJE", "OOB", "Supported natively", "n/a"],
+        ]
+        _make_xlsx(self.path, header, rows)
+        m = ingest.extract_requirement_matrix([self.path], REQS)
+        self.assertEqual(set(m), {"FSM-001", "FSM-003", "PJM-050"})
+        self.assertEqual(m["FSM-001"]["code"], "OOB")
+        self.assertEqual(m["FSM-001"]["response"], "Generally available in base")
+        self.assertEqual(m["FSM-003"]["code"], "CONFIG")
+
     def test_no_matrix_returns_empty(self):
         _make_xlsx(self.path, ["Some", "Other", "Columns"], [["a", "b", "c"]])
         self.assertEqual(ingest.extract_requirement_matrix([self.path], REQS), {})

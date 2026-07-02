@@ -263,7 +263,16 @@ def _find_rid_column(rows, known_rids):
     if best_col is not None and best_hits >= 3:
         for hi, r in enumerate(rows):
             if _cell(r, best_col).upper() in known_rids:
-                return max(0, hi - 1), best_col
+                # Walk upward from the row above the first RID hit, skipping
+                # section-like rows (fewer than 2 non-empty cells), to find
+                # the real header row instead of assuming it's immediately above.
+                header_hi = max(0, hi - 1)
+                while header_hi > 0:
+                    non_empty = sum(1 for ci in range(len(rows[header_hi])) if _cell(rows[header_hi], ci))
+                    if non_empty >= 2:
+                        break
+                    header_hi -= 1
+                return header_hi, best_col
     return None, None
 
 
