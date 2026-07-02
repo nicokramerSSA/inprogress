@@ -67,11 +67,12 @@ def _load_dotenv():
 _load_dotenv()  # must run before the agent imports below so provider keys are set at import time
 
 from agent.knowledge import get_kb
-from agent.providers import available_models, resolve_model
+from agent.providers import available_models, resolve_model, is_mock
 from agent.scoring import evaluate_vendor, EvaluationCancelled
 from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
 from agent.ingest import extract_sources, extract_requirement_matrix
+from agent.matrix_llm import extract_matrix
 from agent.sample import sample_proposal_text
 from agent.committee import parse_committee_file, aggregate_committee
 
@@ -113,6 +114,13 @@ def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
     """Shared evaluate -> vote -> cache path used by both evaluate endpoints."""
     requirement_matrix = (extract_requirement_matrix(file_paths, get_kb().requirement_list())
                           if file_paths else {})
+    # Narrative fallback: no structured xlsx matrix, but we have proposal text and a live
+    # model -> reconstruct the per-requirement matrix from the prose (PDF/DOCX responses)
+    # so those vendors get the same matrix-grounded scoring, not term-overlap retrieval.
+    # Mock engine and xlsx uploads are unaffected (extract_matrix returns {} on mock).
+    if not requirement_matrix and (proposal_text or "").strip() and not is_mock(scoring_model):
+        requirement_matrix = extract_matrix(proposal_text, get_kb().requirement_list(),
+                                            scoring_model)
     ev = evaluate_vendor(vendor, product, proposal_text,
                          scoring_model=scoring_model, requirement_sample=sample_n,
                          requirement_matrix=requirement_matrix,
