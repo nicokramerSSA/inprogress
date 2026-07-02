@@ -379,7 +379,7 @@ function cmpTakeaway(a, b){
   const cap = cmpCapabilityLead(a, b);
   const ssaD = a.weighted_total - b.weighted_total;
   const c30D = a.capability_weighted_total - b.capability_weighted_total;
-  const lens = `SSA ${_cr1(a.weighted_total)} vs ${_cr1(b.weighted_total)}, §30 ${_cr1(a.capability_weighted_total)} vs ${_cr1(b.capability_weighted_total)}`;
+  const lens = `Weighted ${_cr1(a.weighted_total)} vs ${_cr1(b.weighted_total)}, §30 ${_cr1(a.capability_weighted_total)} vs ${_cr1(b.capability_weighted_total)}`;
   const near = Math.abs(ssaD) <= 1 && Math.abs(c30D) <= 1;
   const split = (ssaD > 0) !== (c30D > 0);
   if(near || split){
@@ -418,7 +418,7 @@ function rankingRows(results){
     (a.gating.disqualified - b.gating.disqualified) || (b.weighted_total - a.weighted_total));
   const headers = [
     {key:"rank",label:"Rank"},{key:"vendor",label:"Vendor"},{key:"product",label:"Product"},
-    {key:"ssa",label:"SSA score (0-100)"},{key:"cap",label:"§30 capability score (0-100)"},
+    {key:"ssa",label:"Weighted score (0-100)"},{key:"cap",label:"§30 capability score (0-100)"},
     {key:"gate",label:"Gate"},{key:"vote",label:"Vote"},{key:"vote_conf",label:"Vote confidence"},
     {key:"model",label:"Model"},{key:"demo",label:"Demo?"}];
   const rows = ranked.map((r,i) => ({
@@ -447,13 +447,13 @@ function compareRows(a, b){
   const num = (section, metric, av, bv) => rows.push({section, metric, aVal:_cr1(av), bVal:_cr1(bv), delta:_cr1(av-bv)});
   const txt = (section, metric, av, bv) => rows.push({section, metric, aVal:av, bVal:bv, delta:""});
   const byKey = (list, k) => { const map={}; (list||[]).forEach(x=>map[x[k]]=x); return map; };
-  num("Headline","SSA score (0-100)", a.weighted_total, b.weighted_total);
+  num("Headline","Weighted score (0-100)", a.weighted_total, b.weighted_total);
   num("Headline","§30 capability score (0-100)", a.capability_weighted_total, b.capability_weighted_total);
   txt("Gate","MoSCoW gate", a.gating.disqualified?"DISQUALIFIED":"PASS", b.gating.disqualified?"DISQUALIFIED":"PASS");
   const bc = byKey(b.capabilities,"code");
   (a.capabilities||[]).forEach(ca => num("§30 capability", ca.name, ca.score_1_5, (bc[ca.code]||{}).score_1_5||0));
   const bcat = byKey(b.categories,"name");
-  (a.categories||[]).forEach(ca => num("SSA category", ca.name, ca.raw_1_5, (bcat[ca.name]||{}).raw_1_5||0));
+  (a.categories||[]).forEach(ca => num("Category", ca.name, ca.raw_1_5, (bcat[ca.name]||{}).raw_1_5||0));
   const bseg = byKey(b.segment_fit,"segment_name");
   (a.segment_fit||[]).forEach(s => num("OpCo segment", s.segment_name, s.fit_1_5, (bseg[s.segment_name]||{}).fit_1_5||0));
   num("Agentic future","Overall", a.agentic_future.score_1_5, b.agentic_future.score_1_5);
@@ -720,7 +720,7 @@ function Dashboard({results, onOpen}){
         <div className="table-scroll">
         <table className="dashboard-table">
           <thead><tr>
-            <th>#</th><th>Vendor</th><th>SSA total</th><th>Capability</th>
+            <th>#</th><th>Vendor</th><th>Total</th><th>Capability</th>
             <th>Agentic future</th><th>Gate</th><th>Vote</th><th></th>
           </tr></thead>
           <tbody>
@@ -785,7 +785,7 @@ function VendorDetail({data}){
         <div className="card">
           <h3>{r.vendor} <span className="muted small">{r.product}</span></h3>
           <div className="score-stack">
-            <div className="score-tile"><div className="num">{fmt(r.weighted_total)}</div><div className="den">/100 SSA weighted</div></div>
+            <div className="score-tile"><div className="num">{fmt(r.weighted_total)}</div><div className="den">/100 weighted</div></div>
             <div className="score-tile"><div className="num" style={{color:"var(--ssa-teal)"}}>{fmt(r.capability_weighted_total)}</div><div className="den">/100 capability lens</div></div>
             <div className="score-tile"><span className={recoClass(r.vote.recommendation)} style={{fontSize:14,alignSelf:"flex-start"}}>{r.vote.recommendation}</span>
                  <div className="den">vote · {r.vote.confidence} confidence</div></div>
@@ -1092,7 +1092,7 @@ function Compare({results}){
       {/* Headline lenses */}
       <div className="section-title">Headline scores</div>
       <div className="card">
-        <CmpRow label="SSA weighted total" a={A.weighted_total} b={B.weighted_total} max={100}/>
+        <CmpRow label="Weighted total" a={A.weighted_total} b={B.weighted_total} max={100}/>
         <CmpRow label={"RFP §30 capability lens"} a={A.capability_weighted_total} b={B.capability_weighted_total} max={100}/>
       </div>
 
