@@ -299,6 +299,19 @@ def _find_response_columns(rows, header_idx):
     return (filled[-1], filled[-1]) if filled else (None, None)
 
 
+def _find_requirement_text_column(rows, header_idx, text_index):
+    """Return the column index whose cell values best match known requirement
+    texts (normalized), or None. Used only when no RID column is found."""
+    data = rows[header_idx + 1:]
+    ncols = max((len(r) for r in rows), default=0)
+    best_col, best_hits = None, 0
+    for ci in range(ncols):
+        hits = sum(1 for r in data if _norm(_cell(r, ci)) in text_index)
+        if hits > best_hits:
+            best_col, best_hits = ci, hits
+    return best_col if best_hits >= 3 else None
+
+
 def extract_requirement_matrix(paths, requirements):
     """Parse a submitted requirements matrix (.xlsx/.xlsm) into {rid: {code,
     response, source, sheet}} by joining on the RID column. Returns {} when no
@@ -322,16 +335,26 @@ def extract_requirement_matrix(paths, requirements):
                 if not rows:
                     continue
                 hi, rid_col = _find_rid_column(rows, known)
+                text_index = {_norm(r["requirement"]): str(r["rid"]).strip().upper()
+                              for r in requirements if r.get("requirement")}
+                text_col = None
                 if rid_col is None:
-                    continue
+                    # header row for a text-only sheet is row 0 unless a match run starts lower
+                    hi = 0
+                    text_col = _find_requirement_text_column(rows, hi, text_index)
+                    if text_col is None:
+                        continue
                 code_col, resp_col = _find_response_columns(rows, hi)
                 for row in rows[hi + 1:]:
-                    rid = _cell(row, rid_col).upper()
+                    if rid_col is not None:
+                        rid = _cell(row, rid_col).upper()
+                    else:
+                        rid = text_index.get(_norm(_cell(row, text_col)), "")
                     if rid not in known or rid in out:
                         continue
                     code = _cell(row, code_col)
                     resp = _cell(row, resp_col)
-                    if code_col == resp_col:      # single response column -> it's the narrative
+                    if code_col == resp_col:
                         code = ""
                     if not (code or resp):
                         continue

@@ -71,3 +71,22 @@ class MatrixRidJoinTests(unittest.TestCase):
         self.assertEqual(ingest.extract_requirement_matrix([], REQS), {})
         txt = os.path.join(self.tmp, "x.txt"); open(txt, "w").write("hi")
         self.assertEqual(ingest.extract_requirement_matrix([txt], REQS), {})
+
+
+class MatrixTextFallbackTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(); self.path = os.path.join(self.tmp, "resp.xlsx")
+
+    def test_text_fallback_when_no_rid_column(self):
+        # No 'Req ID' column and values don't match RIDs -> join on requirement text.
+        header = ["Requirement", "Vendor Response", "Vendor RFP Response"]
+        rows = [
+            ["Ability to create work orders from inbound calls", "OOB", "Available"],
+            ["Ability to support configurable work order types", "CONFIG", "Configurable"],
+            ["Ability to flag projects as prevailing wage", "OOB", "Supported natively"],
+        ]
+        _make_xlsx(self.path, header, rows)
+        m = ingest.extract_requirement_matrix([self.path], REQS)
+        self.assertEqual(m["FSM-001"]["code"], "OOB")
+        self.assertEqual(m["FSM-003"]["code"], "CONFIG")
+        self.assertEqual(m["PJM-050"]["code"], "OOB")
