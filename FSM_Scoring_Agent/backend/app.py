@@ -602,7 +602,7 @@ def evaluate_batch():
         threading.Thread(target=_run_job, kwargs=dict(
             jid=jid, vendor=vendor, product="", proposal_text=proposal_text,
             scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
-            vote_dual=vote_dual), daemon=True).start()
+            vote_dual=vote_dual, file_paths=saved_paths), daemon=True).start()
         jobs.append({"vendor": vendor, "job_id": jid})
 
     if not jobs:
