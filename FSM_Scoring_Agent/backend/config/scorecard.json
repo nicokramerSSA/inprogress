@@ -44,7 +44,7 @@
   },
 
   "moscow": {
-    "Must": "Non-negotiable. A 'No' (or unsupported ROADMAP/CUSTOM without firm SOW) on any Must is a basis for disqualification.",
+    "Must": "Non-negotiable. A 'No', GAP, or ROADMAP on any Must is a basis for disqualification. A Must answered CUSTOM meets the requirement (delivered via custom development) — it does not disqualify, but heavy reliance on custom work is a risk to flag.",
     "Should": "High priority; expected of a market-leading platform. Absence hurts scoring.",
     "Could": "Desirable differentiator; not required for initial deployment.",
     "Won't": "Explicitly out of scope; no response required."
@@ -53,10 +53,10 @@
   "gating_rules": {
     "must_no_disqualifies": true,
     "must_requires_oob_or_config": true,
-    "custom_must_needs_firm_sow": true,
+    "custom_must_needs_firm_sow": false,
     "single_tenant_required": true,
     "union_nonunion_isolation_required": true,
-    "description": "Any Must marked No -> disqualifying. A Must answered ROADMAP, GAP, or CUSTOM-without-SOW is treated as effectively unmet for gating. Single-tenant deployment and absolute entity-level union/non-union data isolation are hard architectural gates."
+    "description": "Any Must marked No, GAP, or ROADMAP -> disqualifying. A Must answered CUSTOM meets the requirement (delivered via custom development) and does NOT disqualify, though it is surfaced as a customization risk. Single-tenant deployment and absolute entity-level union/non-union data isolation are hard architectural gates."
   },
 
   "requirement_priority_mix": {"Must": 278, "Should": 123, "Could": 15, "total_functional": 397, "total_rows_incl_nfr": 416},
