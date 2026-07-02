@@ -100,3 +100,14 @@ def load_all() -> Dict[str, Dict[str, Any]]:
             continue
         out[vendor] = result
     return out
+
+
+def delete(vendor: str) -> bool:
+    """Delete a vendor's persisted result file. Returns True if a file was removed,
+    False if none existed. The slug mirrors save()'s so the right file is targeted."""
+    path = os.path.join(STORE_DIR, _slug(vendor) + ".json")
+    try:
+        os.remove(path)
+        return True
+    except FileNotFoundError:
+        return False

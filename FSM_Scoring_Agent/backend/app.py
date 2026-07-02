@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 import re
+import hmac
 import json
 import threading
 import uuid
@@ -327,6 +328,35 @@ def vendors():
 def results():
     with _RESULTS_LOCK:
         return jsonify(list(_RESULTS.values()))
+
+
+@app.route("/api/admin/delete_result", methods=["POST"])
+def admin_delete_result():
+    """Remove a vendor's evaluation from the in-memory store AND its persisted
+    disk file. Guarded by a shared secret in the ADMIN_TOKEN env var (constant-time
+    compare); the route is disabled — returns 404 — when ADMIN_TOKEN is unset, so it
+    is inert unless an operator explicitly turns it on. Deliberately not behind the
+    user-session auth so it can be driven from an operator script/CLI. Idempotent:
+    deleting an absent vendor is a no-op that still reports remaining results."""
+    token = os.environ.get("ADMIN_TOKEN", "")
+    if not token:
+        return jsonify({"error": "admin endpoint disabled"}), 404
+    if not hmac.compare_digest(request.headers.get("X-Admin-Token", ""), token):
+        return jsonify({"error": "forbidden"}), 403
+    vendor = ((request.get_json(force=True) or {}).get("vendor") or "").strip()
+    if not vendor:
+        return jsonify({"error": "vendor required"}), 400
+    with _RESULTS_LOCK:
+        removed_memory = _RESULTS.pop(vendor, None) is not None
+    try:
+        removed_disk = store.delete(vendor)
+    except Exception as e:
+        app.logger.warning("admin delete: store.delete(%s) failed: %s", vendor, e)
+        removed_disk = False
+    with _RESULTS_LOCK:
+        remaining = sorted(_RESULTS.keys())
+    return jsonify({"vendor": vendor, "removed_memory": removed_memory,
+                    "removed_disk": removed_disk, "remaining": remaining})
 
 
 @app.route("/api/committee", methods=["GET"])
