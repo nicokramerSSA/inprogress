@@ -501,7 +501,9 @@ function brandedDoc(o){
     + '<div class="band"><div><div class="meta-logo">'+logo+'</div></div>'
     + '<div class="meta"><div>'+htmlEsc(o.title)+'</div><div>Generated '+htmlEsc(o.dateStr)+'</div></div></div>'
     + '<h1>'+htmlEsc(o.title)+'</h1>'+ctx+takeaway+(o.tableHTML||"")
-    + '<footer>SSA &amp; Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr)+'</footer>'
+    + '<footer>'+(o.footerText
+        ? htmlEsc(o.footerText)
+        : 'SSA &amp; Company · Advisory evaluation — augments the human committee · Generated '+htmlEsc(o.dateStr))+'</footer>'
     + '</body></html>';
 }
 // === EXPORT_HELPERS_END ===
@@ -513,6 +515,37 @@ function downloadCSV(filename, rows, headers){
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+
+// Plain-language reason per response code for the disqualification report.
+// Factual, no commentary. CUSTOM no longer disqualifies, so it should not appear.
+const DQ_CODE_REASON = {
+  GAP: "Not supported; no published roadmap.",
+  ROADMAP: "Planned only; not generally available.",
+  "": "Requirement not addressed.",
+};
+function disqualificationRows(data){
+  const g = (data && data.gating) || {};
+  const um = g.unmet_musts || [];
+  const rows = um.map(u => ({
+    rid: u.rid,
+    requirement: u.requirement || ("(see RFP requirement " + u.rid + ")"),
+    priority: u.priority || "Must",
+    response: u.vendor_code || "",
+    reason: DQ_CODE_REASON[u.vendor_code] || u.reason || "Does not meet the Must requirement.",
+  }));
+  (g.architectural_gate_flags || []).forEach(f => rows.push({
+    rid: "—", requirement: f, priority: "Must",
+    response: "GATE", reason: "Architectural gate not satisfied.",
+  }));
+  const headers = [
+    {key:"rid", label:"RID"},
+    {key:"requirement", label:"Requirement"},
+    {key:"priority", label:"Priority"},
+    {key:"response", label:"Response"},
+    {key:"reason", label:"Reason not met"},
+  ];
+  return {rows, headers};
 }
 
 // Resolve the color logo for the print header. Standalone: BOOT.logo_dark.
@@ -538,7 +571,8 @@ async function printBranded(title, parts){
   const dateStr = new Date().toISOString().slice(0,10);
   const logoSrc = await resolvePrintLogo();
   const docHTML = brandedDoc({title, dateStr, logoSrc,
-    contextLine:parts.contextLine||"", takeaway:parts.takeaway||"", tableHTML:parts.tableHTML||""});
+    contextLine:parts.contextLine||"", takeaway:parts.takeaway||"", tableHTML:parts.tableHTML||"",
+    footerText:parts.footerText||""});
   const w = window.open("", "_blank");
   if(!w){ printViaHiddenContainer(docHTML); return; }
   w.document.open(); w.document.write(docHTML); w.document.close();
@@ -737,6 +771,15 @@ function VendorDetail({data}){
         const {rows,headers}=requirementRows(data);
         downloadCSV(exportFilename("requirements",[data.vendor],new Date().toISOString().slice(0,10)),rows,headers);
       }}>Export requirements (CSV)</button>
+      {data.gating && data.gating.disqualified &&
+        <button className="btn small" style={{marginBottom:10, marginLeft:8}} onClick={()=>{
+          const {rows,headers}=disqualificationRows(data);
+          printBranded("Disqualification Report — "+data.vendor, {
+            contextLine: "Disqualified under RFP §8: "+data.gating.unmet_must_count+" unmet Must requirement(s).",
+            tableHTML: tableHTML(rows, headers),
+            footerText: "Disqualification detail — requirement level. Generated "+new Date().toISOString().slice(0,10)+".",
+          });
+        }}>Disqualification report (PDF)</button>}
       {/* Headline */}
       <div className="grid detail-hero">
         <div className="card">
