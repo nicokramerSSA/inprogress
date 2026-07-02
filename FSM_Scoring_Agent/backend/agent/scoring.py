@@ -422,10 +422,32 @@ def _vendor_cap_strength(vendor: str) -> Dict[str, float]:
     return strengths
 
 
+_MATRIX_VERDICT = {
+    "OOB":       ("Yes", 4),
+    "CONFIG":    ("Yes", 3),
+    "EXTENSION": ("Partial", 3),
+    "PARTNER":   ("Partial", 2),
+    "ROADMAP":   ("Partial", 2),
+    "CUSTOM":    ("Partial", 2),
+    "GAP":       ("No", 1),
+}
+
+
+def _matrix_verdict(code):
+    """Map a vendor response code to (met, quality) for the deterministic engine."""
+    c = (code or "").strip().upper()
+    if c in _MATRIX_VERDICT:
+        return _MATRIX_VERDICT[c]
+    if c in ("", "NO", "NONE", "N/A"):
+        return ("No", 1)
+    return ("Partial", 2)
+
+
 def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
                             strengths: Optional[Dict[str, float]] = None,
                             proposal_text_lower: Optional[str] = None,
-                            segments=None) -> RequirementScore:
+                            segments=None,
+                            requirement_matrix: Optional[Dict[str, Any]] = None) -> RequirementScore:
     """
     Deterministic, dossier-grounded stand-in (offline demo, no API key). Strength comes
     from the vendor's research ratings for this requirement's capability; the proposal
@@ -436,6 +458,21 @@ def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
     if r["priority"] == "Won't":
         return RequirementScore(r["rid"], r["domain"], r["capability"], r["priority"],
                                 "N/A", 0, "N/A", "High", "[demo] Out of scope (Won't).", "")
+
+    mrow = (requirement_matrix or {}).get(r["rid"])
+    if mrow:
+        met, quality = _matrix_verdict(mrow.get("code"))
+        code = (mrow.get("code") or "").strip().upper() or ("GAP" if met == "No" else "CONFIG")
+        resp = (mrow.get("response") or "").strip()
+        rationale = f"[matrix] Vendor response {code}" + (f" — {resp[:200]}" if resp else "")
+        gap = "" if met == "Yes" else "Confirm depth in the Charlotte demo / references."
+        ev = ({"quote": resp[:240], "source": mrow.get("source", ""),
+               "locator": f"{mrow.get('sheet', 'Requirements')} / {r['rid']}"}
+              if resp else _mock_evidence(r, segments))
+        return RequirementScore(
+            rid=r["rid"], domain=r["domain"], capability=r["capability"], priority=r["priority"],
+            met=met, quality=quality, vendor_code=code, confidence="High",
+            rationale=rationale[:400], evidence_gap=gap, evidence=ev)
 
     cap = r["capability"]
     strengths = strengths or {}
