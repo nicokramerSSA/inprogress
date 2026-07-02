@@ -234,6 +234,140 @@ def relevant_passages(
 
 
 # --------------------------------------------------------------------------- #
+# Requirements-matrix alignment (join vendor responses to RIDs)               #
+# --------------------------------------------------------------------------- #
+_RID_CELL_RE = re.compile(r"^[A-Z]{2,5}-\d{1,4}$")
+
+
+def _cell(row, idx) -> str:
+    if idx is None or idx >= len(row):
+        return ""
+    v = row[idx]
+    return "" if v is None else str(v).strip()
+
+
+def _find_rid_column(rows, known_rids):
+    """(header_row_index, rid_col_index) or (None, None). Prefer a 'Req ID'/'RID'
+    header; else the column whose values best match known RIDs."""
+    for hi, row in enumerate(rows[:6]):
+        for ci, cell in enumerate(row):
+            name = re.sub(r"\s+", " ", str(cell or "")).strip().lower().rstrip(".")
+            if name in ("req id", "rid", "requirement id", "req id#", "req. id"):
+                return hi, ci
+    best_col, best_hits = None, 0
+    ncols = max((len(r) for r in rows), default=0)
+    for ci in range(ncols):
+        hits = sum(1 for r in rows if _cell(r, ci).upper() in known_rids)
+        if hits > best_hits:
+            best_col, best_hits = ci, hits
+    if best_col is not None and best_hits >= 3:
+        for hi, r in enumerate(rows):
+            if _cell(r, best_col).upper() in known_rids:
+                # Walk upward from the row above the first RID hit, skipping
+                # section-like rows (fewer than 2 non-empty cells), to find
+                # the real header row instead of assuming it's immediately above.
+                header_hi = max(0, hi - 1)
+                while header_hi > 0:
+                    non_empty = sum(1 for ci in range(len(rows[header_hi])) if _cell(rows[header_hi], ci))
+                    if non_empty >= 2:
+                        break
+                    header_hi -= 1
+                return header_hi, best_col
+    return None, None
+
+
+def _find_response_columns(rows, header_idx):
+    """(code_col, response_col). Prefer headers containing 'response' (shortest avg
+    cell = code, longest = narrative); else the last two data-bearing columns."""
+    header = rows[header_idx] if 0 <= header_idx < len(rows) else ()
+    resp_cols = [ci for ci, c in enumerate(header) if "response" in str(c or "").lower()]
+    data = rows[header_idx + 1:]
+
+    def avg_len(ci):
+        vals = [len(_cell(r, ci)) for r in data if _cell(r, ci)]
+        return sum(vals) / len(vals) if vals else 0.0
+
+    if len(resp_cols) >= 2:
+        resp_cols.sort(key=avg_len)
+        return resp_cols[0], resp_cols[-1]
+    if len(resp_cols) == 1:
+        return resp_cols[0], resp_cols[0]
+    ncols = max((len(r) for r in rows), default=0)
+    filled = [ci for ci in range(ncols) if any(_cell(r, ci) for r in data)]
+    if len(filled) >= 2:
+        return filled[-2], filled[-1]
+    return (filled[-1], filled[-1]) if filled else (None, None)
+
+
+def _find_requirement_text_column(rows, header_idx, text_index):
+    """Return the column index whose cell values best match known requirement
+    texts (normalized), or None. Used only when no RID column is found."""
+    data = rows[header_idx + 1:]
+    ncols = max((len(r) for r in rows), default=0)
+    best_col, best_hits = None, 0
+    for ci in range(ncols):
+        hits = sum(1 for r in data if _norm(_cell(r, ci)) in text_index)
+        if hits > best_hits:
+            best_col, best_hits = ci, hits
+    return best_col if best_hits >= 3 else None
+
+
+def extract_requirement_matrix(paths, requirements):
+    """Parse a submitted requirements matrix (.xlsx/.xlsm) into {rid: {code,
+    response, source, sheet}} by joining on the RID column. Returns {} when no
+    matrix is present or openpyxl is unavailable — callers then behave as before."""
+    known = {str(r["rid"]).strip().upper() for r in (requirements or [])}
+    out: dict = {}
+    if not known:
+        return out
+    text_index = {_norm(str(r["requirement"])): str(r["rid"]).strip().upper()
+                  for r in requirements if r.get("requirement")}
+    for p in (paths or []):
+        if os.path.splitext(p)[1].lower() not in (".xlsx", ".xlsm"):
+            continue
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(p, read_only=True, data_only=True)
+        except Exception:
+            continue
+        fname = os.path.basename(p)
+        try:
+            for ws in wb.worksheets:
+                rows = [tuple(r) for r in ws.iter_rows(values_only=True)]
+                if not rows:
+                    continue
+                hi, rid_col = _find_rid_column(rows, known)
+                text_col = None
+                if rid_col is None:
+                    # text-only sheet: treat row 0 as the header row
+                    hi = 0
+                    text_col = _find_requirement_text_column(rows, hi, text_index)
+                    if text_col is None:
+                        continue
+                code_col, resp_col = _find_response_columns(rows, hi)
+                for row in rows[hi + 1:]:
+                    if rid_col is not None:
+                        rid = _cell(row, rid_col).upper()
+                    else:
+                        rid = text_index.get(_norm(_cell(row, text_col)), "")
+                    if rid not in known or rid in out:
+                        continue
+                    code = _cell(row, code_col)
+                    resp = _cell(row, resp_col)
+                    if code_col == resp_col:
+                        code = ""
+                    if not (code or resp):
+                        continue
+                    out[rid] = {"code": code, "response": resp, "source": fname, "sheet": ws.title}
+        finally:
+            try:
+                wb.close()
+            except Exception:
+                pass
+    return out
+
+
+# --------------------------------------------------------------------------- #
 # Source segmentation & evidence locators                                     #
 # --------------------------------------------------------------------------- #
 _SRC_RE = re.compile(r"^=====\s+(?:FILE|URL):\s+(.*?)\s+=====$")

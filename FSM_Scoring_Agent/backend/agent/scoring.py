@@ -74,6 +74,7 @@ def evaluate_vendor(
     progress: Optional[Callable[[str, float], None]] = None,
     requirement_sample: Optional[int] = None,
     should_cancel: Optional[Callable[[], bool]] = None,
+    requirement_matrix: Optional[Dict[str, Any]] = None,
 ) -> VendorEvaluation:
     """
     Run the full evaluation pipeline for one vendor and return a VendorEvaluation.
@@ -106,7 +107,9 @@ def evaluate_vendor(
     _emit(f"Scoring {len(reqs)} requirements for {vendor}…", 0.05)
 
     # 1) Per-requirement scoring (batched) -----------------------------------
-    req_scores, score_stats = _score_requirements(vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel, segments)
+    req_scores, score_stats = _score_requirements(
+        vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel,
+        segments, requirement_matrix)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
     gating = _compute_gating(req_scores, clean_text)
@@ -187,7 +190,8 @@ def evaluate_vendor(
 # --------------------------------------------------------------------------- #
 # 1) Per-requirement scoring                                                  #
 # --------------------------------------------------------------------------- #
-def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None, segments=None):
+def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit,
+                        should_cancel=None, segments=None, requirement_matrix=None):
     """Score every requirement. Returns (scores, stats) where stats is None for an
     explicit offline-mock run, or {live, fallback, errors} for a live-model run so the
     caller can surface any silent fallback to the deterministic engine."""
@@ -195,7 +199,8 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
         # Mock is CPU-only and instant — stay sequential, never touch the executor/gate.
-        scores = [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
+        scores = [_mock_score_requirement(r, proposal_text, strengths, proposal_low,
+                                          segments, requirement_matrix) for r in reqs]
         return scores, None
 
     kb = get_kb()
@@ -214,7 +219,7 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
         # string the caller aggregates, so a silent mock fallback never goes unreported.
         kws = _batch_keywords(batch)
         context = relevant_passages(proposal_text, kws, max_chunks=8, index=retrieval_index)
-        user = _batch_prompt(vendor, product, batch, context)
+        user = _batch_prompt(vendor, product, batch, context, requirement_matrix)
         resp = client.generate(system, user, model_id, expect_json=True,
                                max_tokens=8192, temperature=0.15)
         if not resp["ok"]:
@@ -314,16 +319,32 @@ def _batch_keywords(batch: List[Dict[str, Any]]) -> List[str]:
     return kws
 
 
-def _batch_prompt(vendor, product, batch, context) -> str:
+def _batch_prompt(vendor, product, batch, context, requirement_matrix=None) -> str:
+    m = requirement_matrix or {}
     reqs_json = [
         {"rid": r["rid"], "domain": r["domain"], "capability": r["capability"],
          "priority": r["priority"], "requirement": r["requirement"],
          "rfp_notes": r.get("rfp_notes", "")}
         for r in batch
     ]
+    matrix_lines = []
+    for r in batch:
+        row = m.get(r["rid"])
+        if row:
+            resp = (row.get("response") or "").strip().replace("\n", " ")[:600]
+            matrix_lines.append(f'[{r["rid"]}] code={row.get("code") or "?"}: {resp}')
+    matrix_block = ""
+    if matrix_lines:
+        matrix_block = (
+            "VENDOR'S DIRECT ANSWERS FROM ITS SUBMITTED REQUIREMENTS MATRIX "
+            "(authoritative per-requirement response — treat as the vendor's own claim; "
+            "still apply judgment: an OOB claim without demonstrated depth is not automatic "
+            "full credit):\n" + "\n".join(matrix_lines) + "\n\n"
+        )
     return (
         f"VENDOR: {vendor} — {product}\n\n"
-        f"RELEVANT EXCERPTS FROM THE VENDOR'S PROPOSAL (may be partial):\n"
+        + matrix_block
+        + f"RELEVANT EXCERPTS FROM THE VENDOR'S PROPOSAL (may be partial):\n"
         f"\"\"\"\n{context[:9000]}\n\"\"\"\n\n"
         f"Score EACH of the following requirements. For each, decide:\n"
         f"  - met: Yes | Partial | No | N/A\n"
@@ -332,11 +353,18 @@ def _batch_prompt(vendor, product, batch, context) -> str:
         f"  - confidence: High | Medium | Low (Low if the proposal does not clearly evidence it)\n"
         f"  - rationale: one terse sentence in your voice (tie to outcomes/dollars where you can)\n"
         f"  - evidence_gap: what must still be proven in the Charlotte demo or references (\"\" if none)\n"
-        f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the excerpts "
-        f"above that supports your call (\"\" if the excerpts do not address it)\n\n"
-        f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
-        f"Partial/No with Low confidence and name the gap.\n\n"
-        f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
+        + (
+            f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the matrix "
+            f"answer or excerpts above that supports your call (\"\" if nothing addresses it)\n\n"
+            f"If neither the matrix answer nor the excerpts address a requirement, do NOT invent a "
+            f"capability — mark it Partial/No with Low confidence and name the gap.\n\n"
+            if matrix_lines else
+            f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the excerpts "
+            f"above that supports your call (\"\" if nothing addresses it)\n\n"
+            f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
+            f"Partial/No with Low confidence and name the gap.\n\n"
+        )
+        + f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
         f"Return ONLY a JSON object with a single key \"scores\" whose value is an array with "
         f"ONE object per requirement above (same count, same order), each object having keys: "
         f"rid, met, quality, vendor_code, confidence, rationale, evidence_gap, evidence_quote."
@@ -422,10 +450,32 @@ def _vendor_cap_strength(vendor: str) -> Dict[str, float]:
     return strengths
 
 
+_MATRIX_VERDICT = {
+    "OOB":       ("Yes", 4),
+    "CONFIG":    ("Yes", 3),
+    "EXTENSION": ("Partial", 3),
+    "PARTNER":   ("Partial", 2),
+    "ROADMAP":   ("Partial", 2),
+    "CUSTOM":    ("Partial", 2),
+    "GAP":       ("No", 1),
+}
+
+
+def _matrix_verdict(code):
+    """Map a vendor response code to (met, quality) for the deterministic engine."""
+    c = (code or "").strip().upper()
+    if c in _MATRIX_VERDICT:
+        return _MATRIX_VERDICT[c]
+    if c in ("", "NO", "NONE", "N/A"):
+        return ("No", 1)
+    return ("Partial", 2)
+
+
 def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
                             strengths: Optional[Dict[str, float]] = None,
                             proposal_text_lower: Optional[str] = None,
-                            segments=None) -> RequirementScore:
+                            segments=None,
+                            requirement_matrix: Optional[Dict[str, Any]] = None) -> RequirementScore:
     """
     Deterministic, dossier-grounded stand-in (offline demo, no API key). Strength comes
     from the vendor's research ratings for this requirement's capability; the proposal
@@ -436,6 +486,22 @@ def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
     if r["priority"] == "Won't":
         return RequirementScore(r["rid"], r["domain"], r["capability"], r["priority"],
                                 "N/A", 0, "N/A", "High", "[demo] Out of scope (Won't).", "")
+
+    mrow = (requirement_matrix or {}).get(r["rid"])
+    mrow_code = (mrow or {}).get("code", "")
+    if mrow and str(mrow_code).strip():
+        met, quality = _matrix_verdict(mrow_code)
+        code = str(mrow_code).strip().upper()
+        resp = (mrow.get("response") or "").strip()
+        rationale = f"[matrix] Vendor response {code}" + (f" — {resp[:200]}" if resp else "")
+        gap = "" if met == "Yes" else "Confirm depth in the Charlotte demo / references."
+        ev = ({"quote": resp[:240], "source": mrow.get("source", ""),
+               "locator": f"{mrow.get('sheet', 'Requirements')} / {r['rid']}"}
+              if resp else _mock_evidence(r, segments))
+        return RequirementScore(
+            rid=r["rid"], domain=r["domain"], capability=r["capability"], priority=r["priority"],
+            met=met, quality=quality, vendor_code=code, confidence="High",
+            rationale=rationale[:400], evidence_gap=gap, evidence=ev)
 
     cap = r["capability"]
     strengths = strengths or {}
