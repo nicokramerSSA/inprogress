@@ -1358,7 +1358,10 @@ function RunBar({vendors, model, voteMode, voteModel, voteDual, onDone}){
   useEffect(()=>{ if(vendors.length && !vendor) setVendor(vendors[0].name); },[vendors]);
 
   const ACCEPT=".pdf,.docx,.xlsx,.xlsm,.txt,.md";
-  function addFiles(list){ setFiles(f=>[...f, ...Array.from(list)]); }
+  // Snapshot the FileList to a plain array *now*: the caller clears the input
+  // (e.target.value="") right after, which empties the live FileList before a
+  // deferred functional updater would read it — dropping the selection silently.
+  function addFiles(list){ const arr=Array.from(list); setFiles(f=>[...f, ...arr]); }
   function removeFile(i){ setFiles(f=>f.filter((_,j)=>j!==i)); }
 
   function votePayload(){
