@@ -112,7 +112,8 @@ def evaluate_vendor(
         segments, requirement_matrix)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
-    gating = _compute_gating(req_scores, clean_text)
+    gating = _compute_gating(req_scores, clean_text,
+                             {r["rid"]: r.get("requirement", "") for r in reqs})
     _emit("Applying MoSCoW + architectural gates…", 0.72)
 
     # 3) Category rollup ------------------------------------------------------
@@ -578,7 +579,9 @@ def _mock_evidence(r: Dict[str, Any], segments) -> Dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # 2) Gating (deterministic)                                                   #
 # --------------------------------------------------------------------------- #
-def _compute_gating(scores: List[RequirementScore], proposal_text: str) -> GatingResult:
+def _compute_gating(scores: List[RequirementScore], proposal_text: str,
+                    req_text: Optional[Dict[str, str]] = None) -> GatingResult:
+    req_text = req_text or {}
     unmet = []
     for s in scores:
         if s.priority != "Must":
@@ -587,6 +590,9 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str) -> Gatin
         if s.met == "No" or (s.vendor_code in _WEAK_CODES_FOR_MUST and s.met != "Yes"):
             unmet.append({
                 "rid": s.rid, "capability": s.capability,
+                "requirement": req_text.get(s.rid, ""),
+                "domain": s.domain, "priority": s.priority,
+                "vendor_code": s.vendor_code, "met": s.met,
                 "reason": f"Must requirement is {s.met} via {s.vendor_code}",
             })
     # Architectural hard gates — look for explicit negatives in the text.
@@ -605,7 +611,7 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str) -> Gatin
     )
     return GatingResult(
         disqualified=disqualified, unmet_must_count=len(unmet),
-        unmet_musts=unmet[:50], architectural_gate_flags=flags, summary=summary,
+        unmet_musts=unmet, architectural_gate_flags=flags, summary=summary,
     )
 
 

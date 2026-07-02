@@ -42,5 +42,30 @@ class GatingContractTests(unittest.TestCase):
         self.assertFalse(g.disqualified)
 
 
+class UnmetMustEnrichmentTests(unittest.TestCase):
+    def test_unmet_entry_includes_requirement_detail(self):
+        scores = [_score("FSM-002", "Must", "No", 1, "GAP")]
+        req_text = {"FSM-002": "Support prevailing-wage certified payroll."}
+        g = scoring._compute_gating(scores, "proposal text", req_text)
+        self.assertEqual(len(g.unmet_musts), 1)
+        entry = g.unmet_musts[0]
+        self.assertEqual(entry["rid"], "FSM-002")
+        self.assertEqual(entry["requirement"], "Support prevailing-wage certified payroll.")
+        self.assertEqual(entry["priority"], "Must")
+        self.assertEqual(entry["vendor_code"], "GAP")
+        self.assertEqual(entry["met"], "No")
+
+    def test_missing_req_text_defaults_empty(self):
+        scores = [_score("FSM-002", "Must", "No", 1, "GAP")]
+        g = scoring._compute_gating(scores, "proposal text")  # no req_text
+        self.assertEqual(g.unmet_musts[0]["requirement"], "")
+
+    def test_unmet_list_not_truncated(self):
+        scores = [_score(f"FSM-{i:03d}", "Must", "No", 1, "GAP") for i in range(60)]
+        g = scoring._compute_gating(scores, "proposal text")
+        self.assertEqual(len(g.unmet_musts), 60)
+        self.assertEqual(g.unmet_must_count, 60)
+
+
 if __name__ == "__main__":
     unittest.main()
