@@ -30,6 +30,17 @@ class MatrixVerdictTests(unittest.TestCase):
         s = scoring._mock_score_requirement(REQ, "", {}, "", None, {})
         self.assertIn(s.met, ("Yes", "Partial", "No"))  # dossier path still works
 
+    def test_mock_falls_back_on_narrative_only_row(self):
+        # A matrix row with no code column (extract_requirement_matrix sets code="")
+        # but a positive narrative response must NOT be scored via _matrix_verdict("")
+        # (which would force a false High-confidence No/GAP). It should fall through
+        # to the dossier/coverage path instead.
+        m = {"FSM-001": {"code": "", "response": "Fully supported out of the box",
+                          "source": "resp.xlsx", "sheet": "Requirements"}}
+        s = scoring._mock_score_requirement(REQ, "", {}, "", None, m)
+        self.assertNotEqual(s.met, "No")
+        self.assertTrue(s.rationale.startswith("[demo]"))
+
 
 class BatchPromptTests(unittest.TestCase):
     BATCH = [REQ]
@@ -71,6 +82,13 @@ class RegressionTests(unittest.TestCase):
         # With no matrix, _batch_prompt output must not contain the matrix block.
         p = scoring._batch_prompt("V", "", [REQ], "excerpt", None)
         self.assertNotIn("VENDOR'S DIRECT ANSWERS", p)
+
+    def test_empty_matrix_prompt_uses_original_wording(self):
+        # With no matrix, the evidence_quote/gap instructions must match the
+        # pre-feature baseline wording exactly, with no reference to a matrix answer.
+        p = scoring._batch_prompt("V", "", [REQ], "excerpt", None)
+        self.assertIn("copied EXACTLY from the excerpts above", p)
+        self.assertNotIn("matrix answer", p)
 
     def test_empty_matrix_mock_is_dossier_path(self):
         # No matrix -> mock uses the dossier path (rationale tagged [demo], not [matrix]).

@@ -320,7 +320,7 @@ def extract_requirement_matrix(paths, requirements):
     out: dict = {}
     if not known:
         return out
-    text_index = {_norm(r["requirement"]): str(r["rid"]).strip().upper()
+    text_index = {_norm(str(r["requirement"])): str(r["rid"]).strip().upper()
                   for r in requirements if r.get("requirement")}
     for p in (paths or []):
         if os.path.splitext(p)[1].lower() not in (".xlsx", ".xlsm"):

@@ -353,11 +353,18 @@ def _batch_prompt(vendor, product, batch, context, requirement_matrix=None) -> s
         f"  - confidence: High | Medium | Low (Low if the proposal does not clearly evidence it)\n"
         f"  - rationale: one terse sentence in your voice (tie to outcomes/dollars where you can)\n"
         f"  - evidence_gap: what must still be proven in the Charlotte demo or references (\"\" if none)\n"
-        f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the matrix "
-        f"answer or excerpts above that supports your call (\"\" if nothing addresses it)\n\n"
-        f"If neither the matrix answer nor the excerpts address a requirement, do NOT invent a "
-        f"capability — mark it Partial/No with Low confidence and name the gap.\n\n"
-        f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
+        + (
+            f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the matrix "
+            f"answer or excerpts above that supports your call (\"\" if nothing addresses it)\n\n"
+            f"If neither the matrix answer nor the excerpts address a requirement, do NOT invent a "
+            f"capability — mark it Partial/No with Low confidence and name the gap.\n\n"
+            if matrix_lines else
+            f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the excerpts "
+            f"above that supports your call (\"\" if nothing addresses it)\n\n"
+            f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
+            f"Partial/No with Low confidence and name the gap.\n\n"
+        )
+        + f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
         f"Return ONLY a JSON object with a single key \"scores\" whose value is an array with "
         f"ONE object per requirement above (same count, same order), each object having keys: "
         f"rid, met, quality, vendor_code, confidence, rationale, evidence_gap, evidence_quote."
@@ -481,9 +488,10 @@ def _mock_score_requirement(r: Dict[str, Any], proposal_text: str,
                                 "N/A", 0, "N/A", "High", "[demo] Out of scope (Won't).", "")
 
     mrow = (requirement_matrix or {}).get(r["rid"])
-    if mrow:
-        met, quality = _matrix_verdict(mrow.get("code"))
-        code = (mrow.get("code") or "").strip().upper() or ("GAP" if met == "No" else "CONFIG")
+    mrow_code = (mrow or {}).get("code", "")
+    if mrow and str(mrow_code).strip():
+        met, quality = _matrix_verdict(mrow_code)
+        code = str(mrow_code).strip().upper()
         resp = (mrow.get("response") or "").strip()
         rationale = f"[matrix] Vendor response {code}" + (f" — {resp[:200]}" if resp else "")
         gap = "" if met == "Yes" else "Confirm depth in the Charlotte demo / references."
