@@ -77,7 +77,8 @@ class GatingResult:
     """MoSCoW + architectural gate outcome."""
     disqualified: bool
     unmet_must_count: int
-    unmet_musts: List[Dict[str, str]] = field(default_factory=list)  # [{rid, capability, reason}]
+    unmet_musts: List[Dict[str, str]] = field(default_factory=list)
+        # [{rid, capability, requirement, domain, priority, vendor_code, met, reason}]
     architectural_gate_flags: List[str] = field(default_factory=list)
     summary: str = ""
 
