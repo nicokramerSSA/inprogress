@@ -71,7 +71,7 @@ from agent.providers import available_models, resolve_model
 from agent.scoring import evaluate_vendor, EvaluationCancelled
 from agent.vote import synthesize_vote, synthesize_vote_dual
 from agent.chat import answer as chat_answer
-from agent.ingest import extract_sources
+from agent.ingest import extract_sources, extract_requirement_matrix
 from agent.sample import sample_proposal_text
 from agent.committee import parse_committee_file, aggregate_committee
 
@@ -108,10 +108,14 @@ def _validate_models(*ids):
 
 
 def _run_and_cache(vendor, product, proposal_text, scoring_model, vote_model,
-                   sample_n=None, vote_dual=None, progress=None, should_cancel=None):
+                   sample_n=None, vote_dual=None, progress=None, should_cancel=None,
+                   file_paths=None):
     """Shared evaluate -> vote -> cache path used by both evaluate endpoints."""
+    requirement_matrix = (extract_requirement_matrix(file_paths, get_kb().requirement_list())
+                          if file_paths else {})
     ev = evaluate_vendor(vendor, product, proposal_text,
                          scoring_model=scoring_model, requirement_sample=sample_n,
+                         requirement_matrix=requirement_matrix,
                          progress=progress, should_cancel=should_cancel)
     # Drop empty/null slots so a vote_dual of all-blank values (e.g. the UI's default
     # {openai:"", anthropic:"", ...}) doesn't activate the dual engine on placeholders.
@@ -440,7 +444,7 @@ def evaluate():
     threading.Thread(target=_run_job, kwargs=dict(
         jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
         scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
-        vote_dual=vote_dual), daemon=True).start()
+        vote_dual=vote_dual, file_paths=body.get("file_paths")), daemon=True).start()
     return jsonify({"job_id": jid}), 202
 
 
@@ -513,7 +517,7 @@ def evaluate_upload():
     threading.Thread(target=_run_job, kwargs=dict(
         jid=jid, vendor=vendor, product=product, proposal_text=proposal_text,
         scoring_model=scoring_model, vote_model=vote_model, sample_n=sample_n,
-        vote_dual=vote_dual), daemon=True).start()
+        vote_dual=vote_dual, file_paths=saved_paths), daemon=True).start()
     return jsonify({"job_id": jid}), 202
 
 

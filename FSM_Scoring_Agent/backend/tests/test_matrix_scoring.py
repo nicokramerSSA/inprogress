@@ -48,3 +48,19 @@ class BatchPromptTests(unittest.TestCase):
         p = scoring._batch_prompt("ServiceTitan", "", self.BATCH, "some excerpt", {})
         self.assertNotIn("VENDOR'S DIRECT ANSWERS", p)
         self.assertIn("some excerpt", p)
+
+
+class EndToEndMockTests(unittest.TestCase):
+    def test_matrix_flows_into_mock_scores(self):
+        from agent.knowledge import get_kb
+        reqs = get_kb().requirement_list()
+        rid = reqs[0]["rid"]
+        matrix = {rid: {"code": "GAP", "response": "Not supported", "source": "r.xlsx",
+                        "sheet": "Requirements"}}
+        ev = scoring.evaluate_vendor("TestVendor", "", "proposal text",
+                                     scoring_model="mock", requirement_sample=3,
+                                     requirement_matrix=matrix)
+        row = next(s for s in ev.requirement_scores if s.rid == rid)
+        self.assertEqual(row.met, "No")
+        self.assertEqual(row.vendor_code, "GAP")
+        self.assertEqual(row.confidence, "High")

@@ -74,6 +74,7 @@ def evaluate_vendor(
     progress: Optional[Callable[[str, float], None]] = None,
     requirement_sample: Optional[int] = None,
     should_cancel: Optional[Callable[[], bool]] = None,
+    requirement_matrix: Optional[Dict[str, Any]] = None,
 ) -> VendorEvaluation:
     """
     Run the full evaluation pipeline for one vendor and return a VendorEvaluation.
@@ -106,7 +107,9 @@ def evaluate_vendor(
     _emit(f"Scoring {len(reqs)} requirements for {vendor}…", 0.05)
 
     # 1) Per-requirement scoring (batched) -----------------------------------
-    req_scores, score_stats = _score_requirements(vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel, segments)
+    req_scores, score_stats = _score_requirements(
+        vendor, product, clean_text, reqs, scoring_model, _emit, should_cancel,
+        segments, requirement_matrix)
 
     # 2) Gating (deterministic, from the scores) -----------------------------
     gating = _compute_gating(req_scores, clean_text)
@@ -187,7 +190,8 @@ def evaluate_vendor(
 # --------------------------------------------------------------------------- #
 # 1) Per-requirement scoring                                                  #
 # --------------------------------------------------------------------------- #
-def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, should_cancel=None, segments=None):
+def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit,
+                        should_cancel=None, segments=None, requirement_matrix=None):
     """Score every requirement. Returns (scores, stats) where stats is None for an
     explicit offline-mock run, or {live, fallback, errors} for a live-model run so the
     caller can surface any silent fallback to the deterministic engine."""
@@ -195,7 +199,8 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
     proposal_low = (proposal_text or "").lower()
     if is_mock(model_id):
         # Mock is CPU-only and instant — stay sequential, never touch the executor/gate.
-        scores = [_mock_score_requirement(r, proposal_text, strengths, proposal_low, segments) for r in reqs]
+        scores = [_mock_score_requirement(r, proposal_text, strengths, proposal_low,
+                                          segments, requirement_matrix) for r in reqs]
         return scores, None
 
     kb = get_kb()
@@ -214,7 +219,7 @@ def _score_requirements(vendor, product, proposal_text, reqs, model_id, emit, sh
         # string the caller aggregates, so a silent mock fallback never goes unreported.
         kws = _batch_keywords(batch)
         context = relevant_passages(proposal_text, kws, max_chunks=8, index=retrieval_index)
-        user = _batch_prompt(vendor, product, batch, context)
+        user = _batch_prompt(vendor, product, batch, context, requirement_matrix)
         resp = client.generate(system, user, model_id, expect_json=True,
                                max_tokens=8192, temperature=0.15)
         if not resp["ok"]:
