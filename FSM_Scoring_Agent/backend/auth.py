@@ -31,6 +31,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _SEED_ACCOUNTS = [
     ("fasbeck@ssaandco.com", "Fred Asbeck", "SSA"),
     ("nkramer@ssaandco.com", "Nick Kramer", "SSA"),
+    ("jbrown@ssaandco.com", "Jeff Brown", "SSA"),
     ("chagood@ssaandco.com", "Camp Hagood", "SSA"),
     ("sadiwidjaja@ssaandco.com", "Samantha Adiwidjaja", "SSA"),
     ("ksoviero@baincapital.com", "Kim Soviero", "Bain Capital"),
@@ -83,8 +84,11 @@ def _seed_defaults() -> Dict[str, Dict[str, Any]]:
 
 def load_users() -> Dict[str, Dict[str, Any]]:
     """Load the {email: record} map. If the file is missing, seed it and write once.
-    If it exists, it wins (changed passwords are never clobbered by the seed). A
-    corrupt/empty file logs a warning and falls back to in-memory seeds — never crashes."""
+    If it exists, existing records WIN (changed passwords are never clobbered) — but
+    any roster member in _SEED_ACCOUNTS not yet in the file is added with the temp
+    password, so a teammate can be provisioned by extending _SEED_ACCOUNTS + redeploying
+    without resetting anyone. A corrupt/empty file logs a warning and falls back to
+    in-memory seeds — never crashes."""
     path = _users_path()
     if not os.path.exists(path):
         users = _seed_defaults()
@@ -98,10 +102,21 @@ def load_users() -> Dict[str, Dict[str, Any]]:
             users = json.load(f)
         if not isinstance(users, dict) or not users:
             raise ValueError("users file empty or not an object")
-        return users
     except Exception as e:
         _log.warning("unreadable users file %s: %s; using in-memory seeds", path, e)
         return _seed_defaults()
+    # Add-only merge: provision new roster members without touching existing records.
+    added = False
+    for e, rec in _seed_defaults().items():
+        if e not in users:
+            users[e] = rec
+            added = True
+    if added:
+        try:
+            _atomic_write(path, users)
+        except Exception as e:
+            _log.warning("could not persist newly seeded accounts to %s: %s", path, e)
+    return users
 
 
 def save_users(users: Dict[str, Dict[str, Any]]) -> None:
