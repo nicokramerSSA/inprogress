@@ -314,16 +314,32 @@ def _batch_keywords(batch: List[Dict[str, Any]]) -> List[str]:
     return kws
 
 
-def _batch_prompt(vendor, product, batch, context) -> str:
+def _batch_prompt(vendor, product, batch, context, requirement_matrix=None) -> str:
+    m = requirement_matrix or {}
     reqs_json = [
         {"rid": r["rid"], "domain": r["domain"], "capability": r["capability"],
          "priority": r["priority"], "requirement": r["requirement"],
          "rfp_notes": r.get("rfp_notes", "")}
         for r in batch
     ]
+    matrix_lines = []
+    for r in batch:
+        row = m.get(r["rid"])
+        if row:
+            resp = (row.get("response") or "").strip().replace("\n", " ")[:600]
+            matrix_lines.append(f'[{r["rid"]}] code={row.get("code") or "?"}: {resp}')
+    matrix_block = ""
+    if matrix_lines:
+        matrix_block = (
+            "VENDOR'S DIRECT ANSWERS FROM ITS SUBMITTED REQUIREMENTS MATRIX "
+            "(authoritative per-requirement response — treat as the vendor's own claim; "
+            "still apply judgment: an OOB claim without demonstrated depth is not automatic "
+            "full credit):\n" + "\n".join(matrix_lines) + "\n\n"
+        )
     return (
         f"VENDOR: {vendor} — {product}\n\n"
-        f"RELEVANT EXCERPTS FROM THE VENDOR'S PROPOSAL (may be partial):\n"
+        + matrix_block
+        + f"RELEVANT EXCERPTS FROM THE VENDOR'S PROPOSAL (may be partial):\n"
         f"\"\"\"\n{context[:9000]}\n\"\"\"\n\n"
         f"Score EACH of the following requirements. For each, decide:\n"
         f"  - met: Yes | Partial | No | N/A\n"
@@ -332,10 +348,10 @@ def _batch_prompt(vendor, product, batch, context) -> str:
         f"  - confidence: High | Medium | Low (Low if the proposal does not clearly evidence it)\n"
         f"  - rationale: one terse sentence in your voice (tie to outcomes/dollars where you can)\n"
         f"  - evidence_gap: what must still be proven in the Charlotte demo or references (\"\" if none)\n"
-        f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the excerpts "
-        f"above that supports your call (\"\" if the excerpts do not address it)\n\n"
-        f"If the excerpts do not address a requirement, do NOT invent a capability — mark it "
-        f"Partial/No with Low confidence and name the gap.\n\n"
+        f"  - evidence_quote: a SHORT verbatim quote (<=240 chars) copied EXACTLY from the matrix "
+        f"answer or excerpts above that supports your call (\"\" if nothing addresses it)\n\n"
+        f"If neither the matrix answer nor the excerpts address a requirement, do NOT invent a "
+        f"capability — mark it Partial/No with Low confidence and name the gap.\n\n"
         f"REQUIREMENTS:\n{json.dumps(reqs_json, indent=0)}\n\n"
         f"Return ONLY a JSON object with a single key \"scores\" whose value is an array with "
         f"ONE object per requirement above (same count, same order), each object having keys: "

@@ -29,3 +29,22 @@ class MatrixVerdictTests(unittest.TestCase):
     def test_mock_falls_back_without_matrix(self):
         s = scoring._mock_score_requirement(REQ, "", {}, "", None, {})
         self.assertIn(s.met, ("Yes", "Partial", "No"))  # dossier path still works
+
+
+class BatchPromptTests(unittest.TestCase):
+    BATCH = [REQ]
+
+    def test_prompt_includes_matrix_block(self):
+        m = {"FSM-001": {"code": "OOB", "response": "Available in base",
+                          "source": "resp.xlsx", "sheet": "Requirements"}}
+        p = scoring._batch_prompt("ServiceTitan", "", self.BATCH, "some excerpt", m)
+        self.assertIn("VENDOR'S DIRECT ANSWERS", p)
+        self.assertIn("[FSM-001]", p)
+        self.assertIn("OOB", p)
+        self.assertIn("Available in base", p)
+        self.assertIn("some excerpt", p)   # fuzzy excerpts still present
+
+    def test_prompt_omits_block_without_matrix(self):
+        p = scoring._batch_prompt("ServiceTitan", "", self.BATCH, "some excerpt", {})
+        self.assertNotIn("VENDOR'S DIRECT ANSWERS", p)
+        self.assertIn("some excerpt", p)
