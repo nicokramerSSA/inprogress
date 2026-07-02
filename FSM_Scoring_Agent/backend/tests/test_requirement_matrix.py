@@ -90,3 +90,39 @@ class MatrixTextFallbackTests(unittest.TestCase):
         self.assertEqual(m["FSM-001"]["code"], "OOB")
         self.assertEqual(m["FSM-003"]["code"], "CONFIG")
         self.assertEqual(m["PJM-050"]["code"], "OOB")
+
+
+class CodeColumnDetectionTests(unittest.TestCase):
+    """A vendor may title its code column 'Code' (no 'response' in the header),
+    with a single 'response'-titled narrative column beside it (the Salesforce
+    layout). The extractor must still capture the code, not blank it."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(); self.path = os.path.join(self.tmp, "resp.xlsx")
+
+    def test_code_column_named_code_is_captured(self):
+        # Salesforce layout: one 'response' narrative column + a separate 'Code' column.
+        header = ["Req ID", "Requirement", "Priority", "Cap.", "Notes",
+                  "Vendor Response (Finalized)", "Code"]
+        rows = [
+            ["FSM-001", "create work orders", "Must", "W2C", "note",
+             "Yes, Salesforce natively supports this.", "CONFIG"],
+        ]
+        _make_xlsx(self.path, header, rows)
+        m = ingest.extract_requirement_matrix([self.path], REQS)
+        self.assertEqual(m["FSM-001"]["code"], "CONFIG")
+        self.assertTrue(m["FSM-001"]["response"].startswith("Yes, Salesforce"))
+
+    def test_two_response_headers_still_split_code_vs_narrative(self):
+        # BuildOps layout regression: 'Response Code' (short) + 'Vendor Response'
+        # (long narrative). Both contain 'response'; the code stays the short one.
+        header = ["Req ID", "Requirement", "Priority", "Cap.", "Notes",
+                  "Response Code", "Vendor Response"]
+        rows = [
+            ["FSM-001", "create work orders", "Must", "W2C", "note",
+             "OOB", "Jobs are created directly from the inbound call intake screen."],
+        ]
+        _make_xlsx(self.path, header, rows)
+        m = ingest.extract_requirement_matrix([self.path], REQS)
+        self.assertEqual(m["FSM-001"]["code"], "OOB")
+        self.assertTrue(m["FSM-001"]["response"].startswith("Jobs are created"))

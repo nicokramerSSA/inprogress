@@ -291,7 +291,17 @@ def _find_response_columns(rows, header_idx):
         resp_cols.sort(key=avg_len)
         return resp_cols[0], resp_cols[-1]
     if len(resp_cols) == 1:
-        return resp_cols[0], resp_cols[0]
+        # One 'response' column is the narrative. Look for a separate explicit code
+        # column (header 'Code' / 'Vendor Code' / 'Resp Code') so a vendor that does
+        # not put 'response' in its code header still gets the code, not a blank.
+        resp_col = resp_cols[0]
+        for ci, c in enumerate(header):
+            if ci == resp_col:
+                continue
+            t = str(c or "").strip().lower()
+            if t == "code" or t.endswith(" code"):
+                return ci, resp_col
+        return resp_col, resp_col
     ncols = max((len(r) for r in rows), default=0)
     filled = [ci for ci in range(ncols) if any(_cell(r, ci) for r in data)]
     if len(filled) >= 2:
