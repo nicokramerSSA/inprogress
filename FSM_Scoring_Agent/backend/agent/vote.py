@@ -39,6 +39,16 @@ RECO_BANDS = [
 ]
 
 
+def _customization_risk(scores):
+    """Deterministic risk when Musts are met only via custom development.
+    Returns (count_of_CUSTOM_Musts, message) or (0, None) when none."""
+    n = sum(1 for s in scores if s.priority == "Must" and s.vendor_code == "CUSTOM")
+    if n == 0:
+        return 0, None
+    return n, (f"Heavy customization: {n} Must requirement(s) met only via custom "
+               f"development — costly to maintain and evolve.")
+
+
 def derive_recommendation(ev: VendorEvaluation) -> tuple[str, str, str]:
     """Return (recommendation, band_reason, confidence) from the numbers + gates."""
     if ev.gating and ev.gating.disqualified:
@@ -94,10 +104,14 @@ def synthesize_vote(ev: VendorEvaluation, model_id: str = "mock") -> Vote:
         evidence += ev.gating.architectural_gate_flags
     evidence = list(dict.fromkeys([e for e in evidence if e]))[:6]
 
-    # Top risks = weakest high-weight capabilities + data-control risk + worst segment.
+    # Top risks = weakest high-weight capabilities + data-control risk + worst segment,
+    # plus a deterministic customization risk (Musts met only via custom development).
+    cust_n, cust_msg = _customization_risk(ev.requirement_scores)
     risks: List[str] = []
     if ev.gating and ev.gating.disqualified:
         risks.append(f"Disqualifying: {ev.gating.unmet_must_count} unmet Must requirement(s).")
+    if cust_msg and cust_n >= 3:
+        risks.append(cust_msg)   # material reliance on custom work -> ranked high
     for c in sorted(ev.capabilities, key=lambda c: c.score_1_5)[:2]:
         if c.score_1_5 < 3.5:
             risks.append(f"{c.name} weak at {c.score_1_5}/5 (weight {int(c.weight*100)}%).")
@@ -106,6 +120,8 @@ def synthesize_vote(ev: VendorEvaluation, model_id: str = "mock") -> Vote:
     worst_seg = min(ev.segment_fit, key=lambda s: s.fit_1_5, default=None)
     if worst_seg and worst_seg.fit_1_5 < 3.0:
         risks.append(f"Poor fit for {worst_seg.segment_name} ({worst_seg.fit_1_5}/5).")
+    if cust_msg and cust_n < 3:
+        risks.append(cust_msg)   # some custom work -> lower priority
     risks = risks[:5] or ["No dominant risk; close the evidence gaps in the demo."]
 
     if is_mock(model_id):
