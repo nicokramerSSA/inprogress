@@ -214,8 +214,10 @@ def _run_job(jid, **kw):
 
 def _seed_results():
     # 1) Read-only demo seed (the five bundled vendors) so the UI has content on
-    #    first boot / fresh checkout.
-    if os.path.exists(SAMPLE_RESULTS):
+    #    first boot / fresh checkout. Set SEED_DEMO_RESULTS=0 to suppress the demo
+    #    vendors entirely — e.g. once real proposals are being evaluated and the
+    #    bundled demos are just noise. The persisted store (step 2) still loads.
+    if os.environ.get("SEED_DEMO_RESULTS", "1") != "0" and os.path.exists(SAMPLE_RESULTS):
         try:
             with open(SAMPLE_RESULTS, "r", encoding="utf-8") as f:
                 for ev in json.load(f):
