@@ -64,3 +64,15 @@ class EndToEndMockTests(unittest.TestCase):
         self.assertEqual(row.met, "No")
         self.assertEqual(row.vendor_code, "GAP")
         self.assertEqual(row.confidence, "High")
+
+
+class RegressionTests(unittest.TestCase):
+    def test_empty_matrix_matches_baseline_prompt(self):
+        # With no matrix, _batch_prompt output must not contain the matrix block.
+        p = scoring._batch_prompt("V", "", [REQ], "excerpt", None)
+        self.assertNotIn("VENDOR'S DIRECT ANSWERS", p)
+
+    def test_empty_matrix_mock_is_dossier_path(self):
+        # No matrix -> mock uses the dossier path (rationale tagged [demo], not [matrix]).
+        s = scoring._mock_score_requirement(REQ, "proposal", {}, "proposal", None, None)
+        self.assertTrue(s.rationale.startswith("[demo]"))
