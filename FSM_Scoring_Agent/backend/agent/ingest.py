@@ -320,6 +320,8 @@ def extract_requirement_matrix(paths, requirements):
     out: dict = {}
     if not known:
         return out
+    text_index = {_norm(r["requirement"]): str(r["rid"]).strip().upper()
+                  for r in requirements if r.get("requirement")}
     for p in (paths or []):
         if os.path.splitext(p)[1].lower() not in (".xlsx", ".xlsm"):
             continue
@@ -335,11 +337,9 @@ def extract_requirement_matrix(paths, requirements):
                 if not rows:
                     continue
                 hi, rid_col = _find_rid_column(rows, known)
-                text_index = {_norm(r["requirement"]): str(r["rid"]).strip().upper()
-                              for r in requirements if r.get("requirement")}
                 text_col = None
                 if rid_col is None:
-                    # header row for a text-only sheet is row 0 unless a match run starts lower
+                    # text-only sheet: treat row 0 as the header row
                     hi = 0
                     text_col = _find_requirement_text_column(rows, hi, text_index)
                     if text_col is None:
