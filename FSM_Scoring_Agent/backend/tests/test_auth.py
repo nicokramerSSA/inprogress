@@ -16,11 +16,32 @@ class AuthStoreTests(unittest.TestCase):
     def tearDown(self):
         os.environ.pop("USERS_FILE", None)
 
-    def test_first_load_seeds_seven_accounts_and_writes_file(self):
+    def test_first_load_seeds_all_accounts_and_writes_file(self):
         users = self.auth.load_users()
-        self.assertEqual(len(users), 7)
+        self.assertEqual(len(users), 8)
         self.assertIn("nkramer@ssaandco.com", users)
+        self.assertIn("jbrown@ssaandco.com", users)  # Jeff Brown provisioned
         self.assertTrue(os.path.exists(os.environ["USERS_FILE"]))
+
+    def test_load_adds_new_seed_account_without_clobbering_changed_passwords(self):
+        # Simulate the live state: an existing users file that predates a roster
+        # addition (no jbrown) and in which one user already changed their password.
+        import json as _json
+        existing = self.auth._seed_defaults()
+        existing.pop("jbrown@ssaandco.com")               # roster member not yet in file
+        existing["nkramer@ssaandco.com"]["password_hash"] = \
+            self.auth.generate_password_hash("nicksOwnPass1", method="pbkdf2")
+        existing["nkramer@ssaandco.com"]["must_change"] = False
+        with open(os.environ["USERS_FILE"], "w", encoding="utf-8") as f:
+            _json.dump(existing, f)
+
+        users = self.auth.load_users()
+        # Jeff was added with the temp password...
+        self.assertIn("jbrown@ssaandco.com", users)
+        self.assertIsNotNone(self.auth.verify("jbrown@ssaandco.com", self.auth.TEMP_PASSWORD))
+        # ...and Nick's changed password is preserved (temp no longer works, his does).
+        self.assertIsNone(self.auth.verify("nkramer@ssaandco.com", self.auth.TEMP_PASSWORD))
+        self.assertIsNotNone(self.auth.verify("nkramer@ssaandco.com", "nicksOwnPass1"))
 
     def test_seed_passwords_are_hashed_not_plaintext(self):
         users = self.auth.load_users()
