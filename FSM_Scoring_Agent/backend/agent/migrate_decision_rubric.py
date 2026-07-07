@@ -23,7 +23,7 @@ from typing import Any, Dict, List
 
 from . import scoring
 from .knowledge import get_kb
-from .schemas import AgenticFuture, RequirementScore, VendorEvaluation
+from .schemas import AgenticFuture, GatingResult, RequirementScore, VendorEvaluation
 from .vote import synthesize_vote
 
 
@@ -62,19 +62,41 @@ def rederive_result(result: Dict[str, Any]) -> Dict[str, Any]:
 
     capabilities = scoring._rollup_capabilities(scores, vendor)
     categories = scoring._rollup_categories(scores, vendor, capabilities)
-    # No original proposal text is stored on a result, so the architectural-flag
-    # scan runs on "" (same behavior evaluate_vendor gets for a proposal that
-    # never mentions multi-tenant/union/CBA terms at all).
-    gating = scoring._compute_gating(scores, "", req_text)
+
+    # Gating: unmet-Must detection is deterministic and safe to recompute from the
+    # scores themselves. The architectural-flag half of _compute_gating, though, is
+    # a keyword scan over the ORIGINAL proposal text — which isn't stored on a
+    # result — so re-running it on "" would always miss the multi-tenant flag and
+    # always spuriously fire the union/CBA flag (empty text never mentions either
+    # term). Instead: recompute only unmet_musts/unmet_must_count from scores, and
+    # carry over the original result's real architectural_gate_flags (computed
+    # July-2 from the vendor's actual proposal text) rather than the empty-text scan.
+    recomputed = scoring._compute_gating(scores, "", req_text)
+    scale_gated, scale_reason = scoring._enterprise_scale_gate(vendor)
+    orig_flags = [
+        f for f in (result.get("gating") or {}).get("architectural_gate_flags", [])
+        if f != scale_reason
+    ]
+    flags = orig_flags + ([scale_reason] if scale_gated else [])
+    summary = (
+        f"Passes the Must gate. {recomputed.unmet_must_count} unmet 'Must' requirement(s) noted as risk"
+        + (f"; {len(flags)} architectural flag(s) to confirm." if flags else ".")
+    )
+    if scale_gated:
+        summary += f" {scale_reason}"
+    gating = GatingResult(
+        disqualified=False,
+        unmet_must_count=recomputed.unmet_must_count,
+        unmet_musts=recomputed.unmet_musts,
+        architectural_gate_flags=flags,
+        summary=summary,
+    )
     segment_fit = scoring._segment_fit(capabilities)
 
     raw_total = round(sum(c.weighted_points for c in categories), 1)
-    scale_gated, scale_reason = scoring._enterprise_scale_gate(vendor)
     if scale_gated:
         cap = kb.scorecard.get("decision_knobs", {}).get("scale_gate_cap", 60)
         weighted_total = round(min(raw_total, cap), 1)
-        gating.architectural_gate_flags.append(scale_reason)
-        gating.summary += f" {scale_reason}"
     else:
         weighted_total = raw_total
     capability_weighted_total = round(

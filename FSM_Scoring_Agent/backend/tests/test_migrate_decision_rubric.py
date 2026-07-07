@@ -55,6 +55,37 @@ class MigrationTests(unittest.TestCase):
             self.assertIn("vote", out)
             self.assertIn("recommendation", out["vote"])
 
+    def test_rederive_carries_over_real_flags_non_scale_gated(self):
+        """IFS is not enterprise-scale-gated. Its migrated architectural_gate_flags
+        must equal the ORIGINAL result's real (July-2, proposal-derived) flags —
+        not the spurious union/CBA flag an empty-text keyword scan would fire."""
+        original = self.results["IFS"]
+        original_flags = original["gating"]["architectural_gate_flags"]
+        once = rederive_result(original)
+        self.assertEqual(once["gating"]["architectural_gate_flags"], original_flags)
+        self.assertFalse(
+            any("Union" in f or "CBA" in f for f in once["gating"]["architectural_gate_flags"]),
+            "spurious empty-text union/CBA flag leaked into migrated gating",
+        )
+
+    def test_rederive_carries_over_real_flags_scale_gated(self):
+        """BuildOps IS enterprise-scale-gated. Migrated flags must equal the
+        original real flags plus exactly one scale-gate reason, and re-deriving an
+        already-migrated result must not append a second copy of that reason."""
+        original = self.results["BuildOps"]
+        original_flags = original["gating"]["architectural_gate_flags"]
+
+        once = rederive_result(original)
+        once_flags = once["gating"]["architectural_gate_flags"]
+        scale_flags = [f for f in once_flags if "scale" in f.lower()]
+        self.assertEqual(len(scale_flags), 1, once_flags)
+        self.assertEqual(once_flags, original_flags + scale_flags)
+
+        twice = rederive_result(once)
+        twice_flags = twice["gating"]["architectural_gate_flags"]
+        self.assertEqual(twice_flags, once_flags)  # idempotent — no double scale flag
+        self.assertEqual(len([f for f in twice_flags if "scale" in f.lower()]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
