@@ -3,7 +3,8 @@ import json
 import os
 
 from agent.sample import sample_proposal_text
-from agent.scoring import evaluate_vendor, _scale_tier, _enterprise_scale_gate
+from agent.scoring import evaluate_vendor, _scale_tier, _enterprise_scale_gate, _compute_gating
+from agent.schemas import RequirementScore
 
 
 class DecisionRubricRegressionTests(unittest.TestCase):
@@ -48,6 +49,23 @@ class EnterpriseScaleGateTests(unittest.TestCase):
         gated_ifs, _ = _enterprise_scale_gate("IFS")               # dossier scale = High
         assert gated_bo is True and "scale" in reason_bo.lower()
         assert gated_ifs is False
+
+
+class GatingDecisionTests(unittest.TestCase):
+    def _req(self, rid, met, code, prio="Must"):
+        """Helper to construct a RequirementScore for testing."""
+        return RequirementScore(
+            rid=rid, domain="Domain A",
+            priority=prio, capability="W2C", met=met, quality=1, vendor_code=code,
+            confidence="Low", rationale="", evidence_gap="")
+
+    def test_unmet_musts_do_not_disqualify(self):
+        """Unmet Musts are collected and surfaced as risks, but no longer auto-disqualify."""
+        scores = [self._req("R1", "No", "GAP"), self._req("R2", "No", "GAP")]
+        g = _compute_gating(scores, "single-tenant, union, prevailing wage", {})
+        assert g.disqualified is False, "disqualified should be False even with unmet Musts"
+        assert g.unmet_must_count == 2, "unmet Musts should still be counted"
+        assert len(g.unmet_musts) == 2, "unmet Musts list should be populated"
 
 
 class ConfigTests(unittest.TestCase):

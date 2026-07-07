@@ -753,11 +753,12 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str,
     if not any(k in low for k in ("union", "cba", "prevailing wage", "certified payroll")):
         flags.append("Union / CBA / prevailing-wage handling not evidenced in proposal text.")
 
-    disqualified = len(unmet) > 0
+    # Unmet Musts are surfaced as risks but no longer auto-disqualify — the decision
+    # score and the enterprise-scale gate carry the finalist/reject call now.
+    disqualified = False
     summary = (
-        f"DISQUALIFIED — {len(unmet)} unmet 'Must' requirement(s)."
-        if disqualified else
-        "Passes the Must gate. " + (f"{len(flags)} architectural flag(s) to confirm." if flags else "No architectural flags.")
+        f"Passes the Must gate. {len(unmet)} unmet 'Must' requirement(s) noted as risk"
+        + (f"; {len(flags)} architectural flag(s) to confirm." if flags else ".")
     )
     return GatingResult(
         disqualified=disqualified, unmet_must_count=len(unmet),
