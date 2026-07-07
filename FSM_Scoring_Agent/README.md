@@ -79,7 +79,9 @@ cookie over http.
   confidence + rationale + evidence gap), in the persona's voice.
 - **Two scoring lenses:** the decision-weighted headline score (0–100) and the RFP §30
   OOB capability lens (0–100).
-- **MoSCoW + architectural gating:** any unmet *Must* disqualifies (RFP §8).
+- **MoSCoW-aware scoring:** unmet *Musts* discount the score as risk rather than
+  auto-disqualifying (RFP §8); an enterprise-scale/vendor-viability gate can still force
+  a Reject regardless of score.
 - **Per-OpCo-segment fit** across six OpCo archetypes (size/maturity/product-mix/talent).
 - **"Fit into an agentic future"** — openness/data-control weighted over shipped AI features.
 - **A vote:** Recommend / Shortlist / Reject / Disqualified, with narrative, steel-manned
