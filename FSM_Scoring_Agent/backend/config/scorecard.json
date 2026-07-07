@@ -87,7 +87,14 @@
     "custom_must_needs_firm_sow": false,
     "single_tenant_required": true,
     "union_nonunion_isolation_required": true,
-    "description": "Must-level gaps still matter, but the revised score also applies explicit decision caps. A North Star architecture failure can cap a vendor below the finalist range even when many functional rows are marked Yes. Project/job-cost ownership, implementation accountability, and add-on/ERP dependency can materially discount otherwise complete responses."
+    "description": "Unmet Musts lower the score and are surfaced as risks; they no longer auto-disqualify. A vendor whose enterprise-scale / vendor-viability rating is below the bar is capped below the finalist range (a Reject), because a mid-market platform is not a fit for a 40-80 OpCo enterprise rollup regardless of functional coverage. Genuine single-tenant or union-isolation architectural failures remain hard gates."
+  },
+  "decision_knobs": {
+    "enterprise_scale_bar": "High",
+    "scale_gate_cap": 60,
+    "operating_capability_weights": {
+      "W2C": 0.28, "TPA": 0.20, "ACQ": 0.14, "EVG": 0.14, "RLC": 0.14, "CXR": 0.10
+    }
   },
   "requirement_priority_mix": {
     "Must": 278,

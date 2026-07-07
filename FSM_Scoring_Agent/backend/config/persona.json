@@ -94,7 +94,7 @@
     "principle": "Weight by decision leverage and proof quality, not raw response completeness. A yes/config answer only earns full credit when the delivery model, architecture, and evidence make it credible.",
     "quote": "The weighting is not just how important the topic is; it is how much it should factor into the strategic system decision.",
     "implications": [
-      "Treat North Star architecture, security, data access, and enterprise operating model as gates/caps, not ordinary line-item preferences.",
+      "Treat enterprise scale / vendor viability, security, data access, and the enterprise operating model as gates/caps, not ordinary line-item preferences.",
       "Discount configurable, partner, add-on, ERP-dependent, custom, or roadmap answers unless the vendor proves delivery accountability.",
       "Use call color to break mechanical ties where response matrices are identical but platform reality differs.",
       "Reward enterprise platform scale and agentic/data openness, but only after project/job-cost and implementation risks are explicit."

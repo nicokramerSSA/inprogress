@@ -1,4 +1,6 @@
 import unittest
+import json
+import os
 
 from agent.sample import sample_proposal_text
 from agent.scoring import evaluate_vendor
@@ -32,6 +34,16 @@ class DecisionRubricRegressionTests(unittest.TestCase):
                         "evidence", "agentic", "commercial",
                     ],
                 )
+
+
+class ConfigTests(unittest.TestCase):
+    def test_decision_knobs_present_and_weights_sum_to_one(self):
+        CFG = os.path.join(os.path.dirname(__file__), "..", "config", "scorecard.json")
+        sc = json.load(open(CFG))
+        knobs = sc["decision_knobs"]
+        assert knobs["enterprise_scale_bar"] == "High"
+        assert knobs["scale_gate_cap"] <= 64          # below the Shortlist floor (65)
+        assert abs(sum(c["weight"] for c in sc["categories"]) - 1.0) < 1e-9
 
 
 if __name__ == "__main__":
