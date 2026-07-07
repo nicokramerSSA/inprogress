@@ -86,60 +86,6 @@ _OPERATING_CAPABILITY_WEIGHTS = {
     "RLC": 0.14, "CXR": 0.10,
 }
 
-# These overlays encode the call color that row-level requirement matrices miss:
-# architecture is not interchangeable with feature coverage, project/job-cost
-# ownership matters, and add-on/custom/partner dependency should separate vendors.
-_KNOWN_DECISION_DIMENSIONS = {
-    "IFS": {
-        "operating": 4.00, "project": 2.49, "architecture": 4.30,
-        "implementation": 4.10, "evidence": 4.20, "agentic": 4.28,
-        "commercial": 4.10,
-    },
-    "Salesforce": {
-        "operating": 2.84, "project": 0.94, "architecture": 4.55,
-        "implementation": 2.90, "evidence": 2.90, "agentic": 4.28,
-        "commercial": 4.00,
-    },
-    "ServiceMax": {
-        "operating": 2.46, "project": 0.52, "architecture": 3.75,
-        "implementation": 2.05, "evidence": 2.55, "agentic": 3.54,
-        "commercial": 3.60,
-    },
-    "ServiceTitan": {
-        "operating": 3.09, "project": 2.90, "architecture": 1.75,
-        "implementation": 2.20, "evidence": 3.35, "agentic": 3.22,
-        "commercial": 3.40,
-    },
-    "BuildOps": {
-        "operating": 3.11, "project": 3.11, "architecture": 1.45,
-        "implementation": 1.90, "evidence": 2.20, "agentic": 3.54,
-        "commercial": 3.10,
-    },
-}
-
-_KNOWN_CAPABILITY_MULTIPLIERS = {
-    "IFS": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.83, "ACQ": 1.00,
-        "EVG": 1.00, "RLC": 1.00, "CXR": 1.00, "SCL": 1.00,
-    },
-    "Salesforce": {
-        "W2C": 0.72, "TPA": 0.72, "PJE": 0.48, "ACQ": 1.00,
-        "EVG": 1.00, "RLC": 1.00, "CXR": 0.72, "SCL": 1.00,
-    },
-    "ServiceMax": {
-        "W2C": 0.58, "TPA": 0.58, "PJE": 0.36, "ACQ": 0.95,
-        "EVG": 0.90, "RLC": 0.90, "CXR": 0.58, "SCL": 0.90,
-    },
-    "ServiceTitan": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.70, "ACQ": 0.54,
-        "EVG": 0.50, "RLC": 0.50, "CXR": 1.00, "SCL": 0.42,
-    },
-    "BuildOps": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.74, "ACQ": 0.56,
-        "EVG": 0.52, "RLC": 0.50, "CXR": 1.00, "SCL": 0.38,
-    },
-}
-
 _DECISION_SCORE_CAPS = {
     "Salesforce": 70.0,
     "ServiceMax": 66.0,
@@ -947,13 +893,11 @@ def _decision_category_score(
     scores: List[RequirementScore],
     capabilities: List[CapabilityScore],
 ) -> float:
-    known = _KNOWN_DECISION_DIMENSIONS.get(_known_vendor_key(vendor), {})
-    if cid in known:
-        return known[cid]
-
     cap_scores = {c.code: c.score_1_5 for c in capabilities}
     if cid == "operating":
-        return _clamp_1_5(_capability_average(cap_scores, _OPERATING_CAPABILITY_WEIGHTS))
+        weights = get_kb().scorecard.get("decision_knobs", {}).get(
+            "operating_capability_weights", _OPERATING_CAPABILITY_WEIGHTS)
+        return _clamp_1_5(_capability_average(cap_scores, weights))
     if cid == "project":
         return _clamp_1_5(cap_scores.get("PJE", 0.0))
     if cid == "architecture":
@@ -972,20 +916,10 @@ def _decision_category_score(
 
 
 def _decision_category_rationale(cid: str, vendor: str) -> str:
-    base = _DECISION_CATEGORY_RATIONALE.get(
+    return _DECISION_CATEGORY_RATIONALE.get(
         cid,
         "Decision-weighted category score from requirement evidence and confidence.",
     )
-    key = _known_vendor_key(vendor)
-    if cid == "project" and key == "IFS":
-        return base + " IFS has the best overall platform fit, but project-financial details still need proof in demo and references."
-    if cid == "project" and key == "Salesforce":
-        return base + " Salesforce is materially penalized where project control depends on ERP, partners, or heavy configuration."
-    if cid == "project" and key == "ServiceMax":
-        return base + " ServiceMax is penalized harder than Salesforce for weaker ownership and add-on dependency."
-    if cid == "architecture" and key in ("BuildOps", "ServiceTitan"):
-        return base + " The architecture score reflects a hard North Star platform concern, not just functional breadth."
-    return base
 
 
 def _legacy_category_raw(cid: str, scores: List[RequirementScore]) -> tuple[float, List[RequirementScore]]:
@@ -1055,10 +989,6 @@ def _capability_confidence_multiplier(
     code: str,
     subset: List[RequirementScore],
 ) -> float:
-    known = _KNOWN_CAPABILITY_MULTIPLIERS.get(_known_vendor_key(vendor), {})
-    if code in known:
-        return known[code]
-
     code_mult = {
         "OOB": 1.00, "CONFIG": 0.75, "EXTENSION": 0.60, "CUSTOM": 0.45,
         "PARTNER": 0.45, "ROADMAP": 0.25, "GAP": 0.00,
