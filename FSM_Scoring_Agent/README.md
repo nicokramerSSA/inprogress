@@ -77,8 +77,8 @@ cookie over http.
 
 - **Scores all 422 RFP requirements** per vendor (Met? + Quality 1–5 + response code +
   confidence + rationale + evidence gap), in the persona's voice.
-- **Two scoring lenses:** the SSA scorecard categories (headline 0–100) and the RFP §30
-  business-capability weighting (0–100).
+- **Two scoring lenses:** the decision-weighted headline score (0–100) and the RFP §30
+  OOB capability lens (0–100).
 - **MoSCoW + architectural gating:** any unmet *Must* disqualifies (RFP §8).
 - **Per-OpCo-segment fit** across six OpCo archetypes (size/maturity/product-mix/talent).
 - **"Fit into an agentic future"** — openness/data-control weighted over shipped AI features.
@@ -107,7 +107,6 @@ answers to requirements. "Run on sample" uses the synthetic placeholder until Ju
 `POST /api/chat {question, model_id, history}`
 
 ## Status & caveats
-Vendor proposals are due **July 2, 2026**; until then the app runs on synthetic sample
-proposals and the offline engine grounds scores in the external-research dossier (clearly
-labelled "demo"). The agent is **advisory** — it augments, not replaces, the human committee.
+The bundled offline engine now ships with the five-vendor decision-rubric rescore seeded
+from the research dossier and review-call color. Live proposal reads still require model keys. The agent is **advisory** — it augments, not replaces, the human committee.
 See `docs/DESIGN.md` §9 for the full caveats.

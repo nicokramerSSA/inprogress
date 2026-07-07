@@ -30,8 +30,8 @@ from .schemas import VendorEvaluation, Vote
 # --------------------------------------------------------------------------- #
 # Recommendation rubric (deterministic, auditable)                            #
 # --------------------------------------------------------------------------- #
-# Bands are expressed on the 0-100 weighted SSA-category total. A disqualifying
-# gate overrides the band entirely — that is the whole point of a gate.
+# Bands are expressed on the 0-100 decision-weighted score. A disqualifying gate
+# overrides the band entirely — that is the whole point of a gate.
 RECO_BANDS = [
     (78, "Recommend", "Top-tier fit; advance to demos as a front-runner."),
     (65, "Shortlist", "Credible contender; advance to demos to close evidence gaps."),
@@ -146,7 +146,7 @@ def _mock_narrative(ev, reco, band_reason, findings) -> tuple[str, str]:
     seg_lo = ", ".join(findings["weakest_segments"])
     narrative = (
         f"[demo vote] {reco}. {band_reason} {ev.vendor} lands at {ev.weighted_total}/100 on the "
-        f"SSA category weighting ({ev.capability_weighted_total}/100 on the capability lens). "
+        f"decision-weighted rubric ({ev.capability_weighted_total}/100 on the OOB capability lens). "
         f"{ev.gating.summary if ev.gating else ''} "
         f"Strongest where it counts: {strong}. Weakest: {weak}. "
         f"Best-fit OpCo archetypes: {seg_hi}; thinnest for {seg_lo}. "

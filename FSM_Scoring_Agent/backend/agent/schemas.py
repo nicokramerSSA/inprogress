@@ -31,7 +31,7 @@ class RequirementScore:
 
 @dataclass
 class CategoryScore:
-    """One of the six SSA scorecard categories."""
+    """One decision-weighted scorecard category."""
     id: str
     name: str
     weight: float                 # 0..1
@@ -131,8 +131,8 @@ class VendorEvaluation:
                                   #  fell back — see engine_warning)
     evaluated_at: str
 
-    weighted_total: float         # 0-100, headline SSA-category score
-    capability_weighted_total: float  # 0-100, RFP Section-30 capability lens
+    weighted_total: float         # 0-100, headline decision-weighted score
+    capability_weighted_total: float  # 0-100, RFP Section-30 OOB capability lens
     gating: GatingResult = None
     categories: List[CategoryScore] = field(default_factory=list)
     capabilities: List[CapabilityScore] = field(default_factory=list)
