@@ -693,68 +693,129 @@ git commit -m "feat(rubric): in-place migration that re-derives evals from store
 
 ---
 
-### Task 9: Calibrate knobs against the real data; regenerate the seed
+### Task 9: Gate-driven vote + recalibrated bands; regenerate the seed
 
-Tune the config knobs until the re-derived fixture reproduces the committee's verdicts and a sensible ranking, then write the migrated five back into `sample_results.json` and record the results in the spec.
+**Finding that reshaped this task (user-approved Option A):** the evidence-derived decision scores cluster tightly (IFS 62, BuildOps 58, Salesforce 56, ServiceMax 53, ServiceTitan 49) and do NOT separate the intended finalists from the rejects by score alone — ServiceMax (53, finalist) scores below BuildOps (58, reject). The reliable separator is the enterprise-scale gate. So: (1) the scale gate DRIVES the vote to "Reject" (the gate overrides the band, exactly like a disqualification), and (2) the Recommend/Shortlist bands are recalibrated to the new score distribution for the ungated finalists. Do NOT try to push finalists past a fixed 65 bar.
 
 **Files:**
-- Modify: `FSM_Scoring_Agent/backend/config/scorecard.json` (`decision_knobs` values only)
+- Modify: `FSM_Scoring_Agent/backend/agent/vote.py` (`derive_recommendation`)
+- Modify: `FSM_Scoring_Agent/backend/config/scorecard.json` (`decision_knobs`: add `recommend_min`, `shortlist_min`)
 - Modify: `FSM_Scoring_Agent/backend/data/sample_results.json`
 - Modify: `FSM_Scoring_Agent/docs/superpowers/specs/2026-07-07-decision-rubric-engine-design.md` (Appendix A)
-- Test: `FSM_Scoring_Agent/backend/tests/test_migrate_decision_rubric.py`
+- Test: `FSM_Scoring_Agent/backend/tests/test_migrate_decision_rubric.py` (verdict test) + `tests/test_decision_rubric.py` (vote-band unit test)
 
 **Interfaces:**
-- Consumes: `rederive_result`, the fixture.
+- Produces: `derive_recommendation(ev)` returns "Reject" when `_enterprise_scale_gate(ev.vendor)` is gated (overriding the band); otherwise bands from `decision_knobs.recommend_min`/`shortlist_min`.
 
-- [ ] **Step 1: Write the verdict test (the calibration target)**
+- [ ] **Step 1: Add the band knobs to config**
 
-Add to `MigrationTests` in `test_migrate_decision_rubric.py`:
+In `scorecard.json` `decision_knobs`, add: `"recommend_min": 60, "shortlist_min": 50`.
+
+- [ ] **Step 2: Write the failing vote-band test**
+
+Add to `test_decision_rubric.py`:
+
+```python
+def test_scale_gated_vote_is_reject_regardless_of_score():
+    from agent.scoring import evaluate_vendor
+    from agent.vote import synthesize_vote
+    ev = evaluate_vendor("BuildOps", "", sample_proposal_text("BuildOps"), scoring_model="mock")
+    ev.vote = synthesize_vote(ev, "mock")
+    assert ev.vote.recommendation == "Reject"           # gate overrides the band
+    assert ev.gating.disqualified is False               # Reject, not Disqualified
+
+def test_ungated_vendor_banded_by_decision_score():
+    from agent.scoring import evaluate_vendor
+    from agent.vote import synthesize_vote
+    ev = evaluate_vendor("IFS", "", sample_proposal_text("IFS"), scoring_model="mock")
+    ev.vote = synthesize_vote(ev, "mock")
+    assert ev.vote.recommendation in ("Recommend", "Shortlist")   # a finalist, not Reject
+```
+
+Run: `cd FSM_Scoring_Agent/backend && python3 -m pytest tests/test_decision_rubric.py -q`
+Expected: FAIL (gate does not yet drive the vote).
+
+- [ ] **Step 3: Implement the gate-driven vote + config bands in `vote.py`**
+
+Add imports near the top: `from .knowledge import get_kb` and `from .scoring import _enterprise_scale_gate`.
+
+Replace `derive_recommendation` so it reads (keeping the existing confidence logic below unchanged):
+
+```python
+def derive_recommendation(ev: VendorEvaluation) -> tuple[str, str, str]:
+    """Return (recommendation, band_reason, confidence) from the numbers + gates."""
+    if ev.gating and ev.gating.disqualified:
+        return ("Disqualified",
+                f"{ev.gating.unmet_must_count} unmet 'Must' requirement(s) — disqualifying per RFP Section 8.",
+                "High")
+    # Enterprise-scale / vendor-viability gate overrides the band: a mid-market
+    # vendor is a Reject regardless of its decision score.
+    gated, gate_reason = _enterprise_scale_gate(ev.vendor)
+    if gated:
+        return ("Reject", gate_reason, "High")
+    knobs = get_kb().scorecard.get("decision_knobs", {})
+    bands = [
+        (knobs.get("recommend_min", 78), "Recommend", "Top-tier fit; advance to demos as a front-runner."),
+        (knobs.get("shortlist_min", 65), "Shortlist", "Credible contender; advance to demos to close evidence gaps."),
+        (0, "Reject", "Below the bar for this portfolio; do not advance without a material change."),
+    ]
+    score = ev.weighted_total
+    for threshold, label, reason in bands:
+        if score >= threshold:
+            reco, band_reason = label, reason
+            break
+    cat_conf = [c.confidence for c in ev.categories]
+    low_share = cat_conf.count("Low") / max(1, len(cat_conf))
+    confidence = "Low" if low_share >= 0.34 else "High" if low_share == 0 else "Medium"
+    if ev.gating and ev.gating.architectural_gate_flags:
+        confidence = "Low" if confidence == "Medium" else confidence
+    return (reco, band_reason, confidence)
+```
+
+Delete the module-level `RECO_BANDS` constant if it now has no other referents (grep first; if referenced elsewhere, leave it).
+
+Run: `cd FSM_Scoring_Agent/backend && python3 -m pytest tests/test_decision_rubric.py -q`
+Expected: PASS. Watch for a circular import (`vote` importing `scoring`) — run the full suite to confirm imports resolve.
+
+- [ ] **Step 4: Rewrite the verdict test to assert votes, not a 65 headline**
+
+Replace the Task-8 placeholder verdict test in `test_migrate_decision_rubric.py` with:
 
 ```python
     def test_rederive_reproduces_committee_verdicts(self):
         got = {v: rederive_result(self.results[v]) for v in self.results}
-        # finalists not scale-gated; rejects gated into Reject band
-        self.assertFalse(got["IFS"]["gating"]["disqualified"])
-        self.assertGreaterEqual(got["IFS"]["weighted_total"], 65)
-        self.assertGreaterEqual(got["Salesforce"]["weighted_total"], 65)
-        self.assertGreaterEqual(got["ServiceMax"]["weighted_total"], 65)
-        self.assertLessEqual(got["ServiceTitan"]["weighted_total"], 64)
-        self.assertLessEqual(got["BuildOps"]["weighted_total"], 64)
+        self.assertEqual(got["IFS"]["vote"]["recommendation"], "Recommend")
+        self.assertEqual(got["Salesforce"]["vote"]["recommendation"], "Shortlist")
+        self.assertEqual(got["ServiceMax"]["vote"]["recommendation"], "Shortlist")
         self.assertEqual(got["ServiceTitan"]["vote"]["recommendation"], "Reject")
         self.assertEqual(got["BuildOps"]["vote"]["recommendation"], "Reject")
-        # IFS is the top finalist
+        # rejects are scale-gated, not Must-disqualified
+        self.assertFalse(got["ServiceTitan"]["gating"]["disqualified"])
+        self.assertFalse(got["BuildOps"]["gating"]["disqualified"])
+        self.assertTrue(any("scale" in f.lower()
+                            for f in got["BuildOps"]["gating"]["architectural_gate_flags"]))
+        # IFS is the top finalist by decision score
         self.assertEqual(max(got, key=lambda v: got[v]["weighted_total"]), "IFS")
 ```
 
-Run it: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric.MigrationTests.test_rederive_reproduces_committee_verdicts -v`
-Expected: likely FAIL initially. Read the assertion output to see which vendor is off.
+- [ ] **Step 5: Run the verdict test; tune band knobs if needed**
 
-- [ ] **Step 2: Print the full table to guide tuning**
+Run: `cd FSM_Scoring_Agent/backend && python3 -m pytest tests/test_migrate_decision_rubric.py -q`
+With `recommend_min=60, shortlist_min=50` this should pass on the current numbers (IFS 62 → Recommend; Salesforce 56 / ServiceMax 53 → Shortlist; ServiceTitan / BuildOps → Reject via gate). If a finalist's Recommend/Shortlist split reads wrong, adjust `recommend_min`/`shortlist_min` only (do not touch category weights). Re-run until green.
+
+- [ ] **Step 6: Print the final table**
 
 ```bash
 cd FSM_Scoring_Agent/backend && python3 -c "
 import json; from agent.migrate_decision_rubric import rederive_result
 res={v['vendor']:v for v in json.load(open('tests/fixtures/july2_store_snapshot.json'))}
 for v in ['IFS','Salesforce','ServiceMax','ServiceTitan','BuildOps']:
-    r=rederive_result(res[v]); print(v, r['weighted_total'], r['vote']['recommendation'],
-        {c['id']:c['raw_1_5'] for c in r['categories']})"
+    r=rederive_result(res[v])
+    print(v, r['weighted_total'], r['vote']['recommendation'],
+          '| gate:', [f for f in r['gating']['architectural_gate_flags'] if 'scale' in f.lower()][:1])"
 ```
 
-- [ ] **Step 3: Adjust knobs**
-
-Edit only `scorecard.json` `decision_knobs`:
-- If a finalist (IFS / Salesforce / ServiceMax) lands below 65, raise `operating_capability_weights` toward their stronger capabilities or revisit category weights in `categories`.
-- If a reject lands above 64 despite gating, lower `scale_gate_cap`.
-- Keep category `weight` values summing to 1.0 if you touch them.
-
-Re-run Step 2 after each change. Target: IFS highest; IFS/Salesforce/ServiceMax ≥ 65; ServiceTitan/BuildOps ≤ 64 and "Reject".
-
-- [ ] **Step 4: Lock the verdict test**
-
-Run: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric -v`
-Expected: PASS (both tests).
-
-- [ ] **Step 5: Regenerate the seed from the migrated fixture**
+- [ ] **Step 7: Regenerate the seed from the migrated fixture**
 
 ```bash
 cd FSM_Scoring_Agent/backend && python3 -c "
@@ -764,15 +825,17 @@ json.dump(res, open('data/sample_results.json','w'), ensure_ascii=False, indent=
 print('seed rewritten with', len(res), 'vendors')"
 ```
 
-- [ ] **Step 6: Fill in spec Appendix A**
+- [ ] **Step 8: Fill in spec Appendix A**
 
-Paste the final five-vendor table (headline, vote, gate reason, category breakdown) and the final knob values into Appendix A of the design doc.
+Paste the final five-vendor table from Step 6 (headline, vote, gate reason) and the final knob values (`enterprise_scale_bar`, `scale_gate_cap`, `recommend_min`, `shortlist_min`) into Appendix A of the design doc.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Run the full suite and commit**
+
+Run: `cd FSM_Scoring_Agent/backend && python3 -m pytest tests/ -q` — fully green.
 
 ```bash
-git add FSM_Scoring_Agent/backend/config/scorecard.json FSM_Scoring_Agent/backend/data/sample_results.json FSM_Scoring_Agent/docs/superpowers/specs/2026-07-07-decision-rubric-engine-design.md FSM_Scoring_Agent/backend/tests/test_migrate_decision_rubric.py
-git commit -m "feat(rubric): calibrate knobs to committee verdicts; regenerate seed from real data"
+git add FSM_Scoring_Agent/backend/agent/vote.py FSM_Scoring_Agent/backend/config/scorecard.json FSM_Scoring_Agent/backend/data/sample_results.json FSM_Scoring_Agent/docs/superpowers/specs/2026-07-07-decision-rubric-engine-design.md FSM_Scoring_Agent/backend/tests/test_migrate_decision_rubric.py FSM_Scoring_Agent/backend/tests/test_decision_rubric.py
+git commit -m "feat(rubric): scale gate drives Reject vote; recalibrate bands; regenerate seed from real data"
 ```
 
 ---
