@@ -5,6 +5,7 @@ import os
 from agent.sample import sample_proposal_text
 from agent.scoring import evaluate_vendor, _scale_tier, _enterprise_scale_gate, _compute_gating
 from agent.schemas import RequirementScore
+from agent.vote import synthesize_vote
 
 
 class DecisionRubricRegressionTests(unittest.TestCase):
@@ -73,6 +74,38 @@ class ConfigTests(unittest.TestCase):
         assert knobs["enterprise_scale_bar"] == "High"
         assert knobs["scale_gate_cap"] <= 64          # below the Shortlist floor (65)
         assert abs(sum(c["weight"] for c in sc["categories"]) - 1.0) < 1e-9
+
+
+class PropertyBasedRegressionTests(unittest.TestCase):
+    def test_engine_properties_for_all_five(self):
+        """Property assertions over all five vendors: categories, values, and gating."""
+        for vendor in ["IFS", "Salesforce", "ServiceMax", "ServiceTitan", "BuildOps"]:
+            ev = evaluate_vendor(vendor, "", sample_proposal_text(vendor), scoring_model="mock")
+            ev.vote = synthesize_vote(ev, "mock")
+            # categories present, in order, with values in range [0,5] and not all identical
+            raws = [c.raw_1_5 for c in ev.categories]
+            assert [c.id for c in ev.categories] == [
+                "operating", "project", "architecture",
+                "implementation", "evidence", "agentic", "commercial"
+            ], f"Category IDs for {vendor} do not match expected order"
+            assert all(0 <= r <= 5 for r in raws), f"Some raw_1_5 values out of range for {vendor}"
+            assert len(set(round(r, 2) for r in raws)) > 1, f"All category values identical for {vendor}"
+            # no fabricated requirement ids in the gate
+            assert all(m.get("rid") != "ARCH-GATE" for m in ev.gating.unmet_musts), \
+                f"Found ARCH-GATE in unmet_musts for {vendor}"
+
+    def test_scale_gate_matches_dossier_for_all_five(self):
+        """Assert _enterprise_scale_gate returns expected values per vendor dossier."""
+        expected = {
+            "IFS": False,
+            "Salesforce": False,
+            "ServiceMax": False,
+            "ServiceTitan": True,
+            "BuildOps": True
+        }
+        for vendor, exp in expected.items():
+            gated, _ = _enterprise_scale_gate(vendor)
+            assert gated is exp, f"{vendor}: expected gated={exp}, got {gated}"
 
 
 if __name__ == "__main__":
