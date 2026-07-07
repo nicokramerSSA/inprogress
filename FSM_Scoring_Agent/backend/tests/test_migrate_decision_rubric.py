@@ -86,6 +86,21 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(twice_flags, once_flags)  # idempotent — no double scale flag
         self.assertEqual(len([f for f in twice_flags if "scale" in f.lower()]), 1)
 
+    def test_rederive_reproduces_committee_verdicts(self):
+        got = {v: rederive_result(self.results[v]) for v in self.results}
+        self.assertEqual(got["IFS"]["vote"]["recommendation"], "Recommend")
+        self.assertEqual(got["Salesforce"]["vote"]["recommendation"], "Shortlist")
+        self.assertEqual(got["ServiceMax"]["vote"]["recommendation"], "Shortlist")
+        self.assertEqual(got["ServiceTitan"]["vote"]["recommendation"], "Reject")
+        self.assertEqual(got["BuildOps"]["vote"]["recommendation"], "Reject")
+        # rejects are scale-gated, not Must-disqualified
+        self.assertFalse(got["ServiceTitan"]["gating"]["disqualified"])
+        self.assertFalse(got["BuildOps"]["gating"]["disqualified"])
+        self.assertTrue(any("scale" in f.lower()
+                            for f in got["BuildOps"]["gating"]["architectural_gate_flags"]))
+        # IFS is the top finalist by decision score
+        self.assertEqual(max(got, key=lambda v: got[v]["weighted_total"]), "IFS")
+
 
 if __name__ == "__main__":
     unittest.main()

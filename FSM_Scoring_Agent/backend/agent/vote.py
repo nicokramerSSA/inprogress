@@ -24,19 +24,8 @@ from typing import List
 
 from .knowledge import get_kb
 from .providers import client, is_mock, extract_json
+from .scoring import _enterprise_scale_gate
 from .schemas import VendorEvaluation, Vote
-
-
-# --------------------------------------------------------------------------- #
-# Recommendation rubric (deterministic, auditable)                            #
-# --------------------------------------------------------------------------- #
-# Bands are expressed on the 0-100 decision-weighted score. A disqualifying gate
-# overrides the band entirely — that is the whole point of a gate.
-RECO_BANDS = [
-    (78, "Recommend", "Top-tier fit; advance to demos as a front-runner."),
-    (65, "Shortlist", "Credible contender; advance to demos to close evidence gaps."),
-    (0,  "Reject", "Below the bar for this portfolio; do not advance without a material change."),
-]
 
 
 def _customization_risk(scores):
@@ -55,8 +44,19 @@ def derive_recommendation(ev: VendorEvaluation) -> tuple[str, str, str]:
         return ("Disqualified",
                 f"{ev.gating.unmet_must_count} unmet 'Must' requirement(s) — disqualifying per RFP Section 8.",
                 "High")
+    # Enterprise-scale / vendor-viability gate overrides the band: a mid-market
+    # vendor is a Reject regardless of its decision score.
+    gated, gate_reason = _enterprise_scale_gate(ev.vendor)
+    if gated:
+        return ("Reject", gate_reason, "High")
+    knobs = get_kb().scorecard.get("decision_knobs", {})
+    bands = [
+        (knobs.get("recommend_min", 78), "Recommend", "Top-tier fit; advance to demos as a front-runner."),
+        (knobs.get("shortlist_min", 65), "Shortlist", "Credible contender; advance to demos to close evidence gaps."),
+        (0, "Reject", "Below the bar for this portfolio; do not advance without a material change."),
+    ]
     score = ev.weighted_total
-    for threshold, label, reason in RECO_BANDS:
+    for threshold, label, reason in bands:
         if score >= threshold:
             reco, band_reason = label, reason
             break

@@ -92,6 +92,8 @@
   "decision_knobs": {
     "enterprise_scale_bar": "High",
     "scale_gate_cap": 60,
+    "recommend_min": 60,
+    "shortlist_min": 50,
     "operating_capability_weights": {
       "W2C": 0.28, "TPA": 0.20, "ACQ": 0.14, "EVG": 0.14, "RLC": 0.14, "CXR": 0.10
     }

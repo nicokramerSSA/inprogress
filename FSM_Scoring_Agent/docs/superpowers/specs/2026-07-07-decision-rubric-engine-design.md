@@ -231,5 +231,27 @@ Property-based, replacing the frozen-number regression test:
 
 ## Appendix A: calibrated results (filled during implementation)
 
-_To be completed once the knobs are tuned: the five-vendor table with headline, category
-breakdown, vote, and gate reason, plus the final knob values._
+Re-derived from the July-2 fixture (`tests/fixtures/july2_store_snapshot.json`) via
+`migrate_decision_rubric.rederive_result`, using the general (de-hardcoded) engine
+from Tasks 3-8 and the gate-driven vote from Task 9:
+
+| Vendor      | Weighted total (0-100) | Vote      | Scale-gate reason |
+|-------------|------------------------:|-----------|--------------------|
+| IFS         | 62.0 | Recommend | — (High scale) |
+| Salesforce  | 56.2 | Shortlist | — (High scale) |
+| ServiceMax  | 53.4 | Shortlist | — (High scale) |
+| BuildOps    | 58.4 | Reject    | Enterprise scale rated Med (bar: High) — mid-market fit, not an enterprise platform for a 40-80 OpCo rollup. |
+| ServiceTitan| 49.0 | Reject    | Enterprise scale rated Med (bar: High) — mid-market fit, not an enterprise platform for a 40-80 OpCo rollup. |
+
+Decision scores cluster in a narrow band (49-62) and don't rank finalists above
+rejects on their own — BuildOps (58.4) scores higher than ServiceMax (53.4) despite
+being the weaker fit. The enterprise-scale gate does the separating: it forces
+ServiceTitan and BuildOps to "Reject" regardless of score, matching the committee's
+verdicts. IFS is the top finalist by decision score.
+
+Final knob values (`config/scorecard.json` → `decision_knobs`):
+
+- `enterprise_scale_bar`: `"High"`
+- `scale_gate_cap`: `60`
+- `recommend_min`: `60`
+- `shortlist_min`: `50`

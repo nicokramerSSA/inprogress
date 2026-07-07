@@ -76,6 +76,19 @@ class ConfigTests(unittest.TestCase):
         assert abs(sum(c["weight"] for c in sc["categories"]) - 1.0) < 1e-9
 
 
+class GateDrivenVoteTests(unittest.TestCase):
+    def test_scale_gated_vote_is_reject_regardless_of_score(self):
+        ev = evaluate_vendor("BuildOps", "", sample_proposal_text("BuildOps"), scoring_model="mock")
+        ev.vote = synthesize_vote(ev, "mock")
+        assert ev.vote.recommendation == "Reject"           # gate overrides the band
+        assert ev.gating.disqualified is False               # Reject, not Disqualified
+
+    def test_ungated_vendor_banded_by_decision_score(self):
+        ev = evaluate_vendor("IFS", "", sample_proposal_text("IFS"), scoring_model="mock")
+        ev.vote = synthesize_vote(ev, "mock")
+        assert ev.vote.recommendation in ("Recommend", "Shortlist")   # a finalist, not Reject
+
+
 class PropertyBasedRegressionTests(unittest.TestCase):
     def test_engine_properties_for_all_five(self):
         """Property assertions over all five vendors: categories, values, and gating."""
