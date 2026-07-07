@@ -703,7 +703,7 @@ function Dashboard({results, onOpen}){
     <div>
       <AdvisoryRead results={results}/>
       <RedFlags results={results}/>
-      <div className="section-title">Head-to-head ranking — the agent’s advisory vote</div>
+      <div className="section-title">Head-to-head ranking - decision score</div>
       <div style={{display:"flex",gap:8,margin:"0 0 10px"}}>
         <button className="btn small" onClick={()=>{
           const {rows,headers}=rankingRows(results);
@@ -720,7 +720,7 @@ function Dashboard({results, onOpen}){
         <div className="table-scroll">
         <table className="dashboard-table">
           <thead><tr>
-            <th>#</th><th>Vendor</th><th>Total</th><th>Capability</th>
+            <th>#</th><th>Vendor</th><th>Decision total</th><th>OOB Capability</th>
             <th>Agentic future</th><th>Gate</th><th>Vote</th><th></th>
           </tr></thead>
           <tbody>
@@ -785,8 +785,8 @@ function VendorDetail({data}){
         <div className="card">
           <h3>{r.vendor} <span className="muted small">{r.product}</span></h3>
           <div className="score-stack">
-            <div className="score-tile"><div className="num">{fmt(r.weighted_total)}</div><div className="den">/100 weighted</div></div>
-            <div className="score-tile"><div className="num" style={{color:"var(--ssa-teal)"}}>{fmt(r.capability_weighted_total)}</div><div className="den">/100 capability lens</div></div>
+            <div className="score-tile"><div className="num">{fmt(r.weighted_total)}</div><div className="den">/100 decision weighted</div></div>
+            <div className="score-tile"><div className="num" style={{color:"var(--ssa-teal)"}}>{fmt(r.capability_weighted_total)}</div><div className="den">/100 OOB capability lens</div></div>
             <div className="score-tile"><span className={recoClass(r.vote.recommendation)} style={{fontSize:14,alignSelf:"flex-start"}}>{r.vote.recommendation}</span>
                  <div className="den">vote · {r.vote.confidence} confidence</div></div>
           </div>
@@ -1245,10 +1245,10 @@ function Methodology({kb}){
 
       <div className="grid detail-grid">
         <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Scoring rubric — categories</div>
+          <div className="section-title" style={{marginTop:0}}>Scoring rubric - decision weights</div>
           {sc.categories.map(c=>(<div className="rowbar" key={c.id} style={{gridTemplateColumns:"1fr 60px"}}>
             <div className="lbl">{c.name}</div><div className="val">{Math.round(c.weight*100)}%</div></div>))}
-          <p className="small muted" style={{marginTop:8}}>Quality 1–5 per requirement; Musts weighted 3× (decision leverage). {sc.gating_rules.description}</p>
+          <p className="small muted" style={{marginTop:8}}>Decision score blends confidence-adjusted requirement evidence with architecture caps, project-control ownership, implementation certainty, evidence quality, agentic/data-platform upside, and commercial viability. {sc.gating_rules.description}</p>
         </div>
         <div className="card">
           <div className="section-title" style={{marginTop:0}}>RFP capabilities (Section 30)</div>
@@ -1361,7 +1361,7 @@ function Chat({model}){
     const res=await jpost("/api/chat",{question,model_id:model,history:hist});
     setLog(l=>[...l,{role:"bot",content:res.answer,ground:res.grounding,demo:res.is_demo}]); setBusy(false);
   }
-  const examples=["Why is Salesforce disqualified?","Which platform fits the small low-maturity OpCos best?","How does the Must gate work?","Give me the agentic-future read on ServiceTitan."];
+  const examples=["Why is Salesforce conditional?","Which platform fits the small low-maturity OpCos best?","How does the Must gate work?","Why are BuildOps and ServiceTitan capped?"];
   return (
     <div className="chat">
       <div className="log">
@@ -1906,7 +1906,7 @@ function App(){
       <div className="wrap" style={{paddingTop:18,paddingBottom:30}}>
         {auth && auth.must_change && <div className="demowarn">You're still on the temporary password — set your own under the <b>Account</b> tab.</div>}
         {!anyLive && <div className="demowarn">
-          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier (clearly labelled "demo"). Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read. Vendor proposals are due July 2; until then the app runs on synthetic sample proposals.
+          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier and five-vendor decision rubric. Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read.
         </div>}
 
         <div className="card" style={{marginBottom:18}}>
