@@ -19,21 +19,26 @@ class GatingContractTests(unittest.TestCase):
         self.assertFalse(g.disqualified)
         self.assertEqual(g.unmet_must_count, 0)
 
-    def test_gap_must_disqualifies(self):
+    def test_gap_must_counted_unmet_not_disqualifying(self):
+        # GAP on a Must is counted as unmet but does NOT disqualify.
         scores = [_score("FSM-002", "Must", "No", 1, "GAP")]
         g = scoring._compute_gating(scores, "proposal text")
-        self.assertTrue(g.disqualified)
+        self.assertFalse(g.disqualified)
+        self.assertEqual(g.unmet_must_count, 1)
 
-    def test_roadmap_must_disqualifies(self):
-        # ROADMAP on a Must (not answered Yes) is still disqualifying.
+    def test_roadmap_must_counted_unmet_not_disqualifying(self):
+        # ROADMAP on a Must (not answered Yes) is counted as unmet but does NOT disqualify.
         scores = [_score("FSM-003", "Must", "Partial", 2, "ROADMAP")]
         g = scoring._compute_gating(scores, "proposal text")
-        self.assertTrue(g.disqualified)
+        self.assertFalse(g.disqualified)
+        self.assertEqual(g.unmet_must_count, 1)
 
-    def test_no_must_disqualifies_regardless_of_code(self):
+    def test_no_must_counted_unmet_not_disqualifying(self):
+        # No (met=No) on a Must is counted as unmet but does NOT disqualify.
         scores = [_score("FSM-004", "Must", "No", 1, "CONFIG")]
         g = scoring._compute_gating(scores, "proposal text")
-        self.assertTrue(g.disqualified)
+        self.assertFalse(g.disqualified)
+        self.assertEqual(g.unmet_must_count, 1)
 
     def test_should_gap_does_not_gate(self):
         # Only Musts gate; a GAP on a Should does not disqualify.
