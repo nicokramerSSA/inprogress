@@ -24,11 +24,25 @@ import store  # noqa: E402
 
 
 def migrate_store() -> int:
-    """Re-derive every persisted result and save it back. Returns the count migrated."""
+    """Re-derive every persisted result and save it back. Returns the count migrated.
+
+    Mirrors store.py's "one bad file never crashes" ethos: a record that fails to
+    re-derive (e.g. missing requirement_scores) is logged and skipped rather than
+    aborting the whole loop mid-way, so one bad file doesn't strand every other
+    vendor's result un-migrated."""
     all_results = store.load_all()
+    migrated = 0
+    failed = 0
     for vendor, result in all_results.items():
-        store.save(rederive_result(result))
-    return len(all_results)
+        try:
+            store.save(rederive_result(result))
+            migrated += 1
+        except Exception as e:
+            failed += 1
+            print(f"WARNING: skipping vendor '{vendor}' — re-derive failed: "
+                  f"{type(e).__name__}: {e}", file=sys.stderr)
+    print(f"{migrated} succeeded, {failed} failed out of {len(all_results)} result(s)")
+    return migrated
 
 
 def main() -> None:
@@ -40,7 +54,11 @@ def main() -> None:
     else:
         print(f"no existing store dir at {store.STORE_DIR}; nothing to back up")
     n = migrate_store()
-    print(f"migrated {n} result(s)")
+    if n == 0:
+        print(f"WARNING: migrated 0 result(s) from {store.STORE_DIR} — "
+              f"check RESULTS_STORE_DIR is set correctly; this is NOT success.")
+    else:
+        print(f"migrated {n} result(s)")
 
 
 if __name__ == "__main__":

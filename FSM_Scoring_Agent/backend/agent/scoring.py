@@ -680,10 +680,18 @@ def _scale_tier(rating: str) -> int:
 
 def _enterprise_scale_gate(vendor: str) -> tuple[bool, str]:
     """A vendor whose dossier enterprise_scale is below the configured bar is gated
-    out of the finalist range. Returns (gated, reason)."""
+    out of the finalist range. Returns (gated, reason).
+
+    A vendor with no dossier entry (or a dossier entry with no enterprise_scale
+    rating on file) is never gated here — there is no curated rating to gate on,
+    and defaulting to "Medium" would fabricate a judgment the vendor was never
+    given. Let the score band decide instead."""
     kb = get_kb()
+    ratings = (kb.vendor_profile(vendor).get("ratings") or {})
+    if "enterprise_scale" not in ratings:
+        return False, ""
     bar = kb.scorecard.get("decision_knobs", {}).get("enterprise_scale_bar", "High")
-    rating = (kb.vendor_profile(vendor).get("ratings") or {}).get("enterprise_scale", "Medium")
+    rating = ratings["enterprise_scale"]
     if _scale_tier(rating) < _scale_tier(bar):
         return True, (f"Enterprise scale rated {rating} (bar: {bar}) — mid-market fit, "
                       f"not an enterprise platform for a 40-80 OpCo rollup.")

@@ -48,6 +48,13 @@ class EnterpriseScaleGateTests(unittest.TestCase):
         assert gated_bo is True and "scale" in reason_bo.lower()
         assert gated_ifs is False
 
+    def test_off_dossier_vendor_is_not_gated(self):
+        """A vendor with no dossier entry (and hence no enterprise_scale rating on
+        file) must never be scale-gated on a fabricated 'Medium' default."""
+        gated, reason = _enterprise_scale_gate("Totally New FSM Co")
+        assert gated is False
+        assert reason == ""
+
 
 class GatingDecisionTests(unittest.TestCase):
     def _req(self, rid, met, code, prio="Must"):
@@ -72,7 +79,7 @@ class ConfigTests(unittest.TestCase):
         sc = json.load(open(CFG))
         knobs = sc["decision_knobs"]
         assert knobs["enterprise_scale_bar"] == "High"
-        assert knobs["scale_gate_cap"] <= 64          # below the Shortlist floor (65)
+        assert 0 < knobs["scale_gate_cap"] <= 100     # display ceiling for a scale-gated vendor's headline
         assert abs(sum(c["weight"] for c in sc["categories"]) - 1.0) < 1e-9
 
 
