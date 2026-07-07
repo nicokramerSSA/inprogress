@@ -787,6 +787,31 @@ def _clamp_1_5(value: float) -> float:
     return round(max(0.0, min(5.0, value)), 2)
 
 
+_SCALE_TIER = {
+    "low": 1, "low-med": 2, "med-low": 2,
+    "med": 3, "medium": 3,
+    "med-high": 4, "high-med": 4,
+    "high": 5,
+}
+
+
+def _scale_tier(rating: str) -> int:
+    """Map an enterprise-scale rating word to an ordinal tier (1..5). Unknown -> 3."""
+    return _SCALE_TIER.get(str(rating).strip().lower(), 3)
+
+
+def _enterprise_scale_gate(vendor: str) -> tuple[bool, str]:
+    """A vendor whose dossier enterprise_scale is below the configured bar is gated
+    out of the finalist range. Returns (gated, reason)."""
+    kb = get_kb()
+    bar = kb.scorecard.get("decision_knobs", {}).get("enterprise_scale_bar", "High")
+    rating = (kb.vendor_profile(vendor).get("ratings") or {}).get("enterprise_scale", "Medium")
+    if _scale_tier(rating) < _scale_tier(bar):
+        return True, (f"Enterprise scale rated {rating} (bar: {bar}) — mid-market fit, "
+                      f"not an enterprise platform for a 40-80 OpCo rollup.")
+    return False, ""
+
+
 def _apply_decision_score_cap(vendor: str, score: float) -> float:
     cap = _DECISION_SCORE_CAPS.get(_known_vendor_key(vendor))
     return round(min(score, cap), 1) if cap is not None else round(score, 1)

@@ -3,7 +3,7 @@ import json
 import os
 
 from agent.sample import sample_proposal_text
-from agent.scoring import evaluate_vendor
+from agent.scoring import evaluate_vendor, _scale_tier, _enterprise_scale_gate
 
 
 class DecisionRubricRegressionTests(unittest.TestCase):
@@ -34,6 +34,20 @@ class DecisionRubricRegressionTests(unittest.TestCase):
                         "evidence", "agentic", "commercial",
                     ],
                 )
+
+
+class EnterpriseScaleGateTests(unittest.TestCase):
+    def test_scale_tier_mapping(self):
+        assert _scale_tier("High") == 5
+        assert _scale_tier("Med") == 3
+        assert _scale_tier("Med-High") == 4
+        assert _scale_tier("unknown") == 3   # safe default
+
+    def test_enterprise_scale_gate_uses_dossier(self):
+        gated_bo, reason_bo = _enterprise_scale_gate("BuildOps")   # dossier scale = Med
+        gated_ifs, _ = _enterprise_scale_gate("IFS")               # dossier scale = High
+        assert gated_bo is True and "scale" in reason_bo.lower()
+        assert gated_ifs is False
 
 
 class ConfigTests(unittest.TestCase):
