@@ -82,6 +82,46 @@ class ConfigTests(unittest.TestCase):
         assert 0 < knobs["scale_gate_cap"] <= 100     # display ceiling for a scale-gated vendor's headline
         assert abs(sum(c["weight"] for c in sc["categories"]) - 1.0) < 1e-9
 
+    def test_structural_mappings_are_config_driven_and_match_fallback(self):
+        """category_capabilities and category_rationale live in config (adopted from
+        PR #58's config-block idea), and the config values equal the code fallbacks so
+        behavior is identical whether or not the block is present."""
+        import agent.scoring as s
+        CFG = os.path.join(os.path.dirname(__file__), "..", "config", "scorecard.json")
+        knobs = json.load(open(CFG))["decision_knobs"]
+        cats = ["operating", "project", "architecture",
+                "implementation", "evidence", "agentic", "commercial"]
+        assert set(knobs["category_capabilities"].keys()) == set(cats)
+        assert set(knobs["category_rationale"].keys()) == set(cats)
+        for cid in cats:
+            assert list(knobs["category_capabilities"][cid]) == \
+                list(s._DECISION_CATEGORY_CAPABILITIES[cid]), \
+                f"config category_capabilities[{cid}] diverges from fallback"
+            assert knobs["category_rationale"][cid] == s._DECISION_CATEGORY_RATIONALE[cid], \
+                f"config category_rationale[{cid}] diverges from fallback"
+
+    def test_engine_reads_category_capabilities_from_config(self):
+        """_decision_subset must honor a config override, proving the mapping is not
+        hard-wired to the Python constant."""
+        import agent.scoring as s
+        from agent.knowledge import get_kb
+        knobs = get_kb().scorecard.setdefault("decision_knobs", {})
+        saved = knobs.get("category_capabilities")
+        try:
+            knobs["category_capabilities"] = {"operating": ["ZZZ"]}   # no score has this cap
+            subset = s._decision_subset(
+                "operating",
+                [RequirementScore(rid="R1", domain="D", priority="Must", capability="W2C",
+                                  met="Yes", quality=5, vendor_code="OOB",
+                                  confidence="High", rationale="", evidence_gap="")],
+            )
+            assert subset == [], "override to ['ZZZ'] should exclude the W2C score"
+        finally:
+            if saved is None:
+                knobs.pop("category_capabilities", None)
+            else:
+                knobs["category_capabilities"] = saved
+
 
 class GateDrivenVoteTests(unittest.TestCase):
     def test_scale_gated_vote_is_reject_regardless_of_score(self):

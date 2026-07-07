@@ -71,6 +71,10 @@ _DECISION_CATEGORY_IDS = {
     "evidence", "agentic", "commercial",
 }
 
+# Structural category->capability mapping and rationale text. Live values are read
+# from scorecard.json "decision_knobs"; these constants are the fallback used only if
+# the config lacks the block. Not vendor-specific — this is engine structure, not a
+# per-vendor override.
 _DECISION_CATEGORY_CAPABILITIES = {
     "operating": ("W2C", "TPA", "ACQ", "EVG", "RLC", "CXR"),
     "project": ("PJE",),
@@ -724,7 +728,9 @@ def _rollup_confidence(scores: List[RequirementScore]) -> str:
 
 
 def _decision_subset(cid: str, scores: List[RequirementScore]) -> List[RequirementScore]:
-    caps = _DECISION_CATEGORY_CAPABILITIES.get(cid)
+    mapping = get_kb().scorecard.get("decision_knobs", {}).get(
+        "category_capabilities", _DECISION_CATEGORY_CAPABILITIES)
+    caps = mapping.get(cid)
     if not caps:
         return scores
     return [s for s in scores if s.capability in caps]
@@ -829,7 +835,9 @@ def _decision_category_score(
 
 
 def _decision_category_rationale(cid: str, vendor: str) -> str:
-    return _DECISION_CATEGORY_RATIONALE.get(
+    mapping = get_kb().scorecard.get("decision_knobs", {}).get(
+        "category_rationale", _DECISION_CATEGORY_RATIONALE)
+    return mapping.get(
         cid,
         "Decision-weighted category score from requirement evidence and confidence.",
     )

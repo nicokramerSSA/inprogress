@@ -96,6 +96,24 @@
     "shortlist_min": 50,
     "operating_capability_weights": {
       "W2C": 0.28, "TPA": 0.20, "ACQ": 0.14, "EVG": 0.14, "RLC": 0.14, "CXR": 0.10
+    },
+    "category_capabilities": {
+      "operating": ["W2C", "TPA", "ACQ", "EVG", "RLC", "CXR"],
+      "project": ["PJE"],
+      "architecture": ["SCL", "EVG", "RLC"],
+      "implementation": ["W2C", "TPA", "PJE", "ACQ", "EVG", "RLC", "CXR", "SCL"],
+      "evidence": ["W2C", "TPA", "PJE", "ACQ", "EVG", "RLC", "CXR", "SCL"],
+      "agentic": ["EVG", "SCL"],
+      "commercial": ["W2C", "EVG", "SCL"]
+    },
+    "category_rationale": {
+      "operating": "Blends confidence-adjusted W2C, TPA, ACQ, EVG, RLC, and CXR evidence rather than raw yes/config row counts.",
+      "project": "Separates project/job-cost control owned in FSM from ERP, add-on, partner, or roadmap dependency.",
+      "architecture": "Reflects the North Star architecture screen, including tenancy, scale, security, integration, and data access.",
+      "implementation": "Discounts theoretical configurability when delivery ownership, partner accountability, or implementation duration is uncertain.",
+      "evidence": "Credits response transparency, specificity, and proof while penalizing vague or overly interpretive answers.",
+      "agentic": "Uses the agentic/data-platform read, weighted for data openness and AI capability.",
+      "commercial": "Captures vendor stability, scale, and commercial fit for the Service Logic portfolio."
     }
   },
   "requirement_priority_mix": {

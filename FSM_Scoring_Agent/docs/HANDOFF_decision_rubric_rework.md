@@ -83,3 +83,52 @@ the evidence, with 35 unmet Musts against everyone else's 3–5.
   conditional, ServiceTitan and BuildOps out), but now they fall out of the evidence
   and hold up line by line.
 - The corrected version lands on a branch. Camp reviews, merges, and deploys.
+
+---
+
+## Update — July 7, after your follow-up commit
+
+You pushed a third commit to #58, `ecdc755` "Connect decision rubric config to
+scoring engine," after we first talked. Two corrections and a decision.
+
+**It's one PR, not two.** #58 now has three commits: the config reframe
+(`08aa37a`), the Codex hard-coding (`8d5bb6c`), and this new one (`ecdc755`).
+Nothing separate was opened.
+
+**What `ecdc755` actually does.** It answers the narrow complaint — the config
+wasn't wired to the engine — but it fixes that by *moving* the hard-coding, not
+removing it. The per-vendor tables came out of `scoring.py` and went into a
+`decision_engine.vendor_overrides` block in `scorecard.json`. Same numbers,
+still keyed by vendor name (`_known_vendor_key` is still there), and the
+`ARCH-GATE` disqualification is still present, now as JSON:
+
+```json
+"ServiceTitan": { "score_cap": 48.0,
+  "gate": { "disqualified": true,
+    "unmet_musts": [{ "rid": "ARCH-GATE", ... }] } }
+```
+
+So the three reasons the hard-coding had to go still apply: it isn't auditable
+(ARCH-GATE isn't one of the 422 real requirements), it doesn't generalize (a
+sixth vendor, or a re-run of any named vendor, gets frozen numbers instead of
+its own evidence), and it overwrites the real July-2 result. The verdicts are
+correct because they were typed in to be correct, not because the evidence
+produces them.
+
+**What we kept from `ecdc755`.** One idea in it is genuinely good and we took
+it: you also moved the *non-vendor* structural mappings — which capabilities
+feed each category, and the per-category rationale text — into config. Those
+aren't hard-coding; they're legitimate knobs, and config-driving them fits the
+"editable JSON" design. Our branch now reads `category_capabilities` and
+`category_rationale` from `scorecard.json` `decision_knobs`, with the old Python
+constants demoted to fallbacks. What we did *not* take is `vendor_overrides` —
+that's the hard-coding, and the evidence-derived engine replaces it.
+
+**Decisions (Camp + committee owner):**
+
+- Production gets #59: the evidence-derived engine, plus the config move above.
+- #58 gets a comment crediting the parts we kept (the config reframe and the
+  config-block idea), then closed as superseded by #59. Not a rejection of your
+  call to move off all-disqualified — that call was right and it's in #59.
+- Deploy stays manual and done together: push code, migrate the prod store,
+  restart the service, verify `GET /api/results`.
