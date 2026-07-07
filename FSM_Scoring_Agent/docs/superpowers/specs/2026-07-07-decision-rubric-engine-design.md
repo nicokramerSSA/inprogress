@@ -116,11 +116,11 @@ Three real, auditable gates, in priority order:
    today, derived from the proposal. A definitive failure sets `disqualified=True` and
    the vote reads "Disqualified." None of the current five trip these.
 2. **Enterprise-scale / vendor-viability gate** — if the dossier `enterprise_scale`
-   tier is below the configured bar, cap the headline below the finalist band and add a
-   risk flag plus an honest rationale ("rated Med for a 40–80 OpCo enterprise rollup").
-   This leaves `disqualified=False`, so the recommendation band produces "Reject" (per
-   the confirmed decision to label these Reject, not Disqualified). This gate puts
-   ServiceTitan and BuildOps out.
+   tier is below the configured bar, the gate *drives the vote to "Reject"* (it
+   overrides the score band, the way a disqualification does), adds a risk flag with an
+   honest rationale ("rated Med for a 40–80 OpCo enterprise rollup"), and caps the
+   displayed headline at `scale_gate_cap`. `disqualified` stays `False` — this is a
+   Reject, not a Disqualification. This gate puts ServiceTitan and BuildOps out.
 3. **Unmet functional Musts** — no longer auto-disqualify. Their effect is already
    carried by the existing priority-weighted quality mean (Musts weighted 3×), which
    depresses the category scores of a vendor that misses many. They are also surfaced as
@@ -129,35 +129,43 @@ Three real, auditable gates, in priority order:
 Rating tier mapping (config): High > Med-High > Med > Low-Med > Low. Default bar:
 tier below High is gated (revisit if a borderline "Med-High" vendor appears — see Risks).
 
-The cap value places a gated vendor into the Reject band (headline < 65, the Shortlist
-threshold). Exact cap is a config knob; default lands them clearly in Reject.
+The `scale_gate_cap` is a display ceiling on a gated vendor's headline; the "Reject"
+verdict itself comes from the gate override in the vote (§4.3), not from a headline
+threshold.
 
-### 4.3 Headline
+### 4.3 Headline and vote
 
 Headline = sum of `weight × (category raw / 5) × 100` across the seven categories, then
-apply the enterprise-scale cap if the gate fired. Recommendation band is unchanged
-(`vote.py`): ≥78 Recommend, ≥65 Shortlist, else Reject; `disqualified` overrides.
+capped at `scale_gate_cap` if the gate fired. The vote (`vote.py` `derive_recommendation`)
+is decided in this order: a hard-gate `disqualified=True` → "Disqualified"; else a
+scale-gated vendor → "Reject" (the gate overrides the band); else the headline is banded
+— `≥ recommend_min` Recommend, `≥ shortlist_min` Shortlist, else Reject.
 
-### 4.4 Config knobs (all in `scorecard.json`)
+### 4.4 Config knobs (all in `scorecard.json` `decision_knobs`)
 
-- `enterprise_scale_bar` — minimum tier to be a finalist.
-- `scale_gate_cap` — headline ceiling for a scale-gated vendor.
-- category input-weight maps (already present as engine constants; promote the ones we
-  tune into config so calibration does not touch code).
+- `enterprise_scale_bar` — minimum dossier tier to avoid the scale gate (default `High`).
+- `scale_gate_cap` — display ceiling for a scale-gated vendor's headline (default 60).
+- `recommend_min` / `shortlist_min` — recalibrated recommendation bands for ungated
+  vendors (60 / 50), replacing the old 78 / 65 that were tuned to a different score scale.
+- `operating_capability_weights` — the `operating` category's capability mix (promoted
+  from an engine constant so calibration does not touch code).
 
 ## 5. Calibration
 
-Run the new engine deterministically over the five stored July-2 results. Tune the
-knobs until:
+Run the new engine deterministically over the five stored July-2 results. The key
+finding: the decision scores cluster tightly (IFS 62, BuildOps 58, Salesforce 56,
+ServiceMax 53, ServiceTitan 49) and do **not** separate the intended finalists from the
+rejects by score alone — ServiceMax (53, finalist) scores below BuildOps (58, reject).
+A headline threshold cannot reproduce the verdicts; the enterprise-scale gate is the
+reliable separator. The resolution (approved):
 
-- IFS, Salesforce, ServiceMax land ≥ 65 (finalist band), IFS highest.
-- ServiceTitan and BuildOps are scale-gated into the Reject band.
+- The scale gate drives the vote to "Reject" (§4.2), so ServiceTitan and BuildOps are
+  out regardless of score.
+- The bands are recalibrated to the new distribution (`recommend_min=60`,
+  `shortlist_min=50`) so the three ungated vendors land as finalists: IFS → Recommend,
+  Salesforce and ServiceMax → Shortlist.
 
-Target is verdicts plus plausible ordering, not Codex's exact numbers. The final knob
-values and the resulting five-vendor table (headline, category breakdown, vote, gate
-reason) are recorded in this spec's appendix once tuned. Guardrail: if the verdicts
-cannot be reached with sane knob values, stop and surface it — the scale split is clean,
-so this is not expected.
+The final knob values and the five-vendor table are in Appendix A.
 
 ## 6. Data and migration
 
