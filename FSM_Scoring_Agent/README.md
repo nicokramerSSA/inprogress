@@ -88,6 +88,16 @@ cookie over http.
 - **Head-to-head ranking** and a **grounded chat assistant**.
 - **Per-interaction model selection** for scoring, vote, and each chat message.
 
+### How the revised scoring recomputes
+The live server recomputes scores through `backend/agent/scoring.py`; `backend/data/sample_results.json`
+is only the cached demo seed used by the standalone/no-server UI. The decision-rubric inputs live in
+`backend/config/scorecard.json` under `decision_engine`: category-to-capability mapping, operating-fit
+weights, category rationale, respondent-specific call-color overlays, capability confidence multipliers,
+score caps, and gate overlays. The scorer reads that config at runtime, rolls up requirement scores, and
+then recomputes the headline decision score and OOB capability score. `backend/tests/test_decision_rubric.py`
+checks that the recomputed five-vendor scores match the cached demo results so the seed data cannot drift
+from the engine unnoticed.
+
 ## Per-interaction model selection
 Every LLM step takes an explicit model id. The registry (`config/models.json`) covers
 Anthropic, OpenAI, Azure OpenAI, and a keyless offline engine. API keys are read from the

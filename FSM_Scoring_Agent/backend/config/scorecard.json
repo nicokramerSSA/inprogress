@@ -116,5 +116,236 @@
       ]
     },
     "rule": "Every score is confidence-adjusted. OOB/proven capability can receive full credit; standard configuration receives partial credit; custom, partner, add-on, ERP-dependent, roadmap, or vague claims receive escalating discounts. The call transcript is used to resolve ties and apply caps where row-level matrices are identical."
+  },
+  "decision_engine": {
+    "category_capabilities": {
+      "operating": [
+        "W2C",
+        "TPA",
+        "ACQ",
+        "EVG",
+        "RLC",
+        "CXR"
+      ],
+      "project": [
+        "PJE"
+      ],
+      "architecture": [
+        "SCL",
+        "EVG",
+        "RLC"
+      ],
+      "implementation": [
+        "W2C",
+        "TPA",
+        "PJE",
+        "ACQ",
+        "EVG",
+        "RLC",
+        "CXR",
+        "SCL"
+      ],
+      "evidence": [
+        "W2C",
+        "TPA",
+        "PJE",
+        "ACQ",
+        "EVG",
+        "RLC",
+        "CXR",
+        "SCL"
+      ],
+      "agentic": [
+        "EVG",
+        "SCL"
+      ],
+      "commercial": [
+        "W2C",
+        "EVG",
+        "SCL"
+      ]
+    },
+    "operating_capability_weights": {
+      "W2C": 0.28,
+      "TPA": 0.2,
+      "ACQ": 0.14,
+      "EVG": 0.14,
+      "RLC": 0.14,
+      "CXR": 0.1
+    },
+    "category_rationale": {
+      "operating": "Blends confidence-adjusted W2C, TPA, ACQ, EVG, RLC, and CXR evidence rather than raw yes/config row counts.",
+      "project": "Separates project/job-cost control owned in FSM from ERP, add-on, partner, or roadmap dependency.",
+      "architecture": "Reflects the North Star architecture screen, including tenancy, scale, security, integration, and data access.",
+      "implementation": "Discounts theoretical configurability when delivery ownership, partner accountability, or implementation duration is uncertain.",
+      "evidence": "Credits response transparency, specificity, and proof while penalizing vague or overly interpretive answers.",
+      "agentic": "Uses the agentic/data-platform read, weighted for data openness and AI capability.",
+      "commercial": "Captures vendor stability, scale, and commercial fit for the Service Logic portfolio."
+    },
+    "vendor_overrides": {
+      "IFS": {
+        "decision_dimensions": {
+          "operating": 4.0,
+          "project": 2.49,
+          "architecture": 4.3,
+          "implementation": 4.1,
+          "evidence": 4.2,
+          "agentic": 4.28,
+          "commercial": 4.1
+        },
+        "capability_multipliers": {
+          "W2C": 1.0,
+          "TPA": 1.0,
+          "PJE": 0.83,
+          "ACQ": 1.0,
+          "EVG": 1.0,
+          "RLC": 1.0,
+          "CXR": 1.0,
+          "SCL": 1.0
+        },
+        "score_cap": null,
+        "gate": {
+          "disqualified": false,
+          "unmet_must_count": 0,
+          "unmet_musts": [],
+          "architectural_gate_flags": [],
+          "summary": "Passes the decision gate. No architecture cap; validate project-financial specifics in demo and references."
+        }
+      },
+      "Salesforce": {
+        "decision_dimensions": {
+          "operating": 2.84,
+          "project": 0.94,
+          "architecture": 4.55,
+          "implementation": 2.9,
+          "evidence": 2.9,
+          "agentic": 4.28,
+          "commercial": 4.0
+        },
+        "capability_multipliers": {
+          "W2C": 0.72,
+          "TPA": 0.72,
+          "PJE": 0.48,
+          "ACQ": 1.0,
+          "EVG": 1.0,
+          "RLC": 1.0,
+          "CXR": 0.72,
+          "SCL": 1.0
+        },
+        "score_cap": 70.0,
+        "gate": {
+          "disqualified": false,
+          "unmet_must_count": 0,
+          "unmet_musts": [],
+          "architectural_gate_flags": [],
+          "summary": "Conditional pass. Enterprise architecture and scale clear the platform screen, but configuration burden, demo proof, and partner accountability must be resolved."
+        }
+      },
+      "ServiceMax": {
+        "decision_dimensions": {
+          "operating": 2.46,
+          "project": 0.52,
+          "architecture": 3.75,
+          "implementation": 2.05,
+          "evidence": 2.55,
+          "agentic": 3.54,
+          "commercial": 3.6
+        },
+        "capability_multipliers": {
+          "W2C": 0.58,
+          "TPA": 0.58,
+          "PJE": 0.36,
+          "ACQ": 0.95,
+          "EVG": 0.9,
+          "RLC": 0.9,
+          "CXR": 0.58,
+          "SCL": 0.9
+        },
+        "score_cap": 66.0,
+        "gate": {
+          "disqualified": false,
+          "unmet_must_count": 0,
+          "unmet_musts": [],
+          "architectural_gate_flags": [
+            "Project/job-cost ownership appears materially dependent on ERP/add-on boundaries and must be proved."
+          ],
+          "summary": "Conditional pass with material concern. The architecture is not the same hard failure as BuildOps/ServiceTitan, but project-control ownership and add-on dependency materially reduce the score."
+        }
+      },
+      "ServiceTitan": {
+        "decision_dimensions": {
+          "operating": 3.09,
+          "project": 2.9,
+          "architecture": 1.75,
+          "implementation": 2.2,
+          "evidence": 3.35,
+          "agentic": 3.22,
+          "commercial": 3.4
+        },
+        "capability_multipliers": {
+          "W2C": 1.0,
+          "TPA": 1.0,
+          "PJE": 0.7,
+          "ACQ": 0.54,
+          "EVG": 0.5,
+          "RLC": 0.5,
+          "CXR": 1.0,
+          "SCL": 0.42
+        },
+        "score_cap": 48.0,
+        "gate": {
+          "disqualified": true,
+          "unmet_must_count": 1,
+          "unmet_musts": [
+            {
+              "rid": "ARCH-GATE",
+              "capability": "SCL",
+              "reason": "North Star architecture, integration, and security posture not proven for the required enterprise operating model."
+            }
+          ],
+          "architectural_gate_flags": [
+            "Architecture/integration/security had too many gap or roadmap responses for the target operating model."
+          ],
+          "summary": "Do not advance. ServiceTitan gets credit for response transparency and market fit, but fails the North Star architecture screen."
+        }
+      },
+      "BuildOps": {
+        "decision_dimensions": {
+          "operating": 3.11,
+          "project": 3.11,
+          "architecture": 1.45,
+          "implementation": 1.9,
+          "evidence": 2.2,
+          "agentic": 3.54,
+          "commercial": 3.1
+        },
+        "capability_multipliers": {
+          "W2C": 1.0,
+          "TPA": 1.0,
+          "PJE": 0.74,
+          "ACQ": 0.56,
+          "EVG": 0.52,
+          "RLC": 0.5,
+          "CXR": 1.0,
+          "SCL": 0.38
+        },
+        "score_cap": 45.0,
+        "gate": {
+          "disqualified": true,
+          "unmet_must_count": 1,
+          "unmet_musts": [
+            {
+              "rid": "ARCH-GATE",
+              "capability": "SCL",
+              "reason": "North Star architecture and single-enterprise operating model not proven."
+            }
+          ],
+          "architectural_gate_flags": [
+            "Architecture and response credibility do not support the required enterprise-scale operating model."
+          ],
+          "summary": "Do not advance. BuildOps has useful operating coverage, but the architecture screen and response-confidence discount cap the decision score."
+        }
+      }
+    }
   }
 }

@@ -65,13 +65,9 @@ _PRIORITY_WEIGHT = {"Must": 3.0, "Should": 2.0, "Could": 1.0, "Won't": 0.0}
 # Response codes that cannot satisfy a Must without a firm SOW (gating doctrine).
 _WEAK_CODES_FOR_MUST = {"ROADMAP", "GAP"}
 
-# Current decision-rubric category ids in config/scorecard.json.
-_DECISION_CATEGORY_IDS = {
-    "operating", "project", "architecture", "implementation",
-    "evidence", "agentic", "commercial",
-}
-
-_DECISION_CATEGORY_CAPABILITIES = {
+# Fallback decision-rubric inputs are used only if an older scorecard config lacks
+# the decision_engine block. The active app reads these values from scorecard.json.
+_FALLBACK_DECISION_CATEGORY_CAPABILITIES = {
     "operating": ("W2C", "TPA", "ACQ", "EVG", "RLC", "CXR"),
     "project": ("PJE",),
     "architecture": ("SCL", "EVG", "RLC"),
@@ -81,125 +77,12 @@ _DECISION_CATEGORY_CAPABILITIES = {
     "commercial": ("W2C", "EVG", "SCL"),
 }
 
-_OPERATING_CAPABILITY_WEIGHTS = {
+_FALLBACK_OPERATING_CAPABILITY_WEIGHTS = {
     "W2C": 0.28, "TPA": 0.20, "ACQ": 0.14, "EVG": 0.14,
     "RLC": 0.14, "CXR": 0.10,
 }
 
-# These overlays encode the call color that row-level requirement matrices miss:
-# architecture is not interchangeable with feature coverage, project/job-cost
-# ownership matters, and add-on/custom/partner dependency should separate vendors.
-_KNOWN_DECISION_DIMENSIONS = {
-    "IFS": {
-        "operating": 4.00, "project": 2.49, "architecture": 4.30,
-        "implementation": 4.10, "evidence": 4.20, "agentic": 4.28,
-        "commercial": 4.10,
-    },
-    "Salesforce": {
-        "operating": 2.84, "project": 0.94, "architecture": 4.55,
-        "implementation": 2.90, "evidence": 2.90, "agentic": 4.28,
-        "commercial": 4.00,
-    },
-    "ServiceMax": {
-        "operating": 2.46, "project": 0.52, "architecture": 3.75,
-        "implementation": 2.05, "evidence": 2.55, "agentic": 3.54,
-        "commercial": 3.60,
-    },
-    "ServiceTitan": {
-        "operating": 3.09, "project": 2.90, "architecture": 1.75,
-        "implementation": 2.20, "evidence": 3.35, "agentic": 3.22,
-        "commercial": 3.40,
-    },
-    "BuildOps": {
-        "operating": 3.11, "project": 3.11, "architecture": 1.45,
-        "implementation": 1.90, "evidence": 2.20, "agentic": 3.54,
-        "commercial": 3.10,
-    },
-}
-
-_KNOWN_CAPABILITY_MULTIPLIERS = {
-    "IFS": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.83, "ACQ": 1.00,
-        "EVG": 1.00, "RLC": 1.00, "CXR": 1.00, "SCL": 1.00,
-    },
-    "Salesforce": {
-        "W2C": 0.72, "TPA": 0.72, "PJE": 0.48, "ACQ": 1.00,
-        "EVG": 1.00, "RLC": 1.00, "CXR": 0.72, "SCL": 1.00,
-    },
-    "ServiceMax": {
-        "W2C": 0.58, "TPA": 0.58, "PJE": 0.36, "ACQ": 0.95,
-        "EVG": 0.90, "RLC": 0.90, "CXR": 0.58, "SCL": 0.90,
-    },
-    "ServiceTitan": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.70, "ACQ": 0.54,
-        "EVG": 0.50, "RLC": 0.50, "CXR": 1.00, "SCL": 0.42,
-    },
-    "BuildOps": {
-        "W2C": 1.00, "TPA": 1.00, "PJE": 0.74, "ACQ": 0.56,
-        "EVG": 0.52, "RLC": 0.50, "CXR": 1.00, "SCL": 0.38,
-    },
-}
-
-_DECISION_SCORE_CAPS = {
-    "Salesforce": 70.0,
-    "ServiceMax": 66.0,
-    "ServiceTitan": 48.0,
-    "BuildOps": 45.0,
-}
-
-_DECISION_GATE_OVERLAYS = {
-    "IFS": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [],
-        "summary": "Passes the decision gate. No architecture cap; validate project-financial specifics in demo and references.",
-    },
-    "Salesforce": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [],
-        "summary": "Conditional pass. Enterprise architecture and scale clear the platform screen, but configuration burden, demo proof, and partner accountability must be resolved.",
-    },
-    "ServiceMax": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [
-            "Project/job-cost ownership appears materially dependent on ERP/add-on boundaries and must be proved."
-        ],
-        "summary": "Conditional pass with material concern. The architecture is not the same hard failure as BuildOps/ServiceTitan, but project-control ownership and add-on dependency materially reduce the score.",
-    },
-    "ServiceTitan": {
-        "disqualified": True,
-        "unmet_must_count": 1,
-        "unmet_musts": [{
-            "rid": "ARCH-GATE",
-            "capability": "SCL",
-            "reason": "North Star architecture, integration, and security posture not proven for the required enterprise operating model.",
-        }],
-        "architectural_gate_flags": [
-            "Architecture/integration/security had too many gap or roadmap responses for the target operating model."
-        ],
-        "summary": "Do not advance. ServiceTitan gets credit for response transparency and market fit, but fails the North Star architecture screen.",
-    },
-    "BuildOps": {
-        "disqualified": True,
-        "unmet_must_count": 1,
-        "unmet_musts": [{
-            "rid": "ARCH-GATE",
-            "capability": "SCL",
-            "reason": "North Star architecture and single-enterprise operating model not proven.",
-        }],
-        "architectural_gate_flags": [
-            "Architecture and response credibility do not support the required enterprise-scale operating model."
-        ],
-        "summary": "Do not advance. BuildOps has useful operating coverage, but the architecture screen and response-confidence discount cap the decision score.",
-    },
-}
-
-_DECISION_CATEGORY_RATIONALE = {
+_FALLBACK_DECISION_CATEGORY_RATIONALE = {
     "operating": "Blends confidence-adjusted W2C, TPA, ACQ, EVG, RLC, and CXR evidence rather than raw yes/config row counts.",
     "project": "Separates project/job-cost control owned in FSM from ERP, add-on, partner, or roadmap dependency.",
     "architecture": "Reflects the North Star architecture screen, including tenancy, scale, security, integration, and data access.",
@@ -783,17 +666,45 @@ def _known_vendor_key(vendor: str) -> str:
     return ""
 
 
+def _decision_engine_config() -> Dict[str, Any]:
+    return (get_kb().scorecard.get("decision_engine") or {})
+
+
+def _decision_category_capabilities() -> Dict[str, List[str]]:
+    configured = _decision_engine_config().get("category_capabilities") or {}
+    return configured or _FALLBACK_DECISION_CATEGORY_CAPABILITIES
+
+
+def _decision_category_ids() -> set[str]:
+    return set(_decision_category_capabilities().keys())
+
+
+def _operating_capability_weights() -> Dict[str, float]:
+    configured = _decision_engine_config().get("operating_capability_weights") or {}
+    return configured or _FALLBACK_OPERATING_CAPABILITY_WEIGHTS
+
+
+def _decision_category_rationales() -> Dict[str, str]:
+    configured = _decision_engine_config().get("category_rationale") or {}
+    return configured or _FALLBACK_DECISION_CATEGORY_RATIONALE
+
+
+def _decision_vendor_overlay(vendor: str) -> Dict[str, Any]:
+    overlays = _decision_engine_config().get("vendor_overrides") or {}
+    return overlays.get(_known_vendor_key(vendor), {}) or {}
+
+
 def _clamp_1_5(value: float) -> float:
     return round(max(0.0, min(5.0, value)), 2)
 
 
 def _apply_decision_score_cap(vendor: str, score: float) -> float:
-    cap = _DECISION_SCORE_CAPS.get(_known_vendor_key(vendor))
+    cap = _decision_vendor_overlay(vendor).get("score_cap")
     return round(min(score, cap), 1) if cap is not None else round(score, 1)
 
 
 def _apply_decision_gate_overlay(vendor: str, gating: GatingResult) -> GatingResult:
-    overlay = _DECISION_GATE_OVERLAYS.get(_known_vendor_key(vendor))
+    overlay = _decision_vendor_overlay(vendor).get("gate")
     if not overlay:
         return gating
 
@@ -839,7 +750,7 @@ def _rollup_confidence(scores: List[RequirementScore]) -> str:
 
 
 def _decision_subset(cid: str, scores: List[RequirementScore]) -> List[RequirementScore]:
-    caps = _DECISION_CATEGORY_CAPABILITIES.get(cid)
+    caps = _decision_category_capabilities().get(cid)
     if not caps:
         return scores
     return [s for s in scores if s.capability in caps]
@@ -921,13 +832,13 @@ def _decision_category_score(
     scores: List[RequirementScore],
     capabilities: List[CapabilityScore],
 ) -> float:
-    known = _KNOWN_DECISION_DIMENSIONS.get(_known_vendor_key(vendor), {})
+    known = _decision_vendor_overlay(vendor).get("decision_dimensions", {})
     if cid in known:
         return known[cid]
 
     cap_scores = {c.code: c.score_1_5 for c in capabilities}
     if cid == "operating":
-        return _clamp_1_5(_capability_average(cap_scores, _OPERATING_CAPABILITY_WEIGHTS))
+        return _clamp_1_5(_capability_average(cap_scores, _operating_capability_weights()))
     if cid == "project":
         return _clamp_1_5(cap_scores.get("PJE", 0.0))
     if cid == "architecture":
@@ -946,7 +857,7 @@ def _decision_category_score(
 
 
 def _decision_category_rationale(cid: str, vendor: str) -> str:
-    base = _DECISION_CATEGORY_RATIONALE.get(
+    base = _decision_category_rationales().get(
         cid,
         "Decision-weighted category score from requirement evidence and confidence.",
     )
@@ -994,7 +905,7 @@ def _rollup_categories(
     capabilities = capabilities or []
     for c in kb.scorecard["categories"]:
         cid = c["id"]
-        if cid in _DECISION_CATEGORY_IDS:
+        if cid in _decision_category_ids():
             subset = _decision_subset(cid, scores)
             raw = _decision_category_score(cid, vendor, subset, capabilities)
             rationale = _decision_category_rationale(cid, vendor)
@@ -1029,7 +940,7 @@ def _capability_confidence_multiplier(
     code: str,
     subset: List[RequirementScore],
 ) -> float:
-    known = _KNOWN_CAPABILITY_MULTIPLIERS.get(_known_vendor_key(vendor), {})
+    known = _decision_vendor_overlay(vendor).get("capability_multipliers", {})
     if code in known:
         return known[code]
 
