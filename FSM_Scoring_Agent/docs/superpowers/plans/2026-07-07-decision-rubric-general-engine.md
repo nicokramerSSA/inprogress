@@ -881,13 +881,21 @@ git commit -m "chore(rubric): rebuild standalone and refresh docs for the genera
 ## Deployment runbook (manual, after merge — not a plan task)
 
 1. Merge this branch to `main`; close PR #58 (superseded).
-2. Deploy via the `/render-deploy` skill (auto-deploy webhook is unreliable).
-3. Migrate the prod store (the disk wins over the seed):
-   `render ssh` into the service, then
-   `RESULTS_STORE_DIR=/var/data/... python3 scripts/migrate_decision_rubric.py`
-   (or run the module against the disk path). It backs up the store first.
-4. Verify: `GET /api/results` shows IFS/Salesforce/ServiceMax as finalists and
+2. Deploy the new code via the `/render-deploy` skill (auto-deploy webhook is unreliable).
+3. Migrate the prod store on disk (the disk wins over the seed). `render ssh` into the
+   service, then `RESULTS_STORE_DIR=/var/data/... python3 scripts/migrate_decision_rubric.py`
+   (it backs up the store first).
+4. **Restart the service after the migration.** The app loads the store into the
+   in-memory `_RESULTS` at boot, so the process started in step 2 is still serving the
+   pre-migration results — a disk migration alone will not change what `GET /api/results`
+   returns until a restart. Trigger a restart/redeploy (or `render` restart) so the
+   migrated store is reloaded. (Order matters: deploy code → migrate disk → restart.)
+5. Verify: `GET /api/results` shows IFS/Salesforce/ServiceMax as finalists and
    ServiceTitan/BuildOps as Reject, with the enterprise-scale reason on the gate.
+
+Note: a stale local `backend/data/store/results/*.json` (gitignored dev artifact) will
+override the seed in local runs — irrelevant to prod, but clear it if a local smoke test
+shows old verdicts.
 
 ---
 
