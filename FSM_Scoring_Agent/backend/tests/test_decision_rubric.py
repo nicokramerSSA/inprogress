@@ -17,8 +17,21 @@ class DecisionRubricRegressionTests(unittest.TestCase):
 
     def test_hardcoded_tables_removed(self):
         import agent.scoring as s
-        for name in ("_KNOWN_DECISION_DIMENSIONS", "_KNOWN_CAPABILITY_MULTIPLIERS"):
+        for name in (
+            "_KNOWN_DECISION_DIMENSIONS", "_KNOWN_CAPABILITY_MULTIPLIERS",
+            "_DECISION_SCORE_CAPS", "_DECISION_GATE_OVERLAYS",
+        ):
             assert not hasattr(s, name), f"{name} still present"
+
+    def test_scale_gated_vendor_lands_in_reject_band(self):
+        ev = evaluate_vendor("BuildOps", "", sample_proposal_text("BuildOps"), scoring_model="mock")
+        assert ev.gating.disqualified is False
+        assert ev.weighted_total <= 64                      # capped into Reject band
+        assert any("scale" in f.lower() for f in ev.gating.architectural_gate_flags)
+
+    def test_high_scale_vendor_not_capped(self):
+        ev = evaluate_vendor("IFS", "", sample_proposal_text("IFS"), scoring_model="mock")
+        assert not any("scale" in f.lower() for f in ev.gating.architectural_gate_flags)
 
 
 class EnterpriseScaleGateTests(unittest.TestCase):

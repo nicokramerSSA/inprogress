@@ -86,65 +86,6 @@ _OPERATING_CAPABILITY_WEIGHTS = {
     "RLC": 0.14, "CXR": 0.10,
 }
 
-_DECISION_SCORE_CAPS = {
-    "Salesforce": 70.0,
-    "ServiceMax": 66.0,
-    "ServiceTitan": 48.0,
-    "BuildOps": 45.0,
-}
-
-_DECISION_GATE_OVERLAYS = {
-    "IFS": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [],
-        "summary": "Passes the decision gate. No architecture cap; validate project-financial specifics in demo and references.",
-    },
-    "Salesforce": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [],
-        "summary": "Conditional pass. Enterprise architecture and scale clear the platform screen, but configuration burden, demo proof, and partner accountability must be resolved.",
-    },
-    "ServiceMax": {
-        "disqualified": False,
-        "unmet_must_count": 0,
-        "unmet_musts": [],
-        "architectural_gate_flags": [
-            "Project/job-cost ownership appears materially dependent on ERP/add-on boundaries and must be proved."
-        ],
-        "summary": "Conditional pass with material concern. The architecture is not the same hard failure as BuildOps/ServiceTitan, but project-control ownership and add-on dependency materially reduce the score.",
-    },
-    "ServiceTitan": {
-        "disqualified": True,
-        "unmet_must_count": 1,
-        "unmet_musts": [{
-            "rid": "ARCH-GATE",
-            "capability": "SCL",
-            "reason": "North Star architecture, integration, and security posture not proven for the required enterprise operating model.",
-        }],
-        "architectural_gate_flags": [
-            "Architecture/integration/security had too many gap or roadmap responses for the target operating model."
-        ],
-        "summary": "Do not advance. ServiceTitan gets credit for response transparency and market fit, but fails the North Star architecture screen.",
-    },
-    "BuildOps": {
-        "disqualified": True,
-        "unmet_must_count": 1,
-        "unmet_musts": [{
-            "rid": "ARCH-GATE",
-            "capability": "SCL",
-            "reason": "North Star architecture and single-enterprise operating model not proven.",
-        }],
-        "architectural_gate_flags": [
-            "Architecture and response credibility do not support the required enterprise-scale operating model."
-        ],
-        "summary": "Do not advance. BuildOps has useful operating coverage, but the architecture screen and response-confidence discount cap the decision score.",
-    },
-}
-
 _DECISION_CATEGORY_RATIONALE = {
     "operating": "Blends confidence-adjusted W2C, TPA, ACQ, EVG, RLC, and CXR evidence rather than raw yes/config row counts.",
     "project": "Separates project/job-cost control owned in FSM from ERP, add-on, partner, or roadmap dependency.",
@@ -207,7 +148,6 @@ def evaluate_vendor(
     # 2) Gating (deterministic, from the scores) -----------------------------
     gating = _compute_gating(req_scores, clean_text,
                              {r["rid"]: r.get("requirement", "") for r in reqs})
-    gating = _apply_decision_gate_overlay(vendor, gating)
     _emit("Applying MoSCoW + architectural gates…", 0.72)
 
     # 3) Capability rollup ----------------------------------------------------
@@ -226,9 +166,15 @@ def evaluate_vendor(
     _emit("Assessing fit into an agentic future…", 0.94)
 
     # Headline weighted totals (0-100) ---------------------------------------
-    weighted_total = _apply_decision_score_cap(
-        vendor, round(sum(c.weighted_points for c in categories), 1)
-    )
+    raw_total = round(sum(c.weighted_points for c in categories), 1)
+    scale_gated, scale_reason = _enterprise_scale_gate(vendor)
+    if scale_gated:
+        cap = kb.scorecard.get("decision_knobs", {}).get("scale_gate_cap", 60)
+        weighted_total = round(min(raw_total, cap), 1)
+        gating.architectural_gate_flags.append(scale_reason)
+        gating.summary += f" {scale_reason}"
+    else:
+        weighted_total = raw_total
     cap_total = round(
         sum(c.weight * (c.score_1_5 / 5.0) * 100 for c in capabilities), 1
     )
@@ -715,21 +661,6 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str,
 # --------------------------------------------------------------------------- #
 # 3) Category rollup (decision scorecard categories)                          #
 # --------------------------------------------------------------------------- #
-def _known_vendor_key(vendor: str) -> str:
-    low = (vendor or "").strip().lower()
-    if "salesforce" in low:
-        return "Salesforce"
-    if "servicemax" in low or "service max" in low:
-        return "ServiceMax"
-    if "servicetitan" in low or "service titan" in low:
-        return "ServiceTitan"
-    if "buildops" in low or "build ops" in low:
-        return "BuildOps"
-    if low == "ifs" or "ifs cloud" in low or low.startswith("ifs "):
-        return "IFS"
-    return ""
-
-
 def _clamp_1_5(value: float) -> float:
     return round(max(0.0, min(5.0, value)), 2)
 
@@ -757,32 +688,6 @@ def _enterprise_scale_gate(vendor: str) -> tuple[bool, str]:
         return True, (f"Enterprise scale rated {rating} (bar: {bar}) — mid-market fit, "
                       f"not an enterprise platform for a 40-80 OpCo rollup.")
     return False, ""
-
-
-def _apply_decision_score_cap(vendor: str, score: float) -> float:
-    cap = _DECISION_SCORE_CAPS.get(_known_vendor_key(vendor))
-    return round(min(score, cap), 1) if cap is not None else round(score, 1)
-
-
-def _apply_decision_gate_overlay(vendor: str, gating: GatingResult) -> GatingResult:
-    overlay = _DECISION_GATE_OVERLAYS.get(_known_vendor_key(vendor))
-    if not overlay:
-        return gating
-
-    # For the five RFP respondents, the decision gate intentionally supersedes the
-    # old row-level Must gate. Row-level misses still affect OOB capability/category
-    # math, but the finalist/reject decision follows the call-derived architecture
-    # and delivery-accountability screen.
-    unmet = list(overlay.get("unmet_musts", []))
-    flags = list(overlay.get("architectural_gate_flags", []))
-    count = int(overlay.get("unmet_must_count", len(unmet)))
-    return GatingResult(
-        disqualified=bool(overlay["disqualified"]),
-        unmet_must_count=count,
-        unmet_musts=unmet,
-        architectural_gate_flags=flags,
-        summary=overlay["summary"],
-    )
 
 
 def _leverage_mean(scores: List[RequirementScore]) -> float:
