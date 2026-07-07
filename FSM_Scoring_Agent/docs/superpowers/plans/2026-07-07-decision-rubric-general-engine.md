@@ -538,7 +538,11 @@ A module that recomputes the decision rollups from a stored result's `requiremen
 - Consumes: `_rollup_capabilities`, `_rollup_categories`, `_compute_gating`, `_enterprise_scale_gate`, `scorecard["decision_knobs"]`, `synthesize_vote`, `store.save`.
 - Produces: `rederive_result(result: dict) -> dict` — returns a new result dict with recomputed `categories`, `capabilities`, `gating`, `weighted_total`, `capability_weighted_total`, `vote`, and updated `evaluated_at`; leaves `requirement_scores` untouched. `migrate_store()` reads `store.load_all()`, re-derives each, and `store.save()`s them.
 
-- [ ] **Step 1: Write the failing test (idempotency + verdicts)**
+- [ ] **Step 1: Write the failing test (idempotency)**
+
+The verdict test (whether the five land at the committee's outcomes) is deliberately
+NOT written here — it is Task 9's calibration target, and it would stay red until the
+knobs are tuned. Task 8 only proves the migration mechanics are correct and repeatable.
 
 ```python
 # test_migrate_decision_rubric.py
@@ -558,23 +562,16 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual([c["id"] for c in once["categories"]],
                          [c["id"] for c in twice["categories"]])
 
-    def test_rederive_reproduces_committee_verdicts(self):
-        got = {v: rederive_result(self.results[v]) for v in self.results}
-        # finalists not scale-gated; rejects gated into Reject band
-        self.assertFalse(got["IFS"]["gating"]["disqualified"])
-        self.assertGreaterEqual(got["IFS"]["weighted_total"], 65)
-        self.assertGreaterEqual(got["Salesforce"]["weighted_total"], 65)
-        self.assertGreaterEqual(got["ServiceMax"]["weighted_total"], 65)
-        self.assertLessEqual(got["ServiceTitan"]["weighted_total"], 64)
-        self.assertLessEqual(got["BuildOps"]["weighted_total"], 64)
-        self.assertEqual(got["ServiceTitan"]["vote"]["recommendation"], "Reject")
-        self.assertEqual(got["BuildOps"]["vote"]["recommendation"], "Reject")
+    def test_rederive_preserves_requirement_scores(self):
+        once = rederive_result(self.results["IFS"])
+        self.assertEqual(len(once["requirement_scores"]), 422)   # evidence untouched
+        self.assertEqual(once["requirement_scores"], self.results["IFS"]["requirement_scores"])
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric -v`
-Expected: FAIL — module does not exist. (The verdict test may also fail pending calibration — that is Task 9.)
+Expected: FAIL — module does not exist (`ModuleNotFoundError: agent.migrate_decision_rubric`).
 
 - [ ] **Step 3: Implement `rederive_result`**
 
@@ -682,10 +679,10 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 5: Run the idempotency test (verdict test deferred to Task 9)**
+- [ ] **Step 5: Run the migration-mechanics tests**
 
-Run: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric.MigrationTests.test_rederive_is_idempotent -v`
-Expected: PASS.
+Run: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric -v`
+Expected: PASS (idempotency + requirement-scores-preserved).
 
 - [ ] **Step 6: Commit**
 
@@ -709,10 +706,28 @@ Tune the config knobs until the re-derived fixture reproduces the committee's ve
 **Interfaces:**
 - Consumes: `rederive_result`, the fixture.
 
-- [ ] **Step 1: Run the verdict test to see where the five land**
+- [ ] **Step 1: Write the verdict test (the calibration target)**
 
-Run: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric.MigrationTests.test_rederive_reproduces_committee_verdicts -v`
-Expected: may FAIL. Read the assertion output to see which vendor is off.
+Add to `MigrationTests` in `test_migrate_decision_rubric.py`:
+
+```python
+    def test_rederive_reproduces_committee_verdicts(self):
+        got = {v: rederive_result(self.results[v]) for v in self.results}
+        # finalists not scale-gated; rejects gated into Reject band
+        self.assertFalse(got["IFS"]["gating"]["disqualified"])
+        self.assertGreaterEqual(got["IFS"]["weighted_total"], 65)
+        self.assertGreaterEqual(got["Salesforce"]["weighted_total"], 65)
+        self.assertGreaterEqual(got["ServiceMax"]["weighted_total"], 65)
+        self.assertLessEqual(got["ServiceTitan"]["weighted_total"], 64)
+        self.assertLessEqual(got["BuildOps"]["weighted_total"], 64)
+        self.assertEqual(got["ServiceTitan"]["vote"]["recommendation"], "Reject")
+        self.assertEqual(got["BuildOps"]["vote"]["recommendation"], "Reject")
+        # IFS is the top finalist
+        self.assertEqual(max(got, key=lambda v: got[v]["weighted_total"]), "IFS")
+```
+
+Run it: `cd FSM_Scoring_Agent/backend && python3 -m unittest tests.test_migrate_decision_rubric.MigrationTests.test_rederive_reproduces_committee_verdicts -v`
+Expected: likely FAIL initially. Read the assertion output to see which vendor is off.
 
 - [ ] **Step 2: Print the full table to guide tuning**
 
