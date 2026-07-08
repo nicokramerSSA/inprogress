@@ -1,8 +1,36 @@
-# Handoff: reworking the decision-rubric engine (PR #58)
+# Handoff: reworking the decision-rubric engine
 
-**Date:** 2026-07-07 · **For:** Nick · **From:** Camp (with Claude Code)
+**Started:** 2026-07-07 · **Shipped:** 2026-07-08 · **For:** Nick · **From:** Camp (with Claude Code)
 
-## The short version
+## What shipped — final, live on prod 2026-07-08
+
+The app displays your curated numbers, and a general evidence engine runs underneath for
+any real evaluation. Live since 2026-07-08.
+
+- **What the committee sees (curated, authored):** IFS 77.8 Recommend · Salesforce 63.2
+  Shortlist · ServiceMax 51.6 Shortlist · ServiceTitan 48.0 Disqualified · BuildOps 45.0
+  Disqualified. These are your considered figures, held verbatim in
+  `backend/data/sample_results.json` (marked `curated: true`) — not engine output.
+- **The live engine is general and evidence-derived** — no vendor names, no fabricated
+  requirement. It runs on every real evaluation (new vendor, fresh upload, chat), so the
+  tool works as a tool. Its own numbers differ (IFS ~62); re-running one of the five
+  recomputes from evidence, so the five are treated as **locked**.
+- **`ARCH-GATE` keeps its name** for the two disqualifications, but reads honestly as an
+  architecture-and-scale gate grounded in the dossier (both rated mid-market on enterprise
+  scale). BuildOps's vote no longer blames architecture — its own responses score
+  architecture high; the honest call is vendor scale.
+- **How it deploys:** curated results are git-authoritative on boot. A small change to the
+  result-merge logic loads `curated: true` entries and lets them win over whatever the
+  runtime store holds, so deploying is enough — no store editing, no env changes, no SSH.
+- **PRs:** #59 (general engine + curated data + honest ARCH-GATE + config-driven structural
+  mappings) and #60 (curated-authoritative boot) merged and deployed. #58 (your Codex PR)
+  closed as superseded, with its config-reframe and config-block ideas carried forward.
+
+The sections below are the decision trail — how we got here, including two intermediate
+plans (evidence-derived verdicts, then a store-seeding deploy) that were tried and then
+superseded. They're kept for the reasoning, not as the current instructions.
+
+## The short version (initial read, 2026-07-07)
 
 Your rubric change is the right call, and we're keeping the parts that matter. The
 problem is narrow: to make the live engine produce the new numbers, Codex wrote each
@@ -137,8 +165,9 @@ that's the hard-coding, and the evidence-derived engine replaces it.
 
 ## Final approach — curated numbers on display, real engine underneath
 
-After more discussion, the direction changed, and this is what actually ships. It's
-worth reading, because it's a different shape than the two updates above.
+After more discussion, the direction changed, and this is the model that ships — a
+different shape than the two updates above. (The deploy step described here was simplified
+afterward; see the deploy note at the end of this section.)
 
 **The decision: your numbers are what the committee sees.** Camp's call is to display
 your exact figures — IFS 77.8, Salesforce 63.2, ServiceMax 51.6, and ServiceTitan and
@@ -154,11 +183,12 @@ people will actually upload to, that's broken.
 
 **So we split the two apart:**
 
-- **The five committee results are stored as curated data**, not computed on the fly.
-  They live in `backend/data/sample_results.json` with a `curated: true` marker and carry
-  your numbers exactly. In production `SEED_DEMO_RESULTS=0`, so the app shows only the
-  Render-disk store; `scripts/seed_committee_results.py` writes the curated five into that
-  store on deploy. That's what the committee sees.
+- **The five committee results are curated data**, not computed on the fly. They live in
+  `backend/data/sample_results.json` with a `curated: true` marker and carry your numbers
+  exactly. On boot the app loads them and lets them win over the runtime store, so they
+  display straight from git. (The first plan wrote them into the Render disk store on
+  deploy; that didn't pan out — see the deploy note below — so #60 made them
+  git-authoritative instead.) That's what the committee sees.
 - **The live engine is the general, evidence-derived one** (the #59 rebuild). It runs on
   any real evaluation — a new vendor, a fresh upload, the chat — with no vendor names in
   the code and no fabricated requirement. So the tool works as a tool.
@@ -177,8 +207,12 @@ through the live engine recomputes from evidence and will show the engine's numb
 (~62 for IFS), not your 77.8. Treat the five as locked committee-facing results and don't
 casually re-run them. Any version that avoids this would be back to hard-coding.
 
-**Deploy (manual, together):** push code → `python3 scripts/seed_committee_results.py`
-with `RESULTS_STORE_DIR` pointed at the Render disk (it backs up first) → restart the
-service so it reloads the store → verify `GET /api/results` shows your numbers. Do *not*
-run `scripts/migrate_decision_rubric.py` on these five — that recomputes to evidence
-numbers and would wipe the curated values.
+**Deploy — done 2026-07-08.** Shipped by merging #59 then #60 and deploying with the
+render-deploy skill; no store surgery. The store-seeding route in the original plan was
+abandoned: Render one-off jobs run on an *ephemeral* disk (not the persistent store), and
+`render ssh` is interactive-only, so writing the store out-of-band wasn't practical.
+Making `curated: true` results win on boot (#60) side-steps all of it — the deploy alone
+flips the display. Verified: the deployed merge logic returns your five numbers even over
+a deliberately stale store. The old July-2 store files still sit on the disk, now
+harmlessly overridden. `scripts/seed_committee_results.py` is left in the repo but is no
+longer needed; `scripts/migrate_decision_rubric.py` must still never be run on these five.
