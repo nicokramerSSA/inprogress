@@ -39,12 +39,12 @@
     },
     {
       "id": "mock",
-      "name": "Offline Demo (no API key)",
+      "name": "Offline engine (no API key)",
       "api_key_env": null,
       "sdk": "mock",
-      "note": "Deterministic, rules-based stand-in so the whole app runs with ZERO API keys. Produces structured, persona-flavored output grounded in the bundled knowledge base. Clearly labeled 'demo' in every result.",
+      "note": "Deterministic, rules-based stand-in so the whole app runs with ZERO API keys. Produces structured, persona-flavored output grounded in the bundled knowledge base. Not a substitute for a real model on live proposals.",
       "models": [
-        {"id": "mock", "label": "Offline Demo Engine", "tier": "demo", "best_for": "Running the full pipeline and UI with no keys / no network. Not a substitute for a real model on live proposals.", "max_output_tokens": 4096}
+        {"id": "mock", "label": "Offline Engine", "tier": "offline", "best_for": "Running the full pipeline and UI with no keys / no network. Not a substitute for a real model on live proposals.", "max_output_tokens": 4096}
       ]
     }
   ],

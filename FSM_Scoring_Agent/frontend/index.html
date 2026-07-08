@@ -255,7 +255,7 @@ async function jget(u){
 }
 async function jpost(u,b){
   if(STATIC){
-    if(u.endsWith("/chat")) return {answer:"[standalone demo] This double-clickable build has no backend, so it can't call a model. Run the Flask server (see README) and select a model to get synthesized answers. The grounded knowledge base and all precomputed results are fully browsable here.",grounding:["scorecard","capabilities","evaluations"],is_demo:true};
+    if(u.endsWith("/chat")) return {answer:"[standalone build] This double-clickable build has no backend, so it can't call a model. Run the Flask server (see README) and select a model to get synthesized answers. The grounded knowledge base and all precomputed results are fully browsable here.",grounding:["scorecard","capabilities","evaluations"],is_demo:true};
     if(u.endsWith("/evaluate")){ const r=BOOT.results.find(x=>x.vendor===b.vendor); return r||{error:"Run the server to evaluate new vendors."}; }
     return {};
   }
@@ -420,13 +420,13 @@ function rankingRows(results){
     {key:"rank",label:"Rank"},{key:"vendor",label:"Vendor"},{key:"product",label:"Product"},
     {key:"ssa",label:"Weighted score (0-100)"},{key:"cap",label:"§30 capability score (0-100)"},
     {key:"gate",label:"Gate"},{key:"vote",label:"Vote"},{key:"vote_conf",label:"Vote confidence"},
-    {key:"model",label:"Model"},{key:"demo",label:"Demo?"}];
+    {key:"model",label:"Model"}];
   const rows = ranked.map((r,i) => ({
     rank:i+1, vendor:r.vendor, product:r.product,
     ssa:_cr1(r.weighted_total), cap:_cr1(r.capability_weighted_total),
     gate:r.gating.disqualified ? "DISQUALIFIED" : "PASS",
     vote:r.vote.recommendation, vote_conf:r.vote.confidence,
-    model:r.model_used, demo:r.is_demo ? "yes" : "no"}));
+    model:r.model_used}));
   return {rows, headers};
 }
 function requirementRows(v){
@@ -793,7 +793,7 @@ function VendorDetail({data}){
           {r.engine_warning
             ? <div style={{marginTop:10}} className={"enginewarn"}>&#9888; {r.engine_warning}</div>
             : <div style={{marginTop:10}} className={"demowarn"} hidden={!r.is_demo}>
-                Offline demo engine (no model key). Scores are grounded in the research dossier, not a live read of a real proposal.
+                Offline engine (no model key). Scores are deterministic and grounded in the research dossier, not a live read of a real proposal.
               </div>}
         </div>
         <div className="card">
@@ -1084,9 +1084,9 @@ function Compare({results}){
       {/* Column headers */}
       <div className="cmp-colhead">
         <div></div>
-        <div className="cmp-vendorhead"><b>{A.vendor}</b><div className="small muted">{A.product}{A.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+        <div className="cmp-vendorhead"><b>{A.vendor}</b><div className="small muted">{A.product}</div></div>
         <div></div>
-        <div className="cmp-vendorhead"><b>{B.vendor}</b><div className="small muted">{B.product}{B.is_demo && <span className="tag" style={{marginLeft:6}}>demo</span>}</div></div>
+        <div className="cmp-vendorhead"><b>{B.vendor}</b><div className="small muted">{B.product}</div></div>
       </div>
 
       {/* Headline lenses */}
@@ -1368,7 +1368,7 @@ function Chat({model}){
         {log.map((m,i)=>(
           <div key={i} className={"msg "+(m.role==="user"?"user":"bot")}>
             {m.role==="bot" ? <div className="md">{mdToReact(m.content)}</div> : m.content}
-            {m.ground && <div className="ground">grounded in: {m.ground.join(", ")}{m.demo?" · demo (no model key)":""}</div>}
+            {m.ground && <div className="ground">grounded in: {m.ground.join(", ")}{m.demo?" · offline (no model key)":""}</div>}
           </div>
         ))}
         {busy && <div className="msg bot"><span className="spin"></span> thinking…</div>}
@@ -1852,7 +1852,7 @@ function App(){
   async function loadResults(){ setResults(await jget("/api/results")); }
   useEffect(()=>{ window.__onAuthExpired=()=>setAuth(false); return ()=>{ window.__onAuthExpired=null; }; },[]);
   useEffect(()=>{(async()=>{
-    if(STATIC){ setAuth({name:"Demo User",email:"demo",org:"Demo",must_change:false}); return; }
+    if(STATIC){ setAuth({name:"Reviewer",email:"standalone",org:"Service Logic",must_change:false}); return; }
     try{ const r=await fetch("/api/session",{credentials:"same-origin"});
       setAuth(r.ok ? await r.json() : false);
     }catch(e){ setAuth(false); }
@@ -1906,7 +1906,7 @@ function App(){
       <div className="wrap" style={{paddingTop:18,paddingBottom:30}}>
         {auth && auth.must_change && <div className="demowarn">You're still on the temporary password — set your own under the <b>Account</b> tab.</div>}
         {!anyLive && <div className="demowarn">
-          No live model API key detected — running the <b>offline demo engine</b>. Scores are deterministic and grounded in the research dossier and five-vendor decision rubric. Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read.
+          No live model API key detected — running the <b>offline engine</b>. Scores are deterministic and grounded in the research dossier and five-vendor decision rubric. Set <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> and pick a model (top-right) for a live LLM read.
         </div>}
 
         <div className="card" style={{marginBottom:18}}>
