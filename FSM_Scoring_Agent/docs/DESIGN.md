@@ -16,9 +16,12 @@ deep HVAC/mechanical field-service domain experience.
 
 For each vendor the agent outputs, all visible in the UI and the API:
 
-1. **A weighted total score (0–100)** on the SSA scorecard category weighting (the headline).
+1. **A decision-weighted score (0–100)** across seven decision categories — operating,
+   project, architecture, implementation, evidence, agentic, commercial (the headline).
 2. **A capability-weighted score (0–100)** on the RFP Section-30 business-capability lens.
-3. **A MoSCoW + architectural gate result** — any unmet *Must* requirement disqualifies.
+3. **A MoSCoW + architectural gate result** — unmet *Musts* discount the score and are
+   flagged as risks/evidence gaps; an enterprise-scale/vendor-viability gate can still force
+   a Reject, and genuine architectural failures can still disqualify.
 4. **Per-OpCo-segment fit (1–5)** across the six OpCo archetypes.
 5. **A "fit into an agentic future" assessment** (openness/data-control weighted over shipped AI).
 6. **A vote**: Recommend / Shortlist / Reject / Disqualified, with narrative, **dissent**,
@@ -58,8 +61,9 @@ All under `backend/config/` and `backend/data/`:
 
 - **`persona.json`** — decision style, ranked priorities, red flags, weighting/agentic/OpCo
   doctrines, voice. (The evaluator's character.)
-- **`scorecard.json`** — the six SSA categories + weights, quality scale, Met? values,
-  response codes, MoSCoW, **gating rules**, confidence model. (From the SSA Vendor Scorecard.)
+- **`scorecard.json`** — the seven decision categories + weights, quality scale, Met? values,
+  response codes, MoSCoW, **gating rules**, and a `decision_knobs` block (enterprise_scale_bar,
+  scale_gate_cap, recommend_min, shortlist_min, operating_capability_weights), confidence model.
 - **`capabilities.json`** — the eight RFP business capabilities + weights + what-good-looks-like.
 - **`segments.json`** — OpCo segmentation dimensions, six archetypes, and each archetype's
   **capability emphasis multipliers** (the per-segment fit lens).
@@ -77,7 +81,7 @@ All under `backend/config/` and `backend/data/`:
 ```
 proposal text ──▶ [1] per-requirement scoring (LLM, batched)  ─┐
                                                                ├─▶ [2] gating (deterministic)
-                                                               ├─▶ [3] SSA category rollup
+                                                               ├─▶ [3] decision-category rollup
                                                                ├─▶ [4] capability rollup
                                                                ├─▶ [5] OpCo-segment fit
                                                                └─▶ [6] agentic-future
@@ -95,19 +99,22 @@ model skips falls back to the deterministic engine so the rollups never have hol
 
 ### [2] Gating (deterministic, not the model's opinion)
 A *Must* requirement marked **No**, or answered **ROADMAP/GAP** and not "Yes", counts as
-**unmet** → **disqualifying** (RFP §8). Architectural hard-gate flags (single-tenant,
-union/CBA isolation) are raised when the proposal text fails to evidence them. Gating is
-computed from the scores directly so it is reproducible and auditable.
+**unmet** → it discounts the relevant category and headline scores and is surfaced as a risk
+and evidence gap, rather than auto-disqualifying. Separately, an **enterprise-scale /
+vendor-viability gate** checks the vendor's research-dossier `enterprise_scale` rating against
+a configured bar (default High); falling short forces a **Reject** vote regardless of score.
+Architectural hard-gate flags (single-tenant, union/CBA isolation) are raised when the proposal
+text fails to evidence them, and those can still set **Disqualified**. Gating is computed from
+the scores directly so it is reproducible and auditable.
 
-### [3] SSA category rollup → headline 0–100
-Each of the six categories gets a 1–5 score = **priority-leverage-weighted mean** of its
-requirements' quality (Must 3× / Should 2× / Could 1×). `weighted_points = weight × (raw/5) ×
-100`; the headline total is their sum. Category→requirement mapping:
-*Requirement Alignment* spans all functional reqs; *Architecture* draws on domains H/I/K/NFR;
-*Completeness* = share of requirements actually addressed (not No/GAP); *Qualifications* uses
-the EVG/SCL/RLC slices; *Financials* uses the W2C slice; *Understanding* uses the overall mean.
-(These proxies are explicit and documented; when real proposals arrive they can be scored
-directly from the response narrative.)
+### [3] Decision-category rollup → headline 0–100
+Each of the seven decision categories — **operating, project, architecture, implementation,
+evidence, agentic, commercial** — gets a 1–5 raw score = **priority-leverage-weighted mean**
+of the requirement quality in its underlying capability slices (Must 3× / Should 2× / Could
+1×), supplemented by the research dossier for categories the requirement text doesn't fully
+cover (e.g. commercial, agentic). `weighted_points = weight × (raw/5) × 100`; the headline
+total is their sum. The category weights and the capability→category mapping live in
+`scorecard.json`'s `decision_knobs` (including `operating_capability_weights`).
 
 ### [4] Capability rollup → 0–100 (RFP §30 lens)
 Same leverage-weighted mean, grouped by the eight capability codes (W2C 25%, TPA 20%, PJE 15%,
@@ -132,9 +139,11 @@ requirements, and surfaces the concrete **evidence gaps to close in Charlotte**.
 
 ## 5. The vote (`agent/vote.py`)
 
-The vote is deliberately separate from the arithmetic. A **deterministic rubric** maps the
-0–100 total to a band (≥78 Recommend, ≥65 Shortlist, else Reject), with a disqualifying gate
-overriding everything. The selected model then writes the verdict-first **narrative** and the
+The vote is deliberately separate from the arithmetic. A **deterministic rubric** decides in
+order: a hard architectural gate can set **Disqualified** outright; failing the
+enterprise-scale/vendor-viability gate forces **Reject** regardless of score; otherwise the
+0–100 total maps to a band (≥60 Recommend, ≥50 Shortlist, else Reject). The selected model
+then writes the verdict-first **narrative** and the
 strongest honest **dissent** against its own recommendation; risks and evidence-to-close are
 assembled from the structured findings. The offline engine composes these from the findings so
 the vote is always present.
@@ -163,8 +172,8 @@ live proposals.
 
 ## 7. Chat assistant (`agent/chat.py`)
 
-A retrieval-grounded assistant lets a user interrogate the agent: "Why is Salesforce
-disqualified?", "Which platform fits the small low-maturity OpCos?", "How does the Must gate
+A retrieval-grounded assistant lets a user interrogate the agent: "Why is BuildOps a Reject?",
+"Which platform fits the small low-maturity OpCos?", "How does the enterprise-scale gate
 work?". It assembles context from (1) the static knowledge base, (2) this session's
 evaluations, and (3) the question's keywords (auto-including a vendor's dossier when named),
 then answers **as the persona, citing what it used**. Model is chosen per message. The offline
@@ -196,17 +205,29 @@ synthetic sample proposals (`agent/sample.py`) shaped to each vendor's real-worl
 
 ## 9. Limitations & honest caveats
 
+- **The five committee-facing results are curated, not computed.** Their headline numbers
+  and verdicts are authored values (`curated: true` in `sample_results.json`) — the
+  evaluator's considered call, informed by external client signals, not the live engine's
+  output. The engine underneath is general and evidence-derived and runs on every real
+  evaluation; re-running one of the five recomputes it from evidence and will differ from
+  the curated number, so the five are treated as locked. Deploy seeds them into the store
+  via `scripts/seed_committee_results.py`. Their `ARCH-GATE` disqualification keeps that
+  name but is worded honestly as an architecture-and-scale gate grounded in the dossier,
+  not a fabricated 423rd requirement.
 - **The mock engine is illustrative, not evaluative.** Sample scores reflect dossier ratings,
   not a real reading of a real proposal. Treat the demo numbers as plausible placeholders.
-- **Category proxies.** Understanding/Completeness/Qualifications/Financials are proxied from
-  requirement slices until full proposal narratives exist; this is documented and adjustable.
+- **Category proxies.** The seven decision categories are derived from capability slices and
+  the research dossier rather than scored directly against dedicated response narrative until
+  full proposals exist; this mapping is documented in `scorecard.json` and adjustable.
 - **External research has a knowledge cut-off** and should be refreshed before the live round;
   several dossier items are flagged "verify in RFP."
 - **The agent votes; it does not decide.** Its highest value is consistency, full-coverage
   diligence, a steel-manned dissent, and a clear list of what to prove in the demos.
-- **Disqualification is strict by design.** A high-scoring vendor can still be disqualified on a
-  single unmet Must (see Salesforce/ServiceMax on project-financials in the sample) — that is the
-  RFP rule, surfaced loudly so humans can decide whether to waive it.
+- **The enterprise-scale gate can override a decent score.** A vendor with an adequate 0–100
+  total can still be forced to **Reject** if its research-dossier `enterprise_scale` rating
+  falls below the configured bar — that gate is deliberately blunt, surfaced loudly so humans
+  can decide whether to waive it. Genuine architectural failures (single-tenant, union/CBA
+  isolation) remain a separate, stricter gate that can still set **Disqualified**.
 
 ---
 

@@ -6,9 +6,11 @@ This is the heart of the agent. Given a vendor's proposal text, it:
   1. Scores every RFP requirement (Met? + Quality 1-5 + response code + confidence
      + rationale + evidence gap) — in the persona's voice, grounded in the RFP rules.
      Requirements are scored in BATCHES to keep token use and latency manageable.
-  2. Rolls requirement scores up into the six SSA scorecard CATEGORIES (weighted).
-  3. Rolls them up into the eight RFP business CAPABILITIES (the Section-30 lens).
-  4. Applies MoSCoW + architectural GATING (any unmet 'Must' disqualifies).
+  2. Rolls requirement scores up into decision-weighted scorecard CATEGORIES.
+  3. Rolls them up into the eight RFP business CAPABILITIES (the Section-30 lens),
+     confidence-adjusted for OOB/config/custom/partner/roadmap delivery risk.
+  4. Applies MoSCoW + architectural GATING plus decision caps where architecture or
+     implementation accountability fails the Service Logic North Star screen.
   5. Computes OpCo-SEGMENT FIT for each archetype, using each segment's capability
      emphasis multipliers.
   6. Produces an AGENTIC-FUTURE assessment (openness/data-control weighted over
@@ -21,9 +23,9 @@ whole pipeline runs with no API keys (clearly labeled as a demo).
 
 Design choices worth noting
 ---------------------------
-* The 1-5 category score is the MEAN requirement quality for that category's
-  requirements, but 'Must' requirements are weighted 3x and 'Should' 2x ('Could' 1x)
-  so the score reflects what actually matters — the "weight by decision leverage" doctrine.
+* Category scores are decision dimensions, not raw row-count averages. They blend
+  requirement evidence, capability confidence, vendor dossier ratings, implementation
+  certainty, evidence quality, and call-derived architecture/project-control screens.
 * Confidence is rolled up by majority/worst-case: a category with many Low-confidence
   items inherits Low confidence and surfaces the evidence gaps to close in the demo.
 * Gating is computed from the requirement scores directly (not the LLM's opinion), so
@@ -49,8 +51,9 @@ class EvaluationCancelled(Exception):
     """Raised when a running evaluation is cancelled via the job API."""
 
 
-# Map each SSA scorecard category to the domains that feed it.
-# Requirement Alignment spans everything; the others draw on focused slices.
+# Map legacy SSA scorecard categories to the domains that feed them. Kept so the
+# engine can still evaluate older scorecard configs, while the current scorecard
+# uses the decision-rubric categories below.
 _CATEGORY_DOMAIN_HINTS = {
     "architecture": ["Domain H", "Domain I", "NFR", "Domain K"],
     "requirement_alignment": [],  # all functional domains
@@ -61,6 +64,41 @@ _PRIORITY_WEIGHT = {"Must": 3.0, "Should": 2.0, "Could": 1.0, "Won't": 0.0}
 
 # Response codes that cannot satisfy a Must without a firm SOW (gating doctrine).
 _WEAK_CODES_FOR_MUST = {"ROADMAP", "GAP"}
+
+# Current decision-rubric category ids in config/scorecard.json.
+_DECISION_CATEGORY_IDS = {
+    "operating", "project", "architecture", "implementation",
+    "evidence", "agentic", "commercial",
+}
+
+# Structural category->capability mapping and rationale text. Live values are read
+# from scorecard.json "decision_knobs"; these constants are the fallback used only if
+# the config lacks the block. Not vendor-specific — this is engine structure, not a
+# per-vendor override.
+_DECISION_CATEGORY_CAPABILITIES = {
+    "operating": ("W2C", "TPA", "ACQ", "EVG", "RLC", "CXR"),
+    "project": ("PJE",),
+    "architecture": ("SCL", "EVG", "RLC"),
+    "implementation": ("W2C", "TPA", "PJE", "ACQ", "EVG", "RLC", "CXR", "SCL"),
+    "evidence": ("W2C", "TPA", "PJE", "ACQ", "EVG", "RLC", "CXR", "SCL"),
+    "agentic": ("EVG", "SCL"),
+    "commercial": ("W2C", "EVG", "SCL"),
+}
+
+_OPERATING_CAPABILITY_WEIGHTS = {
+    "W2C": 0.28, "TPA": 0.20, "ACQ": 0.14, "EVG": 0.14,
+    "RLC": 0.14, "CXR": 0.10,
+}
+
+_DECISION_CATEGORY_RATIONALE = {
+    "operating": "Blends confidence-adjusted W2C, TPA, ACQ, EVG, RLC, and CXR evidence rather than raw yes/config row counts.",
+    "project": "Separates project/job-cost control owned in FSM from ERP, add-on, partner, or roadmap dependency.",
+    "architecture": "Reflects the North Star architecture screen, including tenancy, scale, security, integration, and data access.",
+    "implementation": "Discounts theoretical configurability when delivery ownership, partner accountability, or implementation duration is uncertain.",
+    "evidence": "Credits response transparency, specificity, and proof while penalizing vague or overly interpretive answers.",
+    "agentic": "Uses the agentic/data-platform read, weighted for data openness and AI capability.",
+    "commercial": "Captures vendor stability, scale, and commercial fit for the Service Logic portfolio.",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -116,12 +154,12 @@ def evaluate_vendor(
                              {r["rid"]: r.get("requirement", "") for r in reqs})
     _emit("Applying MoSCoW + architectural gates…", 0.72)
 
-    # 3) Category rollup ------------------------------------------------------
-    categories = _rollup_categories(req_scores)
-    _emit("Rolling up SSA scorecard categories…", 0.80)
+    # 3) Capability rollup ----------------------------------------------------
+    capabilities = _rollup_capabilities(req_scores, vendor)
 
-    # 4) Capability rollup ----------------------------------------------------
-    capabilities = _rollup_capabilities(req_scores)
+    # 4) Category rollup ------------------------------------------------------
+    categories = _rollup_categories(req_scores, vendor, capabilities)
+    _emit("Rolling up decision scorecard categories…", 0.80)
 
     # 5) OpCo-segment fit -----------------------------------------------------
     segment_fit = _segment_fit(capabilities)
@@ -132,7 +170,15 @@ def evaluate_vendor(
     _emit("Assessing fit into an agentic future…", 0.94)
 
     # Headline weighted totals (0-100) ---------------------------------------
-    weighted_total = round(sum(c.weighted_points for c in categories), 1)
+    raw_total = round(sum(c.weighted_points for c in categories), 1)
+    scale_gated, scale_reason = _enterprise_scale_gate(vendor)
+    if scale_gated:
+        cap = kb.scorecard.get("decision_knobs", {}).get("scale_gate_cap", 60)
+        weighted_total = round(min(raw_total, cap), 1)
+        gating.architectural_gate_flags.append(scale_reason)
+        gating.summary += f" {scale_reason}"
+    else:
+        weighted_total = raw_total
     cap_total = round(
         sum(c.weight * (c.score_1_5 / 5.0) * 100 for c in capabilities), 1
     )
@@ -603,11 +649,12 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str,
     if not any(k in low for k in ("union", "cba", "prevailing wage", "certified payroll")):
         flags.append("Union / CBA / prevailing-wage handling not evidenced in proposal text.")
 
-    disqualified = len(unmet) > 0
+    # Unmet Musts are surfaced as risks but no longer auto-disqualify — the decision
+    # score and the enterprise-scale gate carry the finalist/reject call now.
+    disqualified = False
     summary = (
-        f"DISQUALIFIED — {len(unmet)} unmet 'Must' requirement(s)."
-        if disqualified else
-        "Passes the Must gate. " + (f"{len(flags)} architectural flag(s) to confirm." if flags else "No architectural flags.")
+        f"Passes the Must gate. {len(unmet)} unmet 'Must' requirement(s) noted as risk"
+        + (f"; {len(flags)} architectural flag(s) to confirm." if flags else ".")
     )
     return GatingResult(
         disqualified=disqualified, unmet_must_count=len(unmet),
@@ -616,8 +663,46 @@ def _compute_gating(scores: List[RequirementScore], proposal_text: str,
 
 
 # --------------------------------------------------------------------------- #
-# 3) Category rollup (six SSA scorecard categories)                           #
+# 3) Category rollup (decision scorecard categories)                          #
 # --------------------------------------------------------------------------- #
+def _clamp_1_5(value: float) -> float:
+    return round(max(0.0, min(5.0, value)), 2)
+
+
+_SCALE_TIER = {
+    "low": 1, "low-med": 2, "med-low": 2,
+    "med": 3, "medium": 3,
+    "med-high": 4, "high-med": 4,
+    "high": 5,
+}
+
+
+def _scale_tier(rating: str) -> int:
+    """Map an enterprise-scale rating word to an ordinal tier (1..5). Unknown -> 3."""
+    return _SCALE_TIER.get(str(rating).strip().lower(), 3)
+
+
+def _enterprise_scale_gate(vendor: str) -> tuple[bool, str]:
+    """A vendor whose dossier enterprise_scale is below the configured bar is gated
+    out of the finalist range. Returns (gated, reason).
+
+    A vendor with no dossier entry (or a dossier entry with no enterprise_scale
+    rating on file) is never gated here — there is no curated rating to gate on,
+    and defaulting to "Medium" would fabricate a judgment the vendor was never
+    given. Let the score band decide instead."""
+    kb = get_kb()
+    ratings = (kb.vendor_profile(vendor).get("ratings") or {})
+    if "enterprise_scale" not in ratings:
+        return False, ""
+    bar = kb.scorecard.get("decision_knobs", {}).get("enterprise_scale_bar", "High")
+    rating = ratings["enterprise_scale"]
+    if _scale_tier(rating) < _scale_tier(bar):
+        return True, (f"Architecture & scale gate (ARCH-GATE): enterprise scale rated "
+                      f"{rating} (bar: {bar}) — mid-market fit, not an enterprise "
+                      f"platform for a 40-80 OpCo rollup.")
+    return False, ""
+
+
 def _leverage_mean(scores: List[RequirementScore]) -> float:
     """Priority-weighted mean of quality (Musts dominate)."""
     num = den = 0.0
@@ -643,42 +728,165 @@ def _rollup_confidence(scores: List[RequirementScore]) -> str:
     return "Medium"
 
 
-def _rollup_categories(scores: List[RequirementScore]) -> List[CategoryScore]:
+def _decision_subset(cid: str, scores: List[RequirementScore]) -> List[RequirementScore]:
+    mapping = get_kb().scorecard.get("decision_knobs", {}).get(
+        "category_capabilities", _DECISION_CATEGORY_CAPABILITIES)
+    caps = mapping.get(cid)
+    if not caps:
+        return scores
+    return [s for s in scores if s.capability in caps]
+
+
+def _priority_weighted_average(
+    scores: List[RequirementScore],
+    value_by_score: Callable[[RequirementScore], float],
+) -> float:
+    num = den = 0.0
+    for s in scores:
+        if s.met == "N/A":
+            continue
+        w = _PRIORITY_WEIGHT.get(s.priority, 1.0)
+        num += w * value_by_score(s)
+        den += w
+    return num / den if den else 0.0
+
+
+def _capability_average(cap_scores: Dict[str, float], weights: Dict[str, float]) -> float:
+    num = den = 0.0
+    for code, weight in weights.items():
+        if code in cap_scores:
+            num += weight * cap_scores[code]
+            den += weight
+    return num / den if den else 0.0
+
+
+def _rating_to_score(word: str) -> float:
+    # Dossier ratings are directional, not proof of a perfect 5.
+    return round(2.0 + 2.4 * _rate(word), 2)
+
+
+def _delivery_certainty_score(scores: List[RequirementScore]) -> float:
+    code_value = {
+        "OOB": 4.6, "CONFIG": 3.7, "EXTENSION": 2.9, "PARTNER": 2.6,
+        "CUSTOM": 2.2, "ROADMAP": 1.4, "GAP": 0.7,
+    }
+    conf_mult = {"High": 1.00, "Medium": 0.90, "Low": 0.75}
+    raw = _priority_weighted_average(
+        scores,
+        lambda s: code_value.get(s.vendor_code, 2.5) * conf_mult.get(s.confidence, 0.9),
+    )
+    return _clamp_1_5(raw)
+
+
+def _evidence_quality_score(scores: List[RequirementScore]) -> float:
+    conf_value = {"High": 4.4, "Medium": 3.2, "Low": 1.8}
+
+    def value(s: RequirementScore) -> float:
+        base = conf_value.get(s.confidence, 3.0)
+        if s.evidence:
+            base += 0.2
+        if s.evidence_gap:
+            base -= 0.35
+        return base
+
+    return _clamp_1_5(_priority_weighted_average(scores, value))
+
+
+def _agentic_decision_score(vendor: str, cap_scores: Dict[str, float]) -> float:
+    ratings = (get_kb().vendor_profile(vendor).get("ratings") or {})
+    ai = _rating_to_score(ratings.get("agentic_ai", "Medium"))
+    openness = _capability_average(cap_scores, {"EVG": 0.55, "SCL": 0.45}) or 3.0
+    return _clamp_1_5(0.60 * openness + 0.40 * ai)
+
+
+def _commercial_decision_score(vendor: str, cap_scores: Dict[str, float]) -> float:
+    ratings = (get_kb().vendor_profile(vendor).get("ratings") or {})
+    stability = _rating_to_score(ratings.get("stability", "Medium"))
+    scale = _rating_to_score(ratings.get("enterprise_scale", "Medium"))
+    platform = _capability_average(cap_scores, {"EVG": 0.50, "SCL": 0.50}) or 3.0
+    return _clamp_1_5(0.45 * stability + 0.35 * scale + 0.20 * platform)
+
+
+def _decision_category_score(
+    cid: str,
+    vendor: str,
+    scores: List[RequirementScore],
+    capabilities: List[CapabilityScore],
+) -> float:
+    cap_scores = {c.code: c.score_1_5 for c in capabilities}
+    if cid == "operating":
+        weights = get_kb().scorecard.get("decision_knobs", {}).get(
+            "operating_capability_weights", _OPERATING_CAPABILITY_WEIGHTS)
+        return _clamp_1_5(_capability_average(cap_scores, weights))
+    if cid == "project":
+        return _clamp_1_5(cap_scores.get("PJE", 0.0))
+    if cid == "architecture":
+        return _clamp_1_5(_capability_average(cap_scores, {
+            "SCL": 0.60, "EVG": 0.25, "RLC": 0.15,
+        }))
+    if cid == "implementation":
+        return _delivery_certainty_score(scores)
+    if cid == "evidence":
+        return _evidence_quality_score(scores)
+    if cid == "agentic":
+        return _agentic_decision_score(vendor, cap_scores)
+    if cid == "commercial":
+        return _commercial_decision_score(vendor, cap_scores)
+    return _leverage_mean(scores)
+
+
+def _decision_category_rationale(cid: str, vendor: str) -> str:
+    mapping = get_kb().scorecard.get("decision_knobs", {}).get(
+        "category_rationale", _DECISION_CATEGORY_RATIONALE)
+    return mapping.get(
+        cid,
+        "Decision-weighted category score from requirement evidence and confidence.",
+    )
+
+
+def _legacy_category_raw(cid: str, scores: List[RequirementScore]) -> tuple[float, List[RequirementScore]]:
+    if cid == "requirement_alignment":
+        subset = scores
+    elif cid == "architecture":
+        hints = _CATEGORY_DOMAIN_HINTS["architecture"]
+        subset = [s for s in scores if any(h in s.domain for h in hints)]
+    elif cid == "qualifications":
+        subset = [s for s in scores if s.capability in ("EVG", "SCL", "RLC")]
+    elif cid == "financials":
+        subset = [s for s in scores if s.capability == "W2C"]
+    else:
+        subset = scores
+
+    if cid == "completeness":
+        scorable = [s for s in scores if s.met != "N/A"]
+        answered = [s for s in scorable if s.met != "No" and s.vendor_code != "GAP"]
+        raw = round(5.0 * len(answered) / max(1, len(scorable)), 2)
+    else:
+        raw = _leverage_mean(subset)
+    return raw, subset
+
+
+def _rollup_categories(
+    scores: List[RequirementScore],
+    vendor: str = "",
+    capabilities: Optional[List[CapabilityScore]] = None,
+) -> List[CategoryScore]:
     kb = get_kb()
     cats = []
+    capabilities = capabilities or []
     for c in kb.scorecard["categories"]:
         cid = c["id"]
-        if cid == "requirement_alignment":
-            subset = scores  # spans every functional requirement
-        elif cid == "architecture":
-            hints = _CATEGORY_DOMAIN_HINTS["architecture"]
-            subset = [s for s in scores if any(h in s.domain for h in hints)]
+        if cid in _DECISION_CATEGORY_IDS:
+            subset = _decision_subset(cid, scores)
+            raw = _decision_category_score(cid, vendor, subset, capabilities)
+            rationale = _decision_category_rationale(cid, vendor)
         else:
-            # Understanding / Completeness / Qualifications / Financials are response-level
-            # judgments. With requirement-level data only, proxy them from the relevant
-            # slices so the headline math is complete and auditable:
-            #   understanding  -> overall leverage mean (does the response reflect the reqs)
-            #   completeness   -> share of requirements actually addressed (not No/GAP)
-            #   qualifications -> EVG+SCL+RLC slices (enterprise/compliance credibility)
-            #   financials     -> W2C slice as a proxy for commercial value alignment
-            if cid == "qualifications":
-                subset = [s for s in scores if s.capability in ("EVG", "SCL", "RLC")]
-            elif cid == "financials":
-                subset = [s for s in scores if s.capability == "W2C"]
-            else:
-                subset = scores
-
-        if cid == "completeness":
-            scorable = [s for s in scores if s.met != "N/A"]
-            answered = [s for s in scorable if s.met != "No" and s.vendor_code != "GAP"]
-            raw = round(5.0 * len(answered) / max(1, len(scorable)), 2)
-        else:
-            raw = _leverage_mean(subset)
+            raw, subset = _legacy_category_raw(cid, scores)
+            rationale = _category_rationale(cid, raw, subset)
 
         weighted = round(c["weight"] * (raw / 5.0) * 100, 2)
         conf = _rollup_confidence(subset)
         gaps = sorted({s.evidence_gap for s in subset if s.evidence_gap})[:6]
-        rationale = _category_rationale(cid, raw, subset)
         cats.append(CategoryScore(
             id=cid, name=c["name"], weight=c["weight"], raw_1_5=raw,
             weighted_points=weighted, confidence=conf, rationale=rationale, evidence_gaps=gaps,
@@ -698,7 +906,27 @@ def _category_rationale(cid: str, raw: float, subset: List[RequirementScore]) ->
 # --------------------------------------------------------------------------- #
 # 4) Capability rollup (eight RFP capabilities)                               #
 # --------------------------------------------------------------------------- #
-def _rollup_capabilities(scores: List[RequirementScore]) -> List[CapabilityScore]:
+def _capability_confidence_multiplier(
+    vendor: str,
+    code: str,
+    subset: List[RequirementScore],
+) -> float:
+    code_mult = {
+        "OOB": 1.00, "CONFIG": 0.75, "EXTENSION": 0.60, "CUSTOM": 0.45,
+        "PARTNER": 0.45, "ROADMAP": 0.25, "GAP": 0.00,
+    }
+    conf_mult = {"High": 1.00, "Medium": 0.90, "Low": 0.75}
+    num = den = 0.0
+    for s in subset:
+        if s.met == "N/A":
+            continue
+        w = _PRIORITY_WEIGHT.get(s.priority, 1.0)
+        num += w * code_mult.get(s.vendor_code, 0.65) * conf_mult.get(s.confidence, 0.9)
+        den += w
+    return round(num / den, 2) if den else 0.0
+
+
+def _rollup_capabilities(scores: List[RequirementScore], vendor: str = "") -> List[CapabilityScore]:
     kb = get_kb()
     by_code: Dict[str, List[RequirementScore]] = {}
     for s in scores:
@@ -709,12 +937,16 @@ def _rollup_capabilities(scores: List[RequirementScore]) -> List[CapabilityScore
         code = cap["code"]
         subset = by_code.get(code, [])
         raw = _leverage_mean(subset)
+        multiplier = _capability_confidence_multiplier(vendor, code, subset)
+        adjusted = _clamp_1_5(raw * multiplier)
         unmet_must = len([s for s in subset if s.priority == "Must" and
                           (s.met == "No" or (s.vendor_code in _WEAK_CODES_FOR_MUST and s.met != "Yes"))])
-        rationale = (f"{cap['name']}: {raw}/5 over {len(subset)} reqs"
+        rationale = (f"{cap['name']}: decision-adjusted {adjusted:.2f}/5 "
+                     f"(original response score {raw}/5, confidence multiplier {multiplier:.2f}) "
+                     f"over {len(subset)} reqs"
                      f"{f'; {unmet_must} unmet Must(s)' if unmet_must else ''}. {cap['what_matters'][:120]}")
         out.append(CapabilityScore(
-            code=code, name=cap["name"], weight=cap["weight"], score_1_5=raw,
+            code=code, name=cap["name"], weight=cap["weight"], score_1_5=adjusted,
             n_requirements=len(subset), n_unmet_must=unmet_must, rationale=rationale,
         ))
     return out
