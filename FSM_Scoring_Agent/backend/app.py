@@ -225,26 +225,51 @@ def _run_job(jid, **kw):
             _JOBS[jid].update(stage="error", done=True, error=f"{type(e).__name__}: {e}")
 
 
+def _merge_results(seed, store_results, demo_on):
+    """Compute the boot result set from the committed seed and the persisted store.
+
+    Precedence, lowest to highest:
+      1. Demo seed entries (non-curated) — only when demo_on (SEED_DEMO_RESULTS != 0).
+      2. Persisted runtime evaluations from the store — a real run of any vendor wins
+         over the demo seed.
+      3. Curated committee results (``curated: true`` in the seed) — ALWAYS loaded and
+         always win. They are the git-versioned, committee-facing evaluations, so a
+         stale store entry for the same vendor must not shadow them. This is what keeps
+         the five locked committee numbers authoritative without any manual store surgery.
+
+    Pure function (no globals) so the precedence is unit-testable.
+    """
+    out = {}
+    curated = [ev for ev in seed if ev.get("curated")]
+    for ev in seed:
+        if ev.get("curated") or demo_on:
+            out[ev["vendor"]] = ev
+    for vendor, result in store_results.items():
+        out[vendor] = result
+    for ev in curated:                       # curated wins over a stale store entry
+        out[ev["vendor"]] = ev
+    return out
+
+
 def _seed_results():
-    # 1) Read-only demo seed (the five bundled vendors) so the UI has content on
-    #    first boot / fresh checkout. Set SEED_DEMO_RESULTS=0 to suppress the demo
-    #    vendors entirely — e.g. once real proposals are being evaluated and the
-    #    bundled demos are just noise. The persisted store (step 2) still loads.
-    if os.environ.get("SEED_DEMO_RESULTS", "1") != "0" and os.path.exists(SAMPLE_RESULTS):
+    # Load the committed seed. Curated committee results (curated: true) are always
+    # loaded and always win over the store; non-curated demo entries load only when
+    # SEED_DEMO_RESULTS != 0. See _merge_results for the precedence. A store or seed
+    # problem must never block boot.
+    seed = []
+    if os.path.exists(SAMPLE_RESULTS):
         try:
             with open(SAMPLE_RESULTS, "r", encoding="utf-8") as f:
-                for ev in json.load(f):
-                    _RESULTS[ev["vendor"]] = ev
+                seed = json.load(f)
         except Exception as e:
-            app.logger.warning("Could not seed sample results: %s", e)
-    # 2) Overlay persisted runtime evaluations (durable-latest). The store wins
-    #    over the demo seed: once the operator runs an evaluation, that is the
-    #    real result. A store problem must never block boot.
+            app.logger.warning("Could not read sample results: %s", e)
     try:
-        for vendor, result in store.load_all().items():
-            _RESULTS[vendor] = result
+        store_results = store.load_all()
     except Exception as e:
         app.logger.warning("Could not load persisted results: %s", e)
+        store_results = {}
+    demo_on = os.environ.get("SEED_DEMO_RESULTS", "1") != "0"
+    _RESULTS.update(_merge_results(seed, store_results, demo_on))
 
 
 # --------------------------------------------------------------------------- #
