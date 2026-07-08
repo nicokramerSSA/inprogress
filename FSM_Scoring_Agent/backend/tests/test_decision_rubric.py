@@ -123,6 +123,48 @@ class ConfigTests(unittest.TestCase):
                 knobs["category_capabilities"] = saved
 
 
+class CuratedSeedTests(unittest.TestCase):
+    """The five committee-facing results are curated (authored) values, not engine
+    output. These guard the displayed numbers and the honest ARCH-GATE wording."""
+
+    def setUp(self):
+        seed_path = os.path.join(os.path.dirname(__file__), "..", "data", "sample_results.json")
+        self.seed = {r["vendor"]: r for r in json.load(open(seed_path))}
+
+    def test_curated_headline_numbers_are_nicks_values(self):
+        expected = {
+            "IFS": (77.8, "Recommend", False),
+            "Salesforce": (63.2, "Shortlist", False),
+            "ServiceMax": (51.6, "Shortlist", False),
+            "ServiceTitan": (48.0, "Disqualified", True),
+            "BuildOps": (45.0, "Disqualified", True),
+        }
+        for vendor, (score, vote, dq) in expected.items():
+            r = self.seed[vendor]
+            assert r["weighted_total"] == score, f"{vendor} headline {r['weighted_total']} != {score}"
+            assert r["vote"]["recommendation"] == vote, f"{vendor} vote {r['vote']['recommendation']} != {vote}"
+            assert r["gating"]["disqualified"] is dq, f"{vendor} dq {r['gating']['disqualified']} != {dq}"
+            assert r.get("curated") is True, f"{vendor} missing curated marker"
+
+    def test_arch_gate_kept_and_reason_is_honest(self):
+        for vendor in ("ServiceTitan", "BuildOps"):
+            gate = self.seed[vendor]["gating"]
+            arch = [m for m in gate["unmet_musts"] if m.get("rid") == "ARCH-GATE"]
+            assert arch, f"{vendor} lost its ARCH-GATE entry"
+            reason = arch[0]["reason"].lower()
+            assert "scale" in reason, f"{vendor} ARCH-GATE reason not scale-anchored"
+            assert "ARCH-GATE" in " ".join(gate["architectural_gate_flags"]), \
+                f"{vendor} gate flag dropped the ARCH-GATE label"
+
+    def test_buildops_vote_no_longer_blames_architecture(self):
+        """BuildOps's own evidence scores architecture high; its rejection is a scale
+        call. The curated vote must not claim architecture failure."""
+        vote = self.seed["BuildOps"]["vote"]
+        assert "scale" in vote["narrative"].lower()
+        assert "architecture" not in vote["top_risks"][0].lower(), \
+            "BuildOps top risk should be scale-anchored, not architecture"
+
+
 class GateDrivenVoteTests(unittest.TestCase):
     def test_scale_gated_vote_is_reject_regardless_of_score(self):
         ev = evaluate_vendor("BuildOps", "", sample_proposal_text("BuildOps"), scoring_model="mock")

@@ -109,6 +109,12 @@ answers to requirements. "Run on sample" uses the synthetic placeholder until Ju
 `POST /api/chat {question, model_id, history}`
 
 ## Status & caveats
-The bundled offline engine now ships with the five-vendor decision-rubric rescore seeded
-from the research dossier and review-call color. Live proposal reads still require model keys. The agent is **advisory** — it augments, not replaces, the human committee.
+The five committee-facing evaluations are **curated results** — authored headline numbers
+and verdicts (marked `curated: true` in `data/sample_results.json`), the evaluator's
+considered call rather than live engine output. They are what the UI displays. The
+**live engine is general and evidence-derived**: any new evaluation — a fresh upload, a
+new vendor, the chat — is scored from the proposal with no vendor names in the code.
+Because the five are authored, re-running one recomputes it from evidence and will show
+a different number, so treat them as locked. Live proposal reads still require model
+keys. The agent is **advisory** — it augments, not replaces, the human committee.
 See `docs/DESIGN.md` §9 for the full caveats.

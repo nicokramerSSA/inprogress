@@ -205,6 +205,15 @@ synthetic sample proposals (`agent/sample.py`) shaped to each vendor's real-worl
 
 ## 9. Limitations & honest caveats
 
+- **The five committee-facing results are curated, not computed.** Their headline numbers
+  and verdicts are authored values (`curated: true` in `sample_results.json`) — the
+  evaluator's considered call, informed by external client signals, not the live engine's
+  output. The engine underneath is general and evidence-derived and runs on every real
+  evaluation; re-running one of the five recomputes it from evidence and will differ from
+  the curated number, so the five are treated as locked. Deploy seeds them into the store
+  via `scripts/seed_committee_results.py`. Their `ARCH-GATE` disqualification keeps that
+  name but is worded honestly as an architecture-and-scale gate grounded in the dossier,
+  not a fabricated 423rd requirement.
 - **The mock engine is illustrative, not evaluative.** Sample scores reflect dossier ratings,
   not a real reading of a real proposal. Treat the demo numbers as plausible placeholders.
 - **Category proxies.** The seven decision categories are derived from capability slices and

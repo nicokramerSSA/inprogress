@@ -11,6 +11,12 @@ every persisted evaluation's decision rollups in place from its already-scored
 for what "re-derive" recomputes vs. leaves untouched.
 
 Not run automatically anywhere; this is a deploy-time operator script.
+
+WARNING — do NOT run this against the committee-facing five. Their headline numbers
+are authored/curated values (see scripts/seed_committee_results.py), and re-deriving
+them from evidence will REPLACE those numbers with the live engine's own output. This
+tool is for bringing OTHER stored results onto the current engine, not for the curated
+committee set. For the committee five, use seed_committee_results.py.
 """
 import datetime
 import os

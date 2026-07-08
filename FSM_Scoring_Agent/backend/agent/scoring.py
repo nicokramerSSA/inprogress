@@ -697,8 +697,9 @@ def _enterprise_scale_gate(vendor: str) -> tuple[bool, str]:
     bar = kb.scorecard.get("decision_knobs", {}).get("enterprise_scale_bar", "High")
     rating = ratings["enterprise_scale"]
     if _scale_tier(rating) < _scale_tier(bar):
-        return True, (f"Enterprise scale rated {rating} (bar: {bar}) — mid-market fit, "
-                      f"not an enterprise platform for a 40-80 OpCo rollup.")
+        return True, (f"Architecture & scale gate (ARCH-GATE): enterprise scale rated "
+                      f"{rating} (bar: {bar}) — mid-market fit, not an enterprise "
+                      f"platform for a 40-80 OpCo rollup.")
     return False, ""
 
 

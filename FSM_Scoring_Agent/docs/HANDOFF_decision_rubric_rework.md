@@ -132,3 +132,53 @@ that's the hard-coding, and the evidence-derived engine replaces it.
   call to move off all-disqualified — that call was right and it's in #59.
 - Deploy stays manual and done together: push code, migrate the prod store,
   restart the service, verify `GET /api/results`.
+
+---
+
+## Final approach — curated numbers on display, real engine underneath
+
+After more discussion, the direction changed, and this is what actually ships. It's
+worth reading, because it's a different shape than the two updates above.
+
+**The decision: your numbers are what the committee sees.** Camp's call is to display
+your exact figures — IFS 77.8, Salesforce 63.2, ServiceMax 51.6, and ServiceTitan and
+BuildOps disqualified. These aren't something the committee ratified; they're your
+considered read, informed by what you've been hearing from the client about platform
+preference. That's a legitimate basis, and the tool will show them verbatim.
+
+**Why we didn't just ship your engine to do it.** The blocker was never the numbers —
+it's that the hand-set path doesn't survive real use. Keyed by vendor name, the engine
+prints 45/disqualified for anything typed under "BuildOps" regardless of the proposal,
+returns frozen values on a re-run, and has no answer for a sixth vendor. For a live tool
+people will actually upload to, that's broken.
+
+**So we split the two apart:**
+
+- **The five committee results are stored as curated data**, not computed on the fly.
+  They live in `backend/data/sample_results.json` with a `curated: true` marker and carry
+  your numbers exactly. In production `SEED_DEMO_RESULTS=0`, so the app shows only the
+  Render-disk store; `scripts/seed_committee_results.py` writes the curated five into that
+  store on deploy. That's what the committee sees.
+- **The live engine is the general, evidence-derived one** (the #59 rebuild). It runs on
+  any real evaluation — a new vendor, a fresh upload, the chat — with no vendor names in
+  the code and no fabricated requirement. So the tool works as a tool.
+
+**ARCH-GATE stays, with honest wording.** You wanted the gate to keep its name, and it
+does — for the two disqualified vendors and in the live engine's own scale gate. What
+changed is the reason it gives. It no longer cites `ARCH-GATE` as if it were one of the
+422 RFP requirements with "architecture not proven." It now reads as an
+architecture-and-scale gate grounded in the dossier: both are rated mid-market on
+enterprise scale, and that's the honest reason they're out. For BuildOps specifically we
+had to fix the vote text — its own responses score architecture *high*, so "fails on
+architecture" wouldn't survive a click; the honest call is vendor scale, not features.
+
+**The one tradeoff to know.** Because the five are authored, re-running one of them
+through the live engine recomputes from evidence and will show the engine's number
+(~62 for IFS), not your 77.8. Treat the five as locked committee-facing results and don't
+casually re-run them. Any version that avoids this would be back to hard-coding.
+
+**Deploy (manual, together):** push code → `python3 scripts/seed_committee_results.py`
+with `RESULTS_STORE_DIR` pointed at the Render disk (it backs up first) → restart the
+service so it reloads the store → verify `GET /api/results` shows your numbers. Do *not*
+run `scripts/migrate_decision_rubric.py` on these five — that recomputes to evidence
+numbers and would wipe the curated values.
