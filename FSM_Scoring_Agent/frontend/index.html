@@ -895,15 +895,25 @@ function VendorDetail({data}){
       {/* The vote */}
       <div className="section-title">The agent’s vote</div>
       <div className="card">
-        <p style={{marginTop:0}}>{r.vote.narrative}</p>
-        <div className="grid vote-columns">
+        <div className="lead-strip">
+          <span className={recoClass(r.vote.recommendation)} style={{fontSize:14}}>{r.vote.recommendation}</span>
+          <span className="muted small">{r.vote.confidence} confidence</span>
+          <span className="bl">{voteBottomLine(r)}</span>
+        </div>
+        {(()=>{const {lead,rest}=leadAndRest(r.vote.narrative,3);return (
+          <div className="measure">
+            <p style={{marginTop:0}}>{lead}</p>
+            {rest && <Disclosure label="Read full reasoning"><p style={{marginTop:0}}>{rest}</p></Disclosure>}
+          </div>
+        );})()}
+        <div className="grid vote-columns" style={{marginTop:12}}>
           <div><b className="small">Top risks</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
             {r.vote.top_risks.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
           <div><b className="small">Evidence to close in Charlotte demos</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
             {r.vote.evidence_to_close.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
         </div>
-        {r.vote.dissent && <div className="small" style={{marginTop:10,paddingTop:10,borderTop:"1px solid var(--line)"}}>
-          <b>Dissent (steel-manned counter-argument):</b> {r.vote.dissent}</div>}
+        {r.vote.dissent && <Disclosure label="Dissent — steel-manned counter-argument">
+          <p className="small measure" style={{marginTop:0}}>{r.vote.dissent}</p></Disclosure>}
         {r.vote.note && <div className="small muted" style={{marginTop:8}}>&#8505; {r.vote.note}</div>}
         {r.vote.mode==="dual" && r.vote.raw_votes && r.vote.raw_votes.length>0 && <div style={{marginTop:14}}>
           <div className="section-title" style={{marginTop:0}}>How the panel debated this vendor</div>
