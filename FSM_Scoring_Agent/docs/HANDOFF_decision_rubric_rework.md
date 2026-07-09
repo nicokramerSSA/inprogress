@@ -1,77 +1,72 @@
-# Handoff: the decision-rubric rework
+# Handoff: decision-rubric rework — session outcome
 
-**Started:** 2026-07-07 · **Shipped:** 2026-07-08 · **For:** Nick · **From:** Camp (with Claude Code)
+**Date:** 2026-07-08 · **For:** Nick · **From:** Camp (with Claude Code)
 
-## What shipped — the current state
+## Bottom line
 
-The app shows **real, engine-computed numbers** from a live run on the actual RFP
-response files. Nothing authored, nothing labeled demo.
+The app now displays **real, engine-computed numbers** from a live run on the actual RFP
+response files. IFS leads; Salesforce and ServiceMax are the other finalists; BuildOps and
+ServiceTitan are out on enterprise scale. Live on prod since 2026-07-08.
 
-| Vendor | Score (0–100) | Vote |
-|---|---|---|
-| IFS | 61.4 | Recommend |
-| ServiceMax | 58.3 | Shortlist |
-| BuildOps | 57.6 | Reject (enterprise-scale gate) |
-| Salesforce | 53.9 | Shortlist |
-| ServiceTitan | 49.9 | Reject (enterprise-scale gate) |
+## What was → what changed
 
-- Scored by `claude-sonnet-4-6` across all 422 requirements per vendor (422/422 live, 0
-  fallback), Opus for the vote. `is_demo` is false — these are genuine reads of the real
-  proposals, joined to each vendor's response matrix.
-- The **enterprise-scale gate is kept**: BuildOps and ServiceTitan are screened out
-  because the research dossier rates them mid-market on enterprise scale — not on a
-  fabricated requirement. The gate is labeled `ARCH-GATE` in the flag; they are **not**
-  hard-disqualified.
-- The verdicts reproduced across three independent runs — re-derived from the July-2
-  scores, a fresh live run, and a fresh run with a cross-model (gpt-5.5 + Opus) vote — so
-  this is stable, not one lucky pass.
-- All "demo" / "offline demo" language is out of the UI now that the engine runs on real
-  proposals.
+| Vendor | July-2 run (old engine) | Codex proposal (#58) | Shipped now |
+|---|---|---|---|
+| IFS | 71.6 · Disqualified | 77.8 · Recommend * | **61.4 · Recommend** |
+| ServiceMax | 66.5 · Disqualified | 51.6 · Shortlist * | **58.3 · Shortlist** |
+| BuildOps | 67.9 · Disqualified | 45.0 · Disqualified * | **57.6 · Reject** (scale) |
+| Salesforce | 69.2 · Disqualified | 63.2 · Shortlist * | **53.9 · Shortlist** |
+| ServiceTitan | 61.4 · Disqualified | 48.0 · Disqualified * | **49.9 · Reject** (scale) |
 
-Live on prod since 2026-07-08. PRs #59, #60, #62 merged; #58 (your Codex PR) closed as
-superseded, with its config-reframe and config-block ideas carried forward.
+\* Codex's numbers were typed into the code by hand, not computed.
 
-## How we got here
+- **Was:** the old engine auto-disqualified every vendor on any unmet Must — high scores,
+  but everyone rejected, nothing for the committee to work with.
+- **Changed:** unmet Musts now discount the score instead of auto-failing; the engine
+  computes a decision-weighted score from the real evidence; an enterprise-scale gate (from
+  the research dossier) screens out mid-market vendors.
+- **Now:** every number is a live read of the real proposal — `claude-sonnet-4-6` across all
+  422 requirements, Opus for the vote — and the verdicts reproduced across three independent
+  runs (July-2-derived, fresh live, and a cross-model gpt-5.5 + Opus vote).
 
-You revised the rubric because the July-2 run disqualified all five vendors — the old
-rule auto-disqualified on any unmet Must, so the tool rejected everyone and gave the
-committee nothing to work with. That call was right, and it's preserved: unmet Musts now
-discount the score and surface as risks instead of auto-failing.
+## The decisions we made, and why
 
-To make the live engine reproduce your intended numbers, Codex hard-coded each vendor's
-scores and a fabricated `ARCH-GATE` disqualification into the code (later relocated into a
-config block — same thing). That couldn't ship: it isn't auditable (`ARCH-GATE` isn't one
-of the 422 real requirements), it doesn't generalize to a new vendor or a re-run, and it
-overwrites the real evidence with a constant.
+1. **Move off all-disqualified.** Your call, and it was right — auto-DQ gave the committee
+   nothing. Unmet Musts now discount and flag rather than fail.
+2. **Don't hard-code the numbers — build a general engine.** Codex made the verdicts real by
+   typing them in; we rebuilt so the same verdicts fall out of the evidence, for any vendor.
+3. **Don't display curated numbers either.** We briefly showed your exact figures as authored
+   values; you said "we are not liars." Right — so we ran the real files live and show what
+   the engine actually computes.
+4. **Keep the enterprise-scale gate.** The finalist/reject split can't come from the proposal
+   scores alone (they cluster). The honest discriminator is enterprise scale, from the
+   dossier — so BuildOps and ServiceTitan are out as mid-market vendors, flagged `ARCH-GATE`,
+   not disqualified on a fabricated requirement.
+5. **Remove "demo" from the UI.** The engine runs on real proposals now, so nothing should
+   read as a demo.
 
-We briefly displayed your exact figures as curated values while sorting this out. You
-flagged the obvious problem — "we are not liars" — and you were right. Presenting authored
-numbers as tool output is the one thing an advisory tool can't do.
+## Why Codex was wrong
 
-So we did it properly: ran all five vendors' real files through the current engine, live.
-The numbers above fall out of the evidence.
+Codex reproduced your intended verdicts by writing each vendor's scores, caps, and a
+fabricated `ARCH-GATE` disqualification straight into the code (later moved into a config
+block — same thing). Three problems:
 
-## The honest caveat — worth saying to the committee
+1. **Not auditable.** `ARCH-GATE` isn't one of the 422 real requirements. The tool's whole
+   pitch is that it shows its work; a made-up disqualifying requirement fails that in the room.
+2. **Doesn't generalize.** Any vendor named IFS/Salesforce/ServiceMax/ServiceTitan/BuildOps
+   got the frozen numbers no matter what its proposal said; a sixth vendor got nothing.
+3. **Overwrites the evidence.** Re-running a vendor replaced its real result with the constant.
 
-The scores cluster tightly, 49–62. Ranked by number alone, BuildOps (57.6) essentially
-ties ServiceMax (58.3) and outscores Shortlisted Salesforce (53.9). What separates the two
-rejects from the finalists is **enterprise scale**, from the dossier — not the proposal
-score. That's the honest read: BuildOps and ServiceTitan are strong products but
-mid-market vendors, not enterprise platforms for a 40–80 OpCo rollup. ServiceTitan is
-doubly out — it also carries the most requirement gaps, 35 against the others' handful.
+And the deeper reason it had to be typed in: the evidence doesn't rank the vendors the way
+the hard-coded verdicts claimed. Computed from its own responses, **BuildOps scores higher on
+architecture (3.29) than ServiceMax (3.02)** — which passed. So "BuildOps fails on
+architecture" isn't true from its proposal; Codex had to force a number. The real reason it's
+out is scale, which is exactly what the shipped engine says.
 
-We checked whether the evidence supports rejecting BuildOps on architecture instead, and
-it doesn't: computed from its own responses, BuildOps scores *higher* on architecture
-(3.29) than ServiceMax (3.02), which passed. That's exactly why the split has to rest on
-scale, and why Codex had to hard-code a number to make architecture the reason. If the
-committee wants to weight scale differently, that's a config knob (`enterprise_scale_bar`),
-not a code change.
+## The honest caveat — worth telling the committee
 
-## What this means for you
-
-- Nothing required. The numbers are live and hold up line by line.
-- The five are a committed snapshot in git (`backend/data/sample_results.json`). Re-running
-  one through the live engine recomputes it (within a point or two); we treat them as the
-  locked committee set. To refresh them, re-run and commit the new snapshot.
-- The tool is now genuinely general: upload any vendor's proposal and it scores from the
-  evidence, with no vendor names in the code.
+The scores cluster, 49–62. By number alone BuildOps (57.6) ties ServiceMax (58.3) and beats
+Shortlisted Salesforce (53.9). The finalist/reject line rests on **enterprise scale**, not the
+score. That's defensible and it's the real story — just don't present the number itself as the
+reason the two are out. If the committee wants to weight scale differently, that's a config
+knob (`enterprise_scale_bar`), not a code change.

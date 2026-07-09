@@ -20,6 +20,9 @@
     --ink:#0f1b33; --muted:#5b6677; --line:#E0E4EA; --surface:#FAFBFC;
     --good:#1f7a4d; --warn:#D97706; --bad:#b3261e; --steel:#8BA4C4;
     --font:'Avenir Next LT Pro','Avenir','Segoe UI',system-ui,sans-serif;
+    /* Prose scale — introduced at current effective values so the whole app is
+       unchanged today; a future tweak here propagates to all eight tabs. */
+    --fs-body:14px; --fs-lead:15px; --fs-label:12px; --lh-prose:1.6; --measure:68ch;
   }
   *{box-sizing:border-box}
   /* Reserve the vertical-scrollbar gutter so a tall tab (e.g. Compare) whose height
@@ -222,6 +225,23 @@
   .form-err{color:var(--bad);font-size:12.5px}
   .form-ok{color:var(--good);font-size:12.5px}
   .account-actions{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  /* Reusable disclosure (native details) */
+  .disclosure{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+  .disclosure>summary{cursor:pointer;color:var(--ssa-blue);font-size:var(--fs-label);font-weight:600;list-style:none}
+  .disclosure>summary::-webkit-details-marker{display:none}
+  .disclosure>summary::before{content:"▸ ";font-size:10px}
+  .disclosure[open]>summary::before{content:"▾ "}
+  .disclosure .body{margin-top:8px}
+  /* Prose reading width for long narrative */
+  .measure{max-width:var(--measure);line-height:var(--lh-prose)}
+  /* Lead strip above the vote */
+  .lead-strip{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px}
+  .lead-strip .bl{font-size:var(--fs-body);color:var(--ink)}
+  .vote-lead{font-size:var(--fs-lead);line-height:var(--lh-prose)}
+  /* In-card sub-tabs (scoring deep-dives) */
+  .subtabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .subtabs button{background:none;border:none;padding:9px 14px;font-family:var(--font);font-size:var(--fs-body);color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .subtabs button.active{color:var(--ssa-blue);border-bottom-color:var(--ssa-blue);font-weight:600}
 </style>
 </head>
 <body>
@@ -320,6 +340,71 @@ function BarRow({label, value, max=5, suffix="/5"}){
       <div className="val">{fmt(value)}{suffix}</div>
     </div>
   );
+}
+
+function Disclosure({label, children, tone}){
+  return (
+    <details className="disclosure">
+      <summary style={tone?{color:tone}:null}>{label}</summary>
+      <div className="body">{children}</div>
+    </details>
+  );
+}
+
+function Tabs({tabs}){
+  const [active,setActive]=useState(tabs[0] ? tabs[0].id : null);
+  const cur=tabs.find(t=>t.id===active) || tabs[0];
+  return (
+    <div>
+      <div className="subtabs">
+        {tabs.map(t=>(
+          <button key={t.id} className={t.id===active?"active":""} onClick={()=>setActive(t.id)}>{t.label}</button>
+        ))}
+      </div>
+      <div>{cur && cur.render()}</div>
+    </div>
+  );
+}
+
+// Split prose into a lead (first n sentences) + the remainder. rest==="" when short.
+function leadAndRest(text, n=3){
+  const s=String(text||"").trim();
+  if(!s) return {lead:"", rest:""};
+  // Split on sentence boundaries only: . ! ? followed by whitespace and an
+  // uppercase letter or opening quote. Avoids splitting inside decimals like
+  // "61.4" or scores like "(3.79/5)" (no space after the dot) and never drops text.
+  const boundary=/([.!?])\s+(?=[A-Z"'“‘])/g;
+  const sentences=[]; let last=0, m;
+  while((m=boundary.exec(s))!==null){
+    sentences.push(s.slice(last, m.index+1).trim());
+    last=m.index+m[0].length;
+  }
+  const tail=s.slice(last).trim();
+  if(tail) sentences.push(tail);
+  if(sentences.length<=n) return {lead:s, rest:""};
+  return {lead:sentences.slice(0,n).join(" ").trim(), rest:sentences.slice(n).join(" ").trim()};
+}
+
+// One-line "bottom line" from fields already on the result — no new stored text.
+function voteBottomLine(r){
+  const gate=(r.gating && r.gating.summary) ? r.gating.summary : "";
+  return `${fmt(r.weighted_total)}/100 decision · ${fmt(r.capability_weighted_total)}/100 capability` + (gate?` · ${gate}`:"");
+}
+
+// Rows that matter for "what to close": unmet Must, GAP/ROADMAP code, or quality ≤ 2.
+function whatToCloseRows(r){
+  return (r.requirement_scores||[]).filter(x=>{
+    const code=(x.vendor_code||"").toUpperCase();
+    const badCode=code==="GAP"||code==="ROADMAP";
+    const unmetMust=x.priority==="Must" && x.met!=="Yes" && x.met!=="N/A";
+    const lowQ=typeof x.quality==="number" && x.quality>0 && x.quality<=2;
+    return badCode||unmetMust||lowQ;
+  }).map(x=>({rid:x.rid,capability:x.capability,priority:x.priority,met:x.met,quality:x.quality,code:x.vendor_code,note:x.evidence_gap||x.rationale}));
+}
+
+// Top capability codes an archetype emphasizes (multiplier > 1), highest first.
+function archetypePriorities(fitEmphasis, n=3){
+  return Object.entries(fitEmphasis||{}).filter(([_,v])=>v>1).sort((a,b)=>b[1]-a[1]).slice(0,n).map(([k])=>k);
 }
 
 // ---- compare: deterministic helpers ------------------------------------
@@ -822,15 +907,25 @@ function VendorDetail({data}){
       {/* The vote */}
       <div className="section-title">The agent’s vote</div>
       <div className="card">
-        <p style={{marginTop:0}}>{r.vote.narrative}</p>
-        <div className="grid vote-columns">
+        <div className="lead-strip">
+          <span className={recoClass(r.vote.recommendation)} style={{fontSize:14}}>{r.vote.recommendation}</span>
+          <span className="muted small">{r.vote.confidence} confidence</span>
+          <span className="bl">{voteBottomLine(r)}</span>
+        </div>
+        {(()=>{const {lead,rest}=leadAndRest(r.vote.narrative,3);return (
+          <div className="measure">
+            <p className="vote-lead" style={{marginTop:0}}>{lead}</p>
+            {rest && <Disclosure label="Read full reasoning"><p style={{marginTop:0}}>{rest}</p></Disclosure>}
+          </div>
+        );})()}
+        <div className="grid vote-columns" style={{marginTop:12}}>
           <div><b className="small">Top risks</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
             {r.vote.top_risks.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
           <div><b className="small">Evidence to close in Charlotte demos</b><ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
             {r.vote.evidence_to_close.map((t,i)=>(<li key={i}>{t}</li>))}</ul></div>
         </div>
-        {r.vote.dissent && <div className="small" style={{marginTop:10,paddingTop:10,borderTop:"1px solid var(--line)"}}>
-          <b>Dissent (steel-manned counter-argument):</b> {r.vote.dissent}</div>}
+        {r.vote.dissent && <Disclosure label="Dissent — steel-manned counter-argument">
+          <p className="small measure" style={{marginTop:0}}>{r.vote.dissent}</p></Disclosure>}
         {r.vote.note && <div className="small muted" style={{marginTop:8}}>&#8505; {r.vote.note}</div>}
         {r.vote.mode==="dual" && r.vote.raw_votes && r.vote.raw_votes.length>0 && <div style={{marginTop:14}}>
           <div className="section-title" style={{marginTop:0}}>How the panel debated this vendor</div>
@@ -851,79 +946,93 @@ function VendorDetail({data}){
         </div>}
       </div>
 
-      {/* Categories + capabilities */}
-      <div className="grid detail-grid">
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Scorecard categories</div>
-          {r.categories.map(c=>(
-            <div key={c.id}>
-              <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
-              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{c.rationale} · <span className={"conf-"+c.confidence}>{c.confidence} conf</span></div>
+      {/* Scoring deep-dives (tabbed) */}
+      <div className="section-title">Scoring detail</div>
+      <div className="card">
+        <Tabs tabs={[
+          {id:"cat", label:"Scorecard categories", render:()=>(
+            <div>
+              {r.categories.map(c=>(
+                <div key={c.id}>
+                  <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
+                  <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{c.rationale} · <span className={"conf-"+c.confidence}>{c.confidence} conf</span></div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>RFP capabilities (Section 30)</div>
-          {r.capabilities.map(c=>(
-            <div key={c.code}>
-              <BarRow label={`${c.code} · ${c.name} (${Math.round(c.weight*100)}%)`} value={c.score_1_5}/>
-              {c.n_unmet_must>0 && <div className="small met-No" style={{margin:"-2px 0 8px 0"}}>{c.n_unmet_must} unmet Must(s)</div>}
+          )},
+          {id:"cap", label:"RFP capabilities (§30)", render:()=>(
+            <div>
+              {r.capabilities.map(c=>(
+                <div key={c.code}>
+                  <BarRow label={`${c.code} · ${c.name} (${Math.round(c.weight*100)}%)`} value={c.score_1_5}/>
+                  {c.n_unmet_must>0 && <div className="small met-No" style={{margin:"-2px 0 8px 0"}}>{c.n_unmet_must} unmet Must(s)</div>}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )},
+          {id:"seg", label:"OpCo-segment fit", render:()=>(
+            <div>
+              {r.segment_fit.map(s=>(
+                <div key={s.segment_id}>
+                  <BarRow label={s.segment_name.length>34?s.segment_name.slice(0,34)+"…":s.segment_name} value={s.fit_1_5}/>
+                  <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{s.rationale}</div>
+                </div>
+              ))}
+            </div>
+          )},
+          {id:"agentic", label:"Agentic future & research", render:()=>(
+            <div>
+              <div className="kpi" style={{margin:"4px 0 12px"}}>
+                <div className="k">Overall<b>{fmt(r.agentic_future.score_1_5)}/5</b></div>
+                <div className="k">Openness / data<b>{fmt(r.agentic_future.openness_1_5)}/5</b></div>
+                <div className="k">AI capability<b>{fmt(r.agentic_future.ai_capability_1_5)}/5</b></div>
+                <div className="k">Data-control risk<b>{r.agentic_future.data_control_risk}</b></div>
+              </div>
+              <p className="small measure">{r.agentic_future.rationale}</p>
+              {r.agentic_future.citations?.length>0 && <div className="small muted">Sources: {r.agentic_future.citations.map((c,i)=>(
+                <span key={i}>{c.url? <a href={c.url} target="_blank" rel="noreferrer">{c.title||c.url}</a> : c.title}{i<r.agentic_future.citations.length-1?", ":""}</span>))}</div>}
+              {r.external_research && r.external_research.name && (
+                <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid var(--line)"}}>
+                  <b className="small">External research (cited, distinct from internal scoring)</b>
+                  <div className="kpi" style={{margin:"10px 0"}}>
+                    {Object.entries(r.external_research.ratings||{}).map(([k,v])=>(
+                      <div className="k" key={k}>{k.replace(/_/g," ")}<b>{v}</b></div>))}
+                  </div>
+                  <div className="research-grid small">
+                    <p style={{margin:"4px 0"}}><b>Ownership/stability:</b> {r.external_research.ownership}</p>
+                    <p style={{margin:"4px 0"}}><b>Analyst:</b> {r.external_research.analyst}</p>
+                    <p style={{margin:"4px 0"}}><b>HVAC fit:</b> {r.external_research.hvac_fit}</p>
+                    <p style={{margin:"4px 0"}}><b>Project financials:</b> {r.external_research.project_financials}</p>
+                    <p style={{margin:"4px 0"}}><b>Agentic AI:</b> {r.external_research.agentic_ai}</p>
+                    <p style={{margin:"4px 0"}}><b>Risks for this buyer:</b> {r.external_research.risks}</p>
+                  </div>
+                  {r.external_research.sources && <div className="muted small" style={{marginTop:8}}>Sources: {r.external_research.sources.map((s,i)=>(
+                    <span key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title||s.url}</a>{i<r.external_research.sources.length-1?" · ":""}</span>))}</div>}
+                </div>
+              )}
+            </div>
+          )},
+        ]}/>
       </div>
-
-      {/* Segment fit + agentic */}
-      <div className="grid detail-grid">
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>OpCo-segment fit</div>
-          {r.segment_fit.map(s=>(
-            <div key={s.segment_id}>
-              <BarRow label={s.segment_name.length>34?s.segment_name.slice(0,34)+"…":s.segment_name} value={s.fit_1_5}/>
-              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{s.rationale}</div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Fit into an agentic future</div>
-          <div className="kpi" style={{margin:"4px 0 12px"}}>
-            <div className="k">Overall<b>{fmt(r.agentic_future.score_1_5)}/5</b></div>
-            <div className="k">Openness / data<b>{fmt(r.agentic_future.openness_1_5)}/5</b></div>
-            <div className="k">AI capability<b>{fmt(r.agentic_future.ai_capability_1_5)}/5</b></div>
-            <div className="k">Data-control risk<b>{r.agentic_future.data_control_risk}</b></div>
-          </div>
-          <p className="small">{r.agentic_future.rationale}</p>
-          {r.agentic_future.citations?.length>0 && <div className="small muted">Sources: {r.agentic_future.citations.map((c,i)=>(
-            <span key={i}>{c.url? <a href={c.url} target="_blank" rel="noreferrer">{c.title||c.url}</a> : c.title}{i<r.agentic_future.citations.length-1?", ":""}</span>))}</div>}
-        </div>
-      </div>
-
-      {/* External research */}
-      {r.external_research && r.external_research.name && (
-        <div>
-          <div className="section-title">External research (cited, distinct from internal scoring)</div>
-          <div className="card small">
-            <div className="kpi" style={{marginBottom:10}}>
-              {Object.entries(r.external_research.ratings||{}).map(([k,v])=>(
-                <div className="k" key={k}>{k.replace(/_/g," ")}<b>{v}</b></div>))}
-            </div>
-            <div className="research-grid">
-              <p style={{margin:"4px 0"}}><b>Ownership/stability:</b> {r.external_research.ownership}</p>
-              <p style={{margin:"4px 0"}}><b>Analyst:</b> {r.external_research.analyst}</p>
-              <p style={{margin:"4px 0"}}><b>HVAC fit:</b> {r.external_research.hvac_fit}</p>
-              <p style={{margin:"4px 0"}}><b>Project financials:</b> {r.external_research.project_financials}</p>
-              <p style={{margin:"4px 0"}}><b>Agentic AI:</b> {r.external_research.agentic_ai}</p>
-              <p style={{margin:"4px 0"}}><b>Risks for this buyer:</b> {r.external_research.risks}</p>
-            </div>
-            {r.external_research.sources && <div className="muted" style={{marginTop:8}}>Sources: {r.external_research.sources.map((s,i)=>(
-              <span key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title||s.url}</a>{i<r.external_research.sources.length-1?" · ":""}</span>))}</div>}
-          </div>
-        </div>
-      )}
 
       {/* Requirement-level table */}
       <div className="section-title">Requirement-level scoring ({r.requirement_scores.length} requirements)</div>
       <div className="card">
+        {(()=>{const wtc=whatToCloseRows(r);return (
+          <div style={{marginBottom:12}}>
+            <b className="small">What to close ({wtc.length})</b>
+            {wtc.length===0
+              ? <p className="small muted" style={{marginTop:6}}>No unmet Musts, GAP/ROADMAP items, or low-quality (≤2) requirements.</p>
+              : <ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+                  {wtc.slice(0,12).map(x=>(
+                    <li key={x.rid}><b>{x.rid}</b> <span className="tag">{x.capability}</span> <span className={"met-"+String(x.met).replace("/","")}>{x.met}</span>
+                      {x.code?<span className="tag" style={{marginLeft:4}}>{x.code}</span>:null} — {x.note}</li>
+                  ))}
+                  {wtc.length>12 && <li className="muted">…and {wtc.length-12} more (see full table below).</li>}
+                </ul>}
+          </div>
+        );})()}
+        <Disclosure label="Show all 422 requirements">
         <div className="requirement-controls">
           <select className="pill" value={capFilter} onChange={e=>setCapFilter(e.target.value)} style={{padding:"5px 8px"}}>
             <option value="ALL">All capabilities</option>
@@ -972,6 +1081,7 @@ function VendorDetail({data}){
           </tbody>
         </table>
         </div>
+        </Disclosure>
       </div>
     </div>
   );
@@ -1236,12 +1346,26 @@ function Methodology({kb}){
       <div className="section-title">The agent — who it is</div>
       <div className="card">
         <h3>{p.display_name}</h3>
-        <p className="small">{p.one_line}</p>
+        <p className="small measure">{p.one_line}</p>
         <p className="small muted">{p.provenance}</p>
-        <p className="small"><b>Weighting doctrine:</b> {p.weighting_doctrine.principle}</p>
-        <p className="small"><b>Agentic-future doctrine:</b> {p.agentic_future_doctrine.summary}</p>
-        <p className="small"><b>OpCo-diversity doctrine:</b> {p.opco_diversity_doctrine.summary}</p>
+        <p className="small"><b>Weighting:</b> {p.weighting_doctrine.principle}</p>
+        <p className="small"><b>Agentic future:</b> {p.agentic_future_doctrine.summary}</p>
+        <p className="small"><b>OpCo diversity:</b> {p.opco_diversity_doctrine.summary}</p>
         <p className="small"><b>How it scores:</b> {p.scoring_method_doctrine.summary}</p>
+        <Disclosure label="Full methodology">
+          <div className="small measure">
+            {p.weighting_doctrine.quote && <p><i>"{p.weighting_doctrine.quote}"</i></p>}
+            {Array.isArray(p.weighting_doctrine.implications) && p.weighting_doctrine.implications.length>0 && <div>
+              <b>Weighting implications</b>
+              <ul style={{margin:"4px 0 0 16px",padding:0}}>{p.weighting_doctrine.implications.map((x,i)=>(<li key={i}>{x}</li>))}</ul></div>}
+            {Array.isArray(p.agentic_future_doctrine.principles) && p.agentic_future_doctrine.principles.length>0 && <div style={{marginTop:8}}>
+              <b>Agentic-future principles</b>
+              <ul style={{margin:"4px 0 0 16px",padding:0}}>{p.agentic_future_doctrine.principles.map((x,i)=>(<li key={i}>{x}</li>))}</ul></div>}
+            {Array.isArray(p.opco_diversity_doctrine.quotes) && p.opco_diversity_doctrine.quotes.length>0 && <div style={{marginTop:8}}>
+              <b>OpCo-diversity</b>
+              <ul style={{margin:"4px 0 0 16px",padding:0}}>{p.opco_diversity_doctrine.quotes.map((x,i)=>(<li key={i}><i>"{x}"</i></li>))}</ul></div>}
+          </div>
+        </Disclosure>
       </div>
 
       <div className="grid detail-grid">
@@ -1265,7 +1389,11 @@ function Methodology({kb}){
             <h3 style={{fontSize:14}}>{a.name}</h3>
             <p className="muted" style={{margin:"2px 0"}}>{a.exemplars.join(", ")}</p>
             <p style={{margin:"6px 0"}}>{a.characteristics}</p>
-            <p className="muted">Needs: {a.needs.join("; ")}</p>
+            {archetypePriorities(a.fit_emphasis).length>0 &&
+              <p className="muted" style={{margin:"6px 0 0"}}><b>Prioritizes:</b> {archetypePriorities(a.fit_emphasis).join(", ")}</p>}
+            <Disclosure label={`Needs (${(a.needs||[]).length})`}>
+              <ul className="small" style={{margin:"4px 0 0 16px",padding:0}}>{(a.needs||[]).map((n,i)=>(<li key={i}>{n}</li>))}</ul>
+            </Disclosure>
           </div>
         ))}
       </div>
