@@ -1006,6 +1006,21 @@ function VendorDetail({data}){
       {/* Requirement-level table */}
       <div className="section-title">Requirement-level scoring ({r.requirement_scores.length} requirements)</div>
       <div className="card">
+        {(()=>{const wtc=whatToCloseRows(r);return (
+          <div style={{marginBottom:12}}>
+            <b className="small">What to close ({wtc.length})</b>
+            {wtc.length===0
+              ? <p className="small muted" style={{marginTop:6}}>No unmet Musts, GAP/ROADMAP items, or low-quality (≤2) requirements.</p>
+              : <ul className="small" style={{margin:"6px 0 0 16px",padding:0}}>
+                  {wtc.slice(0,12).map(x=>(
+                    <li key={x.rid}><b>{x.rid}</b> <span className="tag">{x.capability}</span> <span className={"met-"+String(x.met).replace("/","")}>{x.met}</span>
+                      {x.code?<span className="tag" style={{marginLeft:4}}>{x.code}</span>:null} — {x.note}</li>
+                  ))}
+                  {wtc.length>12 && <li className="muted">…and {wtc.length-12} more (see full table below).</li>}
+                </ul>}
+          </div>
+        );})()}
+        <Disclosure label="Show all 422 requirements">
         <div className="requirement-controls">
           <select className="pill" value={capFilter} onChange={e=>setCapFilter(e.target.value)} style={{padding:"5px 8px"}}>
             <option value="ALL">All capabilities</option>
@@ -1054,6 +1069,7 @@ function VendorDetail({data}){
           </tbody>
         </table>
         </div>
+        </Disclosure>
       </div>
     </div>
   );
