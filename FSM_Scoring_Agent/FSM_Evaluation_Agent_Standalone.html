@@ -369,9 +369,19 @@ function Tabs({tabs}){
 function leadAndRest(text, n=3){
   const s=String(text||"").trim();
   if(!s) return {lead:"", rest:""};
-  const parts=s.match(/[^.!?]+[.!?]+(\s|$)/g);
-  if(!parts || parts.length<=n) return {lead:s, rest:""};
-  return {lead:parts.slice(0,n).join("").trim(), rest:parts.slice(n).join("").trim()};
+  // Split on sentence boundaries only: . ! ? followed by whitespace and an
+  // uppercase letter or opening quote. Avoids splitting inside decimals like
+  // "61.4" or scores like "(3.79/5)" (no space after the dot) and never drops text.
+  const boundary=/([.!?])\s+(?=[A-Z"'“‘])/g;
+  const sentences=[]; let last=0, m;
+  while((m=boundary.exec(s))!==null){
+    sentences.push(s.slice(last, m.index+1).trim());
+    last=m.index+m[0].length;
+  }
+  const tail=s.slice(last).trim();
+  if(tail) sentences.push(tail);
+  if(sentences.length<=n) return {lead:s, rest:""};
+  return {lead:sentences.slice(0,n).join(" ").trim(), rest:sentences.slice(n).join(" ").trim()};
 }
 
 // One-line "bottom line" from fields already on the result — no new stored text.
