@@ -934,75 +934,74 @@ function VendorDetail({data}){
         </div>}
       </div>
 
-      {/* Categories + capabilities */}
-      <div className="grid detail-grid">
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Scorecard categories</div>
-          {r.categories.map(c=>(
-            <div key={c.id}>
-              <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
-              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{c.rationale} · <span className={"conf-"+c.confidence}>{c.confidence} conf</span></div>
+      {/* Scoring deep-dives (tabbed) */}
+      <div className="section-title">Scoring detail</div>
+      <div className="card">
+        <Tabs tabs={[
+          {id:"cat", label:"Scorecard categories", render:()=>(
+            <div>
+              {r.categories.map(c=>(
+                <div key={c.id}>
+                  <BarRow label={`${c.name} (${Math.round(c.weight*100)}%)`} value={c.raw_1_5}/>
+                  <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{c.rationale} · <span className={"conf-"+c.confidence}>{c.confidence} conf</span></div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>RFP capabilities (Section 30)</div>
-          {r.capabilities.map(c=>(
-            <div key={c.code}>
-              <BarRow label={`${c.code} · ${c.name} (${Math.round(c.weight*100)}%)`} value={c.score_1_5}/>
-              {c.n_unmet_must>0 && <div className="small met-No" style={{margin:"-2px 0 8px 0"}}>{c.n_unmet_must} unmet Must(s)</div>}
+          )},
+          {id:"cap", label:"RFP capabilities (§30)", render:()=>(
+            <div>
+              {r.capabilities.map(c=>(
+                <div key={c.code}>
+                  <BarRow label={`${c.code} · ${c.name} (${Math.round(c.weight*100)}%)`} value={c.score_1_5}/>
+                  {c.n_unmet_must>0 && <div className="small met-No" style={{margin:"-2px 0 8px 0"}}>{c.n_unmet_must} unmet Must(s)</div>}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )},
+          {id:"seg", label:"OpCo-segment fit", render:()=>(
+            <div>
+              {r.segment_fit.map(s=>(
+                <div key={s.segment_id}>
+                  <BarRow label={s.segment_name.length>34?s.segment_name.slice(0,34)+"…":s.segment_name} value={s.fit_1_5}/>
+                  <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{s.rationale}</div>
+                </div>
+              ))}
+            </div>
+          )},
+          {id:"agentic", label:"Agentic future & research", render:()=>(
+            <div>
+              <div className="kpi" style={{margin:"4px 0 12px"}}>
+                <div className="k">Overall<b>{fmt(r.agentic_future.score_1_5)}/5</b></div>
+                <div className="k">Openness / data<b>{fmt(r.agentic_future.openness_1_5)}/5</b></div>
+                <div className="k">AI capability<b>{fmt(r.agentic_future.ai_capability_1_5)}/5</b></div>
+                <div className="k">Data-control risk<b>{r.agentic_future.data_control_risk}</b></div>
+              </div>
+              <p className="small measure">{r.agentic_future.rationale}</p>
+              {r.agentic_future.citations?.length>0 && <div className="small muted">Sources: {r.agentic_future.citations.map((c,i)=>(
+                <span key={i}>{c.url? <a href={c.url} target="_blank" rel="noreferrer">{c.title||c.url}</a> : c.title}{i<r.agentic_future.citations.length-1?", ":""}</span>))}</div>}
+              {r.external_research && r.external_research.name && (
+                <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid var(--line)"}}>
+                  <b className="small">External research (cited, distinct from internal scoring)</b>
+                  <div className="kpi" style={{margin:"10px 0"}}>
+                    {Object.entries(r.external_research.ratings||{}).map(([k,v])=>(
+                      <div className="k" key={k}>{k.replace(/_/g," ")}<b>{v}</b></div>))}
+                  </div>
+                  <div className="research-grid small">
+                    <p style={{margin:"4px 0"}}><b>Ownership/stability:</b> {r.external_research.ownership}</p>
+                    <p style={{margin:"4px 0"}}><b>Analyst:</b> {r.external_research.analyst}</p>
+                    <p style={{margin:"4px 0"}}><b>HVAC fit:</b> {r.external_research.hvac_fit}</p>
+                    <p style={{margin:"4px 0"}}><b>Project financials:</b> {r.external_research.project_financials}</p>
+                    <p style={{margin:"4px 0"}}><b>Agentic AI:</b> {r.external_research.agentic_ai}</p>
+                    <p style={{margin:"4px 0"}}><b>Risks for this buyer:</b> {r.external_research.risks}</p>
+                  </div>
+                  {r.external_research.sources && <div className="muted small" style={{marginTop:8}}>Sources: {r.external_research.sources.map((s,i)=>(
+                    <span key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title||s.url}</a>{i<r.external_research.sources.length-1?" · ":""}</span>))}</div>}
+                </div>
+              )}
+            </div>
+          )},
+        ]}/>
       </div>
-
-      {/* Segment fit + agentic */}
-      <div className="grid detail-grid">
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>OpCo-segment fit</div>
-          {r.segment_fit.map(s=>(
-            <div key={s.segment_id}>
-              <BarRow label={s.segment_name.length>34?s.segment_name.slice(0,34)+"…":s.segment_name} value={s.fit_1_5}/>
-              <div className="small muted" style={{margin:"-2px 0 8px 0"}}>{s.rationale}</div>
-            </div>
-          ))}
-        </div>
-        <div className="card">
-          <div className="section-title" style={{marginTop:0}}>Fit into an agentic future</div>
-          <div className="kpi" style={{margin:"4px 0 12px"}}>
-            <div className="k">Overall<b>{fmt(r.agentic_future.score_1_5)}/5</b></div>
-            <div className="k">Openness / data<b>{fmt(r.agentic_future.openness_1_5)}/5</b></div>
-            <div className="k">AI capability<b>{fmt(r.agentic_future.ai_capability_1_5)}/5</b></div>
-            <div className="k">Data-control risk<b>{r.agentic_future.data_control_risk}</b></div>
-          </div>
-          <p className="small">{r.agentic_future.rationale}</p>
-          {r.agentic_future.citations?.length>0 && <div className="small muted">Sources: {r.agentic_future.citations.map((c,i)=>(
-            <span key={i}>{c.url? <a href={c.url} target="_blank" rel="noreferrer">{c.title||c.url}</a> : c.title}{i<r.agentic_future.citations.length-1?", ":""}</span>))}</div>}
-        </div>
-      </div>
-
-      {/* External research */}
-      {r.external_research && r.external_research.name && (
-        <div>
-          <div className="section-title">External research (cited, distinct from internal scoring)</div>
-          <div className="card small">
-            <div className="kpi" style={{marginBottom:10}}>
-              {Object.entries(r.external_research.ratings||{}).map(([k,v])=>(
-                <div className="k" key={k}>{k.replace(/_/g," ")}<b>{v}</b></div>))}
-            </div>
-            <div className="research-grid">
-              <p style={{margin:"4px 0"}}><b>Ownership/stability:</b> {r.external_research.ownership}</p>
-              <p style={{margin:"4px 0"}}><b>Analyst:</b> {r.external_research.analyst}</p>
-              <p style={{margin:"4px 0"}}><b>HVAC fit:</b> {r.external_research.hvac_fit}</p>
-              <p style={{margin:"4px 0"}}><b>Project financials:</b> {r.external_research.project_financials}</p>
-              <p style={{margin:"4px 0"}}><b>Agentic AI:</b> {r.external_research.agentic_ai}</p>
-              <p style={{margin:"4px 0"}}><b>Risks for this buyer:</b> {r.external_research.risks}</p>
-            </div>
-            {r.external_research.sources && <div className="muted" style={{marginTop:8}}>Sources: {r.external_research.sources.map((s,i)=>(
-              <span key={i}><a href={s.url} target="_blank" rel="noreferrer">{s.title||s.url}</a>{i<r.external_research.sources.length-1?" · ":""}</span>))}</div>}
-          </div>
-        </div>
-      )}
 
       {/* Requirement-level table */}
       <div className="section-title">Requirement-level scoring ({r.requirement_scores.length} requirements)</div>
