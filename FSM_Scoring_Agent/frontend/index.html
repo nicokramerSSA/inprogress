@@ -1377,7 +1377,11 @@ function Methodology({kb}){
             <h3 style={{fontSize:14}}>{a.name}</h3>
             <p className="muted" style={{margin:"2px 0"}}>{a.exemplars.join(", ")}</p>
             <p style={{margin:"6px 0"}}>{a.characteristics}</p>
-            <p className="muted">Needs: {a.needs.join("; ")}</p>
+            {archetypePriorities(a.fit_emphasis).length>0 &&
+              <p className="muted" style={{margin:"6px 0 0"}}><b>Prioritizes:</b> {archetypePriorities(a.fit_emphasis).join(", ")}</p>}
+            <Disclosure label={`Needs (${(a.needs||[]).length})`}>
+              <ul className="small" style={{margin:"4px 0 0 16px",padding:0}}>{(a.needs||[]).map((n,i)=>(<li key={i}>{n}</li>))}</ul>
+            </Disclosure>
           </div>
         ))}
       </div>
