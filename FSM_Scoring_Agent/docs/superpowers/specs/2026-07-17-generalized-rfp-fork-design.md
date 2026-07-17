@@ -11,7 +11,11 @@ FSM engagement. A consultant uploads an Excel file of requirements and categorie
 scores vendor proposals against it, adjusts category weights with sliders, and
 stress-tests those weights with simulation before the selection committee ever meets.
 
-The FSM app stays untouched. This is a new repository.
+The FSM app stays untouched. This is a fresh repository seeded from a cleaned
+copy of the code, with no git history carried over: the parent repo's history
+contains Service Logic client data (requirements, vendor research, curated
+results) and must not travel into the fork. The fork lives in a new private
+repository under the user's GitHub account (chagood8).
 
 ## Decisions made during brainstorming
 
@@ -35,6 +39,17 @@ The FSM app stays untouched. This is a new repository.
 - **Architecture:** Approach B, "project-scoped engine." Rejected: Approach A
   (config-swap of the JSON files — fights every requested feature) and Approach C
   (full platform rewrite — pays platform costs without platform users).
+- **Active project is client state.** Every API call carries a `project_id`; the
+  "active project" is whatever a given browser has selected. No global mutable
+  server state, so two consultants can work different projects concurrently.
+- **Matrix-aligned scoring is dropped from Phase 1.** `matrix_llm.py` and the
+  FSM-specific matrix joins do not carry over. A generalized "vendor response
+  matrix" upload (vendors answering in the buyer's own spreadsheet, mapped to
+  requirement IDs for row-grounded scoring) is a Phase 3 candidate.
+- **Frontend splits in Phase 1.** index.html breaks into a few
+  `<script type="text/babel" src=...>` files (app shell, project setup,
+  evaluation views, weight studio). Still React via CDN, still no build
+  toolchain; `build_static.py` inlines them for the standalone export.
 
 ## Architecture
 
@@ -89,8 +104,9 @@ as the persona's project flavoring and is injected into every LLM call.
 
 `capabilities.json` (second lens), `segments.json`, `vendor_research.json` as
 boot-time knowledge, `sample.py`'s five FSM vendors, segment-fit and
-agentic-future stages in `scoring.py`, their sections in the vote prompt, and the
-curated-seed machinery in `app.py`.
+agentic-future stages in `scoring.py`, their sections in the vote prompt,
+`matrix_llm.py` and the FSM matrix joins in `ingest.py`, and the curated-seed
+machinery in `app.py`.
 
 ## Excel intake
 
@@ -192,12 +208,13 @@ consultant can bring "the three weightings the committee debated" into a meeting
 
 ## Build phasing
 
-**Phase 1 — foundation.** Fork the repo; strip FSM knowledge; SQLite layer and
-schema; ProjectContext; project CRUD; template download and upload→validate→
-preview→confirm; extract pure `rollup()`; per-project gating config; neutral
-persona + context brief; scoring/vote/chat wired to SQLite with batch
-resumability. Phase 1 alone is the generalized product: upload any RFP, score
-vendors against it.
+**Phase 1 — foundation.** Seed the new private repo from a cleaned copy; strip
+FSM knowledge; split the frontend into a few script files; SQLite layer and
+schema; ProjectContext with per-request `project_id`; project CRUD; template
+download and upload→validate→preview→confirm; extract pure `rollup()`;
+per-project gating config; neutral persona + context brief; scoring/vote/chat
+wired to SQLite with batch resumability. Phase 1 alone is the generalized
+product: upload any RFP, score vendors against it.
 
 **Phase 2 — weight studio.** Sliders with locked-total rebalancing; named weight
 profiles; priority-multiplier knobs; client-side JS rollup; live re-rank;
@@ -205,7 +222,8 @@ synthetic archetypes; flip-distance and tornado sensitivity; saved scenarios.
 
 **Phase 3 — reach and polish.** Column-mapping wizard; standalone HTML project
 snapshot; upload robustness; requirement re-upload/versioning flow for projects
-with existing evaluations.
+with existing evaluations; generalized vendor-response-matrix upload for
+row-grounded scoring (candidate, scope when reached).
 
 Each phase ends in a working app.
 
@@ -218,9 +236,9 @@ Postgres.
 ## Risks
 
 - **The 2,078-line frontend.** index.html already strains the single-file
-  approach, and the weight studio adds a whole new screen. Mitigation: the fork
-  can split the frontend into a few `<script type="text/babel" src=...>` files
-  without adopting a build toolchain. Decide during Phase 1, not after Phase 2.
+  approach, and the weight studio adds a whole new screen. Decision made: split
+  into a few `<script type="text/babel" src=...>` files in Phase 1, before new
+  screens land. No build toolchain.
 - **JS/Python rollup drift.** Two implementations of the same math will diverge
   unless pinned. Mitigation: a shared JSON fixture of scores + weights + expected
   outputs, asserted by both sides. This is the one place the no-tests convention
