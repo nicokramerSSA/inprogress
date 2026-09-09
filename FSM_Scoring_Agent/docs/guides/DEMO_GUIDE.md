@@ -7,7 +7,7 @@ demo; the headers double as your demo beats. Audience: consultants, not engineer
 
 ## The 20-second version (say this first)
 
-This tool reads a vendor's RFP response and scores it the way a seasoned FSM evaluator would — across all 422 requirements — then casts a vote: **Recommend, Shortlist, Reject, or Disqualified.**
+This tool reads a vendor's RFP response and scores it across all 422 requirements the way a seasoned FSM evaluator would, then casts a vote: **Recommend, Shortlist, Reject, or Disqualified.**
 
 
 It is **advisory**. It does not pick the winner. It gives the selection committee a fast,
@@ -23,18 +23,18 @@ vendor and will defend every score to your face."*
 Open on the **Dashboard**. The team sees five vendors ranked. Here is what the current
 run says — lead with this:
 
-| Vendor       | Score (/100) | Verdict        |
-| ------------ | ------------ | -------------- |
-| IFS          | 81.1         | ✅ Recommend    |
-| Salesforce   | 74.1         | ❌ Disqualified |
-| ServiceMax   | 74.1         | ❌ Disqualified |
-| BuildOps     | 70.8         | ◆ Shortlist    |
-| ServiceTitan | 70.8         | ◆ Shortlist    |
+| Vendor       | Score (/100) | Verdict     |
+| ------------ | ------------ | ----------- |
+| IFS          | 61.4         | ✅ Recommend |
+| ServiceMax   | 58.3         | ◆ Shortlist |
+| BuildOps     | 57.6         | ❌ Reject    |
+| Salesforce   | 53.9         | ◆ Shortlist |
+| ServiceTitan | 49.9         | ❌ Reject    |
 
-**Make them stare at the Salesforce row.** It scored a 74 — higher than both shortlisted vendors — and it's still *disqualified*. That contradiction is the most important thing in the demo. Salesforce failed a **Must** requirement, and a failed Must ends the conversation regardless of how strong everything else is. The score tells you how good a vendor is; the **verdict** tells you whether they're allowed to win.
+**Make them stare at the BuildOps row.** It scored 57.6 — higher than Salesforce, which is *shortlisted* at 53.9 — and it's still a **Reject**. That's the most important thing in the demo, and it's not a bug. The scores cluster tightly; everything lands between 49 and 62, so the raw number is not what separates the finalists from the rejects. BuildOps and ServiceTitan are out because they're mid-market platforms, not enterprise ones — the wrong size for a 40–80 OpCo rollup. The score tells you how good a vendor's product is; the **verdict** folds in a scale judgment the number alone can't show.
 
-So the reading order is always: **verdict first, score second, rationale third.** A high
-score with a Disqualified verdict is not a near-miss — it's out.
+So the reading order is always: **verdict first, score second, rationale third.** When a
+solid score sits next to a Reject, the reason is almost always the enterprise-scale gate, not the requirements — and you should say that out loud rather than let the number do the talking.
 
 When you click into a vendor, the two numbers you'll narrate are:
 
@@ -65,10 +65,15 @@ Two consequences worth saying out loud:
 - **It's auditable.** Every score comes with a rationale and an evidence gap, so "the model
   said so" is never the answer. The answer is always a sentence you can check.
 
-One deliberate exception: **the disqualification gates are hard-coded math, and the model
-cannot override them.** Single-tenant deployment, union/non-union data isolation, and any
-failed Must are computed from the scores themselves — not left to the model's mood. We made
-gating deterministic on purpose, so a disqualification is always defensible.
+One deliberate exception: **the gates are hard-coded math, and the model cannot override
+them.** Two kinds. The *architectural* gates — single-tenant-only deployment, or failing to
+isolate union from non-union data — force a **Disqualified**. The *enterprise-scale* gate
+forces a **Reject** when a vendor is too mid-market for the rollup. Unmet Musts are no longer
+an automatic kill: they discount the score and surface as risks, so a strong vendor with a
+few gaps still competes. We made gating deterministic on purpose, so every Reject or
+Disqualification is defensible — and the scale bar itself is a config knob
+(`enterprise_scale_bar`), so if the committee weights scale differently, we change one number,
+not the code.
 
 ---
 
@@ -80,11 +85,10 @@ robot:
 1. **Before Charlotte** — run every vendor, read the verdicts and the dissents, and walk in with a ranked starting point and a list of exactly what to pressure-test in each demo.
 2. **As a committee member that never gets tired** — it votes alongside the humans. When it disagrees with the room, that's the signal to slow down and look at the rationale.
 3. **After the demos** — feed in what we learned, re-run, and watch what moves. If a vendor's verdict flips, the tool tells you which requirement changed it.
-4. **Ask the agent anything** — there's a chat tab. "Why is Salesforce disqualified?"
+4. **Ask the agent anything** — there's a chat tab. "Why is BuildOps a Reject when it outscores Salesforce?"
    "Which platform fits the small low-maturity OpCos?" It answers grounded in the actual evaluation, citing what it's drawing from. Good for the live Q&A moment in the room.
 
-The two scoring lenses are worth a sentence: the tool reports both the **SSA scorecard**
-(our six evaluation categories) and the **RFP §30 business-capability** view (work-to-cash, technician productivity, project execution, and so on). Same underlying requirement scores, two ways to look at them — pick the lens that matches who's asking.
+The two scoring lenses are worth a sentence: the tool reports the same requirement scores two ways — a **decision-weighted headline** across our evaluation categories, and the **RFP §30 business-capability** view (work-to-cash, technician productivity, project execution, and so on). Pick the lens that matches who's asking.
 
 It also reads fit against our **six OpCo archetypes** — from the large project-heavy
 divisions down to the small newly-tucked-in shops under $15M. A platform that's right for the national accounts may be wrong for the 44% plurality of mid-size manual shops, and the tool will say so.
@@ -97,7 +101,8 @@ Get ahead of the obvious objections — it builds credibility:
 
 - **It's advisory. It does not decide.** It augments the committee and expects to be
   challenged. If we ever treat its vote as the answer, we're using it wrong.
-- **Today's numbers run on synthetic proposals.** Real vendor responses are due **July 2, 2026.** Until then, the inputs are realistic mock-ups grounded in our external research dossier — good enough to demo the machinery, not the verdict. Say "demo data" out loud.
+- **These are real numbers, not demo data.** Every score is a live engine read of the actual RFP response files — all 422 requirements scored by the model, the vote by a second model, and the verdicts reproduced across independent runs.
+- **The honest caveat is scale, not score.** The numbers cluster between 49 and 62. By the number alone, BuildOps (57.6) beats shortlisted Salesforce (53.9). The finalist/reject line rests on enterprise scale, drawn from our research dossier — not on the score. Say that plainly; don't present the number as the reason a vendor is out, because the number won't back you up.
 - **It shows its work so you can find its mistakes.** Every score has a rationale and a named evidence gap. When it's wrong, you'll be able to point at where.
 - **It reasons in one consistent evaluator voice, which is a strength and a bias.** That's the design. The
   persona is explicit and editable precisely so the bias is visible and adjustable, not

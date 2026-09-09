@@ -28,3 +28,11 @@ FSM_Scoring_Agent/backend/.deps/
 
 # Uploaded proposal files are runtime input, not source
 FSM_Scoring_Agent/backend/data/uploads/
+
+# Shared app credential and the user roster for the deployed evaluation agent.
+# This repo is public. The analysis belongs here; the login sheet does not.
+FSM_Scoring_Agent/docs/guides/LOGIN_INFO.md
+
+# UI captures of live evaluations: real vendor names, real scores, a real
+# recommendation, footer-marked Confidential & Proprietary. Public repo.
+FSM_Scoring_Agent/docs/screenshots/
