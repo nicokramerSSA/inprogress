@@ -1,120 +1,12 @@
-# FSM RFP Evaluation Agent
+# FSM RFP Evaluation Agent: moved
 
-An AI agent that scores vendor responses to the **Service Logic FSM platform RFP** and casts
-an independent, well-reasoned **advisory vote** in vendor selection. It reasons as an evidence-first
-multi-analyst panel, augmented with deep HVAC/mechanical field-service domain experience.
+This app now lives in its own repository:
+**https://github.com/SSAandCompany/sl-rfp-agent** (internal to the SSA & Company GitHub org).
 
-Built for SSA & Company. See **`docs/DESIGN.md`** for the full logic & design write-up.
+The live Render service `fsm-rfp-evaluation-agent` deploys from that repo's `main` as of
+2026-11-03. Same URL, same logins, same results. Changes made here no longer deploy.
 
----
+Why it moved: this repo also holds the process-mining app and is public. The new repo
+starts with a fresh history and keeps client material and credentials out of git.
 
-## Two ways to run it
-
-### A. Zero-install demo (no Python, no keys)
-Open **`FSM_Evaluation_Agent_Standalone.html`** in any browser. The full UI runs with the
-five vendors pre-evaluated on synthetic sample proposals (offline demo engine). Browse the
-head-to-head ranking, each vendor's scorecard, OpCo-segment fit, agentic-future read, the
-agent's vote with dissent, and the methodology. *(Live re-evaluation and chat synthesis
-require the server below.)*
-
-### B. Full app (server + live models)
-```bash
-cd backend
-pip install -r requirements.txt          # flask required; LLM SDKs optional
-python app.py                            # → http://127.0.0.1:8000
-```
-The app runs immediately on the **offline "mock" engine** with no keys. To use a live model,
-set one or more keys and pick the model from the **top-right selector**:
-```bash
-export ANTHROPIC_API_KEY=sk-...          # Claude Opus / Sonnet / Haiku
-export OPENAI_API_KEY=sk-...             # GPT-4o / GPT-4o mini
-# Azure: AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT
-```
-
-Rebuild the standalone file after changes:
-```bash
-cd backend && python build_static.py     # → ../FSM_Evaluation_Agent_Standalone.html
-```
-
-### Environment variables
-- `PORT` (default 8000) — override the default port the Flask server binds to.
-- `ANTHROPIC_API_KEY` — enable Claude models (Opus, Sonnet, Haiku).
-- `OPENAI_API_KEY` — enable GPT-4o and GPT-4o mini.
-- `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` — enable Azure OpenAI models.
-- `RESULTS_MAX_CONCURRENCY` (default 6) — caps how many LLM calls run at once across the whole app (scoring batches + vendors share it); raise it if your provider rate limit has headroom, lower it if you see 429s.
-
----
-
-## Access control (hosted app)
-
-The hosted app is gated by email + password. Seven seed accounts (six named reviewers
-across SSA and Bain Capital, plus a Demo User) all start on the temporary password
-**`ServiceLogic2026!`**. Log in with your email, then change your password under the
-**Account** tab (Log out lives there too). All reviewers share one evaluation dataset —
-a run by one user is visible to everyone.
-
-The double-clickable `FSM_Evaluation_Agent_Standalone.html` has no server and is **not**
-gated.
-
-### Render setup (one-time)
-1. Add a disk: mount `/var/data`, 1 GB.
-2. Set env vars: `RESULTS_STORE_DIR=/var/data/results`, `USERS_FILE=/var/data/users.json`,
-   `SESSION_SECRET=<token_hex(32)>`.
-3. Redeploy. The user store seeds on first boot and persists across deploys.
-
-### Recovering a locked-out user
-There is no email reset. An admin edits `users.json` on the disk: delete that user's
-entry (it re-seeds to the temp password with `must_change` on next boot) or replace
-their `password_hash`.
-
-### Local testing
-Run with `SESSION_COOKIE_SECURE=0 python3 app.py` so the browser stores the session
-cookie over http.
-
----
-
-## What it does
-
-- **Scores all 422 RFP requirements** per vendor (Met? + Quality 1–5 + response code +
-  confidence + rationale + evidence gap), in the persona's voice.
-- **Two scoring lenses:** the decision-weighted headline score (0–100) and the RFP §30
-  OOB capability lens (0–100).
-- **MoSCoW-aware scoring:** unmet *Musts* discount the score as risk rather than
-  auto-disqualifying (RFP §8); an enterprise-scale/vendor-viability gate can still force
-  a Reject regardless of score.
-- **Per-OpCo-segment fit** across six OpCo archetypes (size/maturity/product-mix/talent).
-- **"Fit into an agentic future"** — openness/data-control weighted over shipped AI features.
-- **A vote:** Recommend / Shortlist / Reject / Disqualified, with narrative, steel-manned
-  dissent, top risks, and evidence to close in the Charlotte demos.
-- **Confidence + evidence gaps** on every rollup.
-- **Head-to-head ranking** and a **grounded chat assistant**.
-- **Per-interaction model selection** for scoring, vote, and each chat message.
-
-## Per-interaction model selection
-Every LLM step takes an explicit model id. The registry (`config/models.json`) covers
-Anthropic, OpenAI, Azure OpenAI, and a keyless offline engine. API keys are read from the
-environment at call time and never stored. Models without a present key are greyed out in the UI.
-
-## Loading vendor responses
-In the **"Evaluate a vendor"** panel: pick the vendor, then either **upload proposal files**
-(drag-and-drop or browse — **PDF, DOCX, XLSX, TXT, MD**, multiple files OK) and/or **paste one
-or more URLs** (portal link, shared doc, hosted PDF), pick a live model, and **Run on uploaded
-sources**. The agent reads the documents against all 422 requirements itself — you don't map
-answers to requirements. "Run on sample" uses the synthetic placeholder until July 2.
-
-## Key endpoints
-`GET /api/models · /api/knowledge · /api/vendors · /api/results` ·
-`POST /api/evaluate {vendor, use_sample|proposal_text|file_paths|urls, scoring_model, vote_model}` ·
-`POST /api/evaluate_upload (multipart: vendor, files[], urls, scoring_model, vote_model)` ·
-`POST /api/chat {question, model_id, history}`
-
-## Status & caveats
-The five committee-facing evaluations are **curated results** — authored headline numbers
-and verdicts (marked `curated: true` in `data/sample_results.json`), the evaluator's
-considered call rather than live engine output. They are what the UI displays. The
-**live engine is general and evidence-derived**: any new evaluation — a fresh upload, a
-new vendor, the chat — is scored from the proposal with no vendor names in the code.
-Because the five are authored, re-running one recomputes it from evidence and will show
-a different number, so treat them as locked. Live proposal reads still require model
-keys. The agent is **advisory** — it augments, not replaces, the human committee.
-See `docs/DESIGN.md` §9 for the full caveats.
+The full development history (PRs #36–#65) stays in this repo's git log.
